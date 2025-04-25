@@ -114,34 +114,89 @@ Tensor Tensor::operator*(const Tensor& other) const { // Element-wise multiplica
     return result;
 }
 
-// Matrix multiplication (simplified for 2D for now, needs expansion for general tensor contraction)
 Tensor Tensor::dot(const Tensor& other) const {
-    if (shape_.size() != 2 || other.shape_.size() != 2) {
-        throw std::runtime_error("Dot product currently only supported for 2D tensors (matrices).");
-    }
-    if (shape_[1] != other.shape_[0]) {
-        throw std::runtime_error("Tensor shapes are not compatible for matrix multiplication.");
+    if (shape_.size() < 2 || other.shape_.size() < 2) {
+        throw std::runtime_error("Tensors must be at least 2D for matrix multiplication.");
     }
 
-    int rows_a = shape_[0];
-    int cols_a = shape_[1];
-    int cols_b = other.shape_[1];
+    // Extract batch dimensions (if any) and matrix dimensions
+    std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
+    std::vector<int> batch_dims_b(other.shape_.begin(), other.shape_.end() - 2);
+    
+    int rows_a = shape_[shape_.size() - 2];
+    int cols_a = shape_[shape_.size() - 1];
+    int cols_b = other.shape_[other.shape_.size() - 1];
+    
+    if (cols_a != other.shape_[other.shape_.size() - 2]) {
+        throw std::runtime_error("Inner matrix dimensions must match.");
+    }
 
-    Tensor result({rows_a, cols_b}); // Result shape (rows_a, cols_b)
-
-    // Manual matrix multiplication
-    for (int i = 0; i < rows_a; ++i) {
-        for (int j = 0; j < cols_b; ++j) {
-            float sum = 0.0;
-            for (int k = 0; k < cols_a; ++k) {
-                // Get elements from original tensors using 2D indices
-                sum += this->get({i, k}) * other.get({k, j});
+    // Determine output batch dimensions
+    std::vector<int> result_shape;
+    if (batch_dims_a.empty() && !batch_dims_b.empty()) {
+        result_shape = batch_dims_b;
+    } else if (!batch_dims_a.empty() && batch_dims_b.empty()) {
+        result_shape = batch_dims_a;
+    } else if (batch_dims_a == batch_dims_b) {
+        result_shape = batch_dims_a;
+    } else {
+        throw std::runtime_error("Incompatible batch dimensions.");
+    }
+    
+    // Add matrix dimensions to result shape
+    result_shape.push_back(rows_a);
+    result_shape.push_back(cols_b);
+    
+    Tensor result(result_shape);
+    
+    // Calculate total number of batches
+    size_t total_batches = result_shape.size() <= 2 ? 1 :
+        std::accumulate(result_shape.begin(), result_shape.end() - 2, 1, std::multiplies<int>());
+    
+    // For each batch
+    for (size_t batch = 0; batch < total_batches; ++batch) {
+        // Calculate batch indices
+        std::vector<int> batch_idx;
+        size_t temp_batch = batch;
+        for (size_t i = 0; i < result_shape.size() - 2; ++i) {
+            batch_idx.push_back(temp_batch % result_shape[i]);
+            temp_batch /= result_shape[i];
+        }
+        
+        // Perform matrix multiplication for this batch
+        for (int i = 0; i < rows_a; ++i) {
+            for (int j = 0; j < cols_b; ++j) {
+                float sum = 0.0;
+                for (int k = 0; k < cols_a; ++k) {
+                    // Create full indices for both tensors
+                    std::vector<int> idx_a = batch_dims_a.empty() ? 
+                        std::vector<int>{i, k} : 
+                        std::vector<int>(batch_idx.begin(), batch_idx.end());
+                    std::vector<int> idx_b = batch_dims_b.empty() ? 
+                        std::vector<int>{k, j} : 
+                        std::vector<int>(batch_idx.begin(), batch_idx.end());
+                    
+                    if (!batch_dims_a.empty()) {
+                        idx_a.push_back(i);
+                        idx_a.push_back(k);
+                    }
+                    if (!batch_dims_b.empty()) {
+                        idx_b.push_back(k);
+                        idx_b.push_back(j);
+                    }
+                    
+                    sum += get(idx_a) * other.get(idx_b);
+                }
+                
+                // Create full index for result
+                std::vector<int> result_idx(batch_idx);
+                result_idx.push_back(i);
+                result_idx.push_back(j);
+                result.set(result_idx, sum);
             }
-            // Set element in the result tensor using 2D indices
-            result.set({i, j}, sum);
         }
     }
-
+    
     return result;
 }
 
