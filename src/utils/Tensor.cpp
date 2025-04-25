@@ -44,7 +44,7 @@ void Tensor::set_data(const Eigen::MatrixXd& data) {
         throw std::runtime_error("Data shape mismatch in set_data.");
     }
     data_ = data;
-    grad_ = Eigen::MatrixXd::Zero(shape_[0], shape_[1]); // Reset gradient on setting new data
+    grad_ = Eigen::MatrixXd::Zero(shape_[0], shape_[1]);
 }
 
 // Basic tensor operations
