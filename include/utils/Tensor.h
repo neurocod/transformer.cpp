@@ -5,6 +5,16 @@
 #include <stdexcept>
 #include <numeric>
 
+enum class OperationType {
+    None,
+    Add,
+    Sub,
+    Mul,
+    Dot,
+    Transpose,
+    Reshape
+};
+
 class Tensor {
 public:
     // Constructor
@@ -47,6 +57,12 @@ private:
     std::vector<float> data_;
     std::vector<float> grad_;
 
+    // Stores the type of operation that produced this tensor.
+    OperationType creator_op_ = OperationType::None;
+
+    // Stores pointers to the input tensors (parents) of the operation that created this tensor.
+    std::vector<const Tensor*> parents_;
+
     // Helper to calculate the linear index from multi-dimensional indices
     size_t get_linear_index(const std::vector<int>& indices) const;
 
@@ -63,10 +79,18 @@ private:
         return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
     }
 
-     // Helper to check if shapes are compatible for element-wise operations
+    // Helper to check if shapes are compatible for element-wise operations
     bool are_shapes_compatible(const Tensor& other) const {
         return shape_ == other.shape_;
     }
+
+    // These methods calculate and propagate gradients to the parent tensors.
+    void backward_add(const Tensor& grad_output);
+    void backward_sub(const Tensor& grad_output);
+    void backward_mul(const Tensor& grad_output);
+    void backward_dot(const Tensor& grad_output);
+    void backward_transpose(const Tensor& grad_output);
+    void backward_reshape(const Tensor& grad_output);
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H
