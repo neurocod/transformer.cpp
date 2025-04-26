@@ -50,6 +50,13 @@ private:
     // Helper to calculate the linear index from multi-dimensional indices
     size_t get_linear_index(const std::vector<int>& indices) const;
 
+    // Helper to calculate the new shape for broadcasting
+    static std::vector<int> calculate_broadcast_shape(const std::vector<int>& shape1, const std::vector<int>& shape2);
+    // Helper to perform broadcasting
+    Tensor broadcast_to(const std::vector<int>& new_shape) const;
+    // Helper to check if two shapes are broadcastable
+    static bool is_broadcastable(const std::vector<int>& shape1, const std::vector<int>& shape2);
+
     // Helper to calculate total number of elements from shape
     size_t num_elements() const {
         if (shape_.empty()) return 0;

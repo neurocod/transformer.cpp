@@ -79,37 +79,106 @@ void Tensor::set(const std::vector<int>& indices, float value) {
 
 // Basic tensor operations
 
-Tensor Tensor::operator+(const Tensor& other) const {
-    if (!are_shapes_compatible(other)) {
-        throw std::runtime_error("Tensor shapes do not match for addition.");
+bool Tensor::is_broadcastable(const std::vector<int>& shape1, const std::vector<int>& shape2) {
+    int max_dims = std::max(shape1.size(), shape2.size());
+    std::vector<int> padded1(max_dims, 1);
+    std::vector<int> padded2(max_dims, 1);
+    
+    // Pad shapes with 1s from the left
+    std::copy(shape1.rbegin(), shape1.rend(), padded1.rbegin());
+    std::copy(shape2.rbegin(), shape2.rend(), padded2.rbegin());
+    
+    for (int i = 0; i < max_dims; ++i) {
+        if (padded1[i] != padded2[i] && padded1[i] != 1 && padded2[i] != 1) {
+            return false;
+        }
     }
+    return true;
+}
 
-    Tensor result(shape_);
-    for (size_t i = 0; i < data_.size(); ++i) {
-        result.data_[i] = data_[i] + other.data_[i];
+std::vector<int> Tensor::calculate_broadcast_shape(const std::vector<int>& shape1, const std::vector<int>& shape2) {
+    if (!is_broadcastable(shape1, shape2)) {
+        throw std::runtime_error("Shapes are not broadcastable");
+    }
+    
+    int max_dims = std::max(shape1.size(), shape2.size());
+    std::vector<int> padded1(max_dims, 1);
+    std::vector<int> padded2(max_dims, 1);
+    std::vector<int> result_shape(max_dims);
+    
+    std::copy(shape1.rbegin(), shape1.rend(), padded1.rbegin());
+    std::copy(shape2.rbegin(), shape2.rend(), padded2.rbegin());
+    
+    for (int i = 0; i < max_dims; ++i) {
+        result_shape[i] = std::max(padded1[i], padded2[i]);
+    }
+    
+    return result_shape;
+}
+
+Tensor Tensor::broadcast_to(const std::vector<int>& new_shape) const {
+    if (!is_broadcastable(shape_, new_shape)) {
+        throw std::runtime_error("Cannot broadcast to target shape");
+    }
+    
+    Tensor result(new_shape);
+    std::vector<int> input_idx(shape_.size());
+    std::vector<int> output_idx(new_shape.size());
+    
+    // Iterate through all elements in the result tensor
+    size_t total_elements = result.num_elements();
+    for (size_t i = 0; i < total_elements; ++i) {
+        // Calculate output indices
+        size_t temp = i;
+        for (int d = new_shape.size() - 1; d >= 0; --d) {
+            output_idx[d] = temp % new_shape[d];
+            temp /= new_shape[d];
+        }
+        
+        // Calculate corresponding input indices
+        for (int d = 0; d < shape_.size(); ++d) {
+            int offset = new_shape.size() - shape_.size();
+            input_idx[d] = shape_[d] == 1 ? 0 : output_idx[d + offset];
+        }
+        
+        result.set(output_idx, get(input_idx));
+    }
+    
+    return result;
+}
+
+Tensor Tensor::operator+(const Tensor& other) const {
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
+    Tensor broadcasted_a = broadcast_to(result_shape);
+    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    
+    Tensor result(result_shape);
+    for (size_t i = 0; i < result.data_.size(); ++i) {
+        result.data_[i] = broadcasted_a.data_[i] + broadcasted_b.data_[i];
     }
     return result;
 }
 
 Tensor Tensor::operator-(const Tensor& other) const {
-    if (!are_shapes_compatible(other)) {
-        throw std::runtime_error("Tensor shapes do not match for subtraction.");
-    }
-
-    Tensor result(shape_);
-    for (size_t i = 0; i < data_.size(); ++i) {
-        result.data_[i] = data_[i] - other.data_[i];
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
+    Tensor broadcasted_a = broadcast_to(result_shape);
+    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    
+    Tensor result(result_shape);
+    for (size_t i = 0; i < result.data_.size(); ++i) {
+        result.data_[i] = broadcasted_a.data_[i] - broadcasted_b.data_[i];
     }
     return result;
 }
 
-Tensor Tensor::operator*(const Tensor& other) const { // Element-wise multiplication
-     if (!are_shapes_compatible(other)) {
-        throw std::runtime_error("Tensor shapes do not match for element-wise multiplication.");
-    }
-    Tensor result(shape_);
-    for (size_t i = 0; i < data_.size(); ++i) {
-        result.data_[i] = data_[i] * other.data_[i];
+Tensor Tensor::operator*(const Tensor& other) const {
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
+    Tensor broadcasted_a = broadcast_to(result_shape);
+    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    
+    Tensor result(result_shape);
+    for (size_t i = 0; i < result.data_.size(); ++i) {
+        result.data_[i] = broadcasted_a.data_[i] * broadcasted_b.data_[i];
     }
     return result;
 }
@@ -123,44 +192,42 @@ Tensor Tensor::dot(const Tensor& other) const {
     std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
     std::vector<int> batch_dims_b(other.shape_.begin(), other.shape_.end() - 2);
     
+    // Verify matrix dimensions compatibility
     int rows_a = shape_[shape_.size() - 2];
     int cols_a = shape_[shape_.size() - 1];
+    int rows_b = other.shape_[other.shape_.size() - 2];
     int cols_b = other.shape_[other.shape_.size() - 1];
     
-    if (cols_a != other.shape_[other.shape_.size() - 2]) {
+    if (cols_a != rows_b) {
         throw std::runtime_error("Inner matrix dimensions must match.");
     }
 
-    // Determine output batch dimensions
-    std::vector<int> result_shape;
-    if (batch_dims_a.empty() && !batch_dims_b.empty()) {
-        result_shape = batch_dims_b;
-    } else if (!batch_dims_a.empty() && batch_dims_b.empty()) {
-        result_shape = batch_dims_a;
-    } else if (batch_dims_a == batch_dims_b) {
-        result_shape = batch_dims_a;
-    } else {
-        throw std::runtime_error("Incompatible batch dimensions.");
+    // Calculate batch dimensions using broadcasting rules
+    std::vector<int> batch_shape;
+    if (!batch_dims_a.empty() || !batch_dims_b.empty()) {
+        batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
     }
-    
-    // Add matrix dimensions to result shape
+
+    // Construct final result shape: [...batch_dims, rows_a, cols_b]
+    std::vector<int> result_shape = batch_shape;
     result_shape.push_back(rows_a);
     result_shape.push_back(cols_b);
     
     Tensor result(result_shape);
     
-    // Calculate total number of batches
-    size_t total_batches = result_shape.size() <= 2 ? 1 :
-        std::accumulate(result_shape.begin(), result_shape.end() - 2, 1, std::multiplies<int>());
+    size_t total_batches = batch_shape.empty() ? 1 :
+        std::accumulate(batch_shape.begin(), batch_shape.end(), 1, std::multiplies<int>());
     
-    // For each batch
     for (size_t batch = 0; batch < total_batches; ++batch) {
         // Calculate batch indices
         std::vector<int> batch_idx;
-        size_t temp_batch = batch;
-        for (size_t i = 0; i < result_shape.size() - 2; ++i) {
-            batch_idx.push_back(temp_batch % result_shape[i]);
-            temp_batch /= result_shape[i];
+        if (!batch_shape.empty()) {
+            batch_idx.reserve(batch_shape.size());
+            size_t temp_batch = batch;
+            for (int i = batch_shape.size() - 1; i >= 0; --i) {
+                batch_idx.insert(batch_idx.begin(), temp_batch % batch_shape[i]);
+                temp_batch /= batch_shape[i];
+            }
         }
         
         // Perform matrix multiplication for this batch
@@ -168,28 +235,19 @@ Tensor Tensor::dot(const Tensor& other) const {
             for (int j = 0; j < cols_b; ++j) {
                 float sum = 0.0;
                 for (int k = 0; k < cols_a; ++k) {
-                    // Create full indices for both tensors
-                    std::vector<int> idx_a = batch_dims_a.empty() ? 
-                        std::vector<int>{i, k} : 
-                        std::vector<int>(batch_idx.begin(), batch_idx.end());
-                    std::vector<int> idx_b = batch_dims_b.empty() ? 
-                        std::vector<int>{k, j} : 
-                        std::vector<int>(batch_idx.begin(), batch_idx.end());
+                    // Create complete indices including batch dimensions
+                    std::vector<int> idx_a = batch_idx;
+                    std::vector<int> idx_b = batch_idx;
                     
-                    if (!batch_dims_a.empty()) {
-                        idx_a.push_back(i);
-                        idx_a.push_back(k);
-                    }
-                    if (!batch_dims_b.empty()) {
-                        idx_b.push_back(k);
-                        idx_b.push_back(j);
-                    }
+                    idx_a.push_back(i);
+                    idx_a.push_back(k);
+                    idx_b.push_back(k);
+                    idx_b.push_back(j);
                     
                     sum += get(idx_a) * other.get(idx_b);
                 }
                 
-                // Create full index for result
-                std::vector<int> result_idx(batch_idx);
+                std::vector<int> result_idx = batch_idx;
                 result_idx.push_back(i);
                 result_idx.push_back(j);
                 result.set(result_idx, sum);
