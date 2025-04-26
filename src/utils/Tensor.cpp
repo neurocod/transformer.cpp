@@ -459,6 +459,71 @@ void Tensor::backward(const Tensor &grad_output)
     }
 }
 
+// Helper to reduce gradient for broadcasting
+void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, const std::vector<int> &parent_shape)
+{
+    // This function sums the gradient of grad_output along dimensions that were broadcast to match the parent's original shape.
+
+    std::vector<int> grad_shape = grad_output.get_shape();
+    int max_dims = std::max(grad_shape.size(), parent_shape.size());
+
+    std::vector<int> padded_grad_shape(max_dims, 1);
+    std::vector<int> padded_parent_shape(max_dims, 1);
+
+    std::copy(grad_shape.rbegin(), grad_shape.rend(), padded_grad_shape.rbegin());
+    std::copy(parent_shape.rbegin(), parent_shape.rend(), padded_parent_shape.rbegin());
+
+    // Initialize parent_grad with zeros and the correct shape
+    parent_grad = Tensor(parent_shape);
+    parent_grad.zero_grad();
+
+    // Calculate strides for gradient and parent shapes
+    std::vector<size_t> grad_stride(max_dims);
+    std::vector<size_t> parent_stride(max_dims);
+
+    if (max_dims > 0)
+    {
+        grad_stride.back() = 1;
+        for (int i = max_dims - 2; i >= 0; --i)
+            grad_stride[i] = grad_stride[i + 1] * padded_grad_shape[i + 1];
+        parent_stride.back() = 1;
+        for (int i = max_dims - 2; i >= 0; --i)
+            parent_stride[i] = parent_stride[i + 1] * padded_parent_shape[i + 1];
+    }
+
+    // Iterate through the gradient tensor
+    size_t total_grad_elements = grad_output.num_elements();
+    std::vector<int> grad_indices(max_dims);
+    std::vector<int> parent_indices(max_dims);
+
+    for (size_t i = 0; i < total_grad_elements; ++i)
+    {
+        // Convert linear index to multi-dimensional indices for grad_output
+        size_t temp_grad_idx = i;
+        for (int d = max_dims - 1; d >= 0; --d)
+        {
+            grad_indices[d] = temp_grad_idx / grad_stride[d];
+            temp_grad_idx %= grad_stride[d];
+        }
+
+        // Calculate corresponding parent indices
+        for (int d = 0; d < max_dims; ++d)
+        {
+            parent_indices[d] = (padded_parent_shape[d] == 1) ? 0 : grad_indices[d];
+        }
+
+        // Calculate linear index for parent gradient
+        size_t parent_linear_idx = 0;
+        for (size_t d = 0; d < max_dims; ++d)
+        {
+            parent_linear_idx += parent_indices[d] * parent_stride[d];
+        }
+
+        // Accumulate the gradient
+        parent_grad.data_[parent_linear_idx] += grad_output.get_data()[i];
+    }
+}
+
 // Backward methods for specific operations
 
 void Tensor::backward_add(const Tensor &grad_output)
@@ -466,14 +531,8 @@ void Tensor::backward_add(const Tensor &grad_output)
     /*
     Gradient of Z = A + B with respect to A is dZ/dA = 1.
     Gradient of Z = A + B with respect to B is dZ/dB = 1.
-    Using the chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * 1 = grad_output
+    Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * 1 = grad_output
     dL/dB = dL/dZ * dZ/dB = grad_output * 1 = grad_output
-
-    If broadcasting occurred during the forward pass (e.g., adding a (1, N) tensor to a (M, N) tensor),
-    the gradient needs to be summed across the broadcasted dimensions.
-    This requires knowing the original shapes of the parents.
-    For a correct implementation, we need to check the original shapes of the parents
-    and sum the gradient across the dimensions that were broadcast.
     */
 
     if (parents_.size() == 2)
@@ -481,18 +540,13 @@ void Tensor::backward_add(const Tensor &grad_output)
         const Tensor *parent_a = parents_[0];
         const Tensor *parent_b = parents_[1];
 
-        Tensor grad_a_propagated = grad_output;
-        Tensor grad_b_propagated = grad_output;
-
-        grad_a_propagated.creator_op_ = OperationType::None;
-        grad_a_propagated.parents_.clear();
-        grad_b_propagated.creator_op_ = OperationType::None;
-        grad_b_propagated.parents_.clear();
-
+        Tensor grad_a_propagated;
+        reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
         const_cast<Tensor *>(parent_a)->backward(grad_a_propagated);
-        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
 
-        std::cerr << "Warning: Backward pass for Add operation with broadcasting is not fully implemented." << std::endl;
+        Tensor grad_b_propagated;
+        reduce_gradient(grad_output, grad_b_propagated, parent_b->get_shape());
+        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
     }
     else
     {
@@ -507,8 +561,6 @@ void Tensor::backward_sub(const Tensor &grad_output)
     Gradient of Z = A - B with respect to B is dZ/dB = -1.
     Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * 1 = grad_output
     dL/dB = dL/dZ * dZ/dB = grad_output * -1 = -grad_output
-
-    Similar to addition, broadcasting needs careful handling for gradient reduction.
     */
 
     if (parents_.size() == 2)
@@ -516,25 +568,23 @@ void Tensor::backward_sub(const Tensor &grad_output)
         const Tensor *parent_a = parents_[0];
         const Tensor *parent_b = parents_[1];
 
-        Tensor grad_a_propagated = grad_output;
-        Tensor grad_b_propagated = grad_output;
-
-        std::vector<float> neg_grad_data(grad_b_propagated.num_elements());
-        for (size_t i = 0; i < neg_grad_data.size(); ++i)
-        {
-            neg_grad_data[i] = -grad_b_propagated.get_data()[i];
-        }
-        grad_b_propagated.set_data(neg_grad_data);
-
-        grad_a_propagated.creator_op_ = OperationType::None;
-        grad_a_propagated.parents_.clear();
-        grad_b_propagated.creator_op_ = OperationType::None;
-        grad_b_propagated.parents_.clear();
-
+        // Propagate gradient to parent A (dL/dA = grad_output)
+        Tensor grad_a_propagated;
+        reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
         const_cast<Tensor *>(parent_a)->backward(grad_a_propagated);
-        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
 
-        std::cerr << "Warning: Backward pass for Sub operation with broadcasting is not fully implemented." << std::endl;
+        // Propagate gradient to parent B (dL/dB = -grad_output)
+        Tensor neg_grad_output(grad_output.get_shape());
+        std::vector<float> neg_data(grad_output.num_elements());
+        for (size_t i = 0; i < neg_data.size(); ++i)
+        {
+            neg_data[i] = -grad_output.get_data()[i];
+        }
+        neg_grad_output.set_data(neg_data);
+
+        Tensor grad_b_propagated;
+        reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
+        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
     }
     else
     {
@@ -544,32 +594,30 @@ void Tensor::backward_sub(const Tensor &grad_output)
 
 void Tensor::backward_mul(const Tensor &grad_output)
 {
-    /*
-    Gradient of Z = A * B (element-wise) with respect to A is dZ/dA = B.
-    Gradient of Z = A * B (element-wise) with respect to B is dZ/dB = A.
-    Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * B
-    dL/dB = dL/dZ * dZ/dB = grad_output * A
-
-    Broadcasting needs careful handling for gradient reduction.
-    */
-
+    // Gradient of Z = A * B (element-wise) with respect to A is dZ/dA = B.
+    // Gradient of Z = A * B (element-wise) with respect to B is dZ/dB = A.
+    // Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * B
+    // dL/dB = dL/dZ * dZ/dB = grad_output * A
     if (parents_.size() == 2)
     {
         const Tensor *parent_a = parents_[0];
         const Tensor *parent_b = parents_[1];
 
-        Tensor grad_a_propagated = grad_output * (*parent_b);
-        Tensor grad_b_propagated = grad_output * (*parent_a);
+        // Calculate gradient for parent A: grad_output * parent_b
+        Tensor grad_a_intermediate = grad_output * (*parent_b);
 
-        grad_a_propagated.creator_op_ = OperationType::None;
-        grad_a_propagated.parents_.clear();
-        grad_b_propagated.creator_op_ = OperationType::None;
-        grad_b_propagated.parents_.clear();
-
+        // Reduce gradient for parent A
+        Tensor grad_a_propagated;
+        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
         const_cast<Tensor *>(parent_a)->backward(grad_a_propagated);
-        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
 
-        std::cerr << "Warning: Backward pass for Mul operation with broadcasting is not fully implemented." << std::endl;
+        // Calculate gradient for parent B: grad_output * parent_a
+        Tensor grad_b_intermediate = grad_output * (*parent_a);
+
+        // Reduce gradient for parent B
+        Tensor grad_b_propagated;
+        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
+        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
     }
     else
     {

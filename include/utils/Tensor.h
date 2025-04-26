@@ -85,6 +85,7 @@ private:
     }
 
     // These methods calculate and propagate gradients to the parent tensors.
+    void reduce_gradient(const Tensor& grad_output, Tensor& parent_grad, const std::vector<int>& parent_shape);
     void backward_add(const Tensor& grad_output);
     void backward_sub(const Tensor& grad_output);
     void backward_mul(const Tensor& grad_output);
