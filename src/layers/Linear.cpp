@@ -6,7 +6,8 @@
 #include <numeric>
 
 Linear::Linear(int input_dim, int output_dim)
-    : input_dim_(input_dim), output_dim_(output_dim) {
+    : input_dim_(input_dim), output_dim_(output_dim)
+{
 
     // Weights shape: (input_dim, output_dim)
     weights_ = Tensor({input_dim, output_dim});
@@ -20,26 +21,30 @@ Linear::Linear(int input_dim, int output_dim)
 
     // Initialize weights data
     std::vector<float> weights_data(output_dim_ * input_dim_);
-    for (int i = 0; i < output_dim_ * input_dim_; ++i) {
+    for (int i = 0; i < output_dim_ * input_dim_; ++i)
+    {
         weights_data[i] = d(gen);
     }
     weights_.set_data(weights_data);
 
     // Initialize biases data
     std::vector<float> biases_data(output_dim_);
-     for (int i = 0; i < output_dim_; ++i) {
+    for (int i = 0; i < output_dim_; ++i)
+    {
         biases_data[i] = 0.0f;
     }
     biases_.set_data(biases_data);
 }
 
-Tensor Linear::forward(const Tensor& input) {
+Tensor Linear::forward(const Tensor &input)
+{
     // Input shape is (..., input_dim)
     // Weights shape is (input_dim, output_dim)
     // output = input * weights + biases
 
     // Check input shape compatibility
-    if (input.get_shape().empty() || input.get_shape().back() != input_dim_) {
+    if (input.get_shape().empty() || input.get_shape().back() != input_dim_)
+    {
         throw std::runtime_error("Input tensor's last dimension is incompatible with Linear layer input dimension.");
     }
 
@@ -58,10 +63,12 @@ Tensor Linear::forward(const Tensor& input) {
 // Destructor
 Linear::~Linear() {}
 
-Tensor& Linear::get_weights() {
+Tensor &Linear::get_weights()
+{
     return weights_;
 }
 
-Tensor& Linear::get_biases() {
+Tensor &Linear::get_biases()
+{
     return biases_;
 }

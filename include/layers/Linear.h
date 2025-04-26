@@ -4,17 +4,18 @@
 #include "utils/Tensor.h"
 #include <vector>
 
-class Linear {
+class Linear
+{
 public:
     Linear(int input_dim, int output_dim);
 
-    Tensor forward(const Tensor& input);
+    Tensor forward(const Tensor &input);
 
     // Destructor
     ~Linear();
 
-    Tensor& get_weights();
-    Tensor& get_biases();
+    Tensor &get_weights();
+    Tensor &get_biases();
 
 private:
     Tensor weights_; // Weight matrix (output_dim, input_dim)
