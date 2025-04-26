@@ -187,7 +187,7 @@ int main() {
      // Expected result: The 2x3 matrix should be broadcast across the batch dimension of the 3x2x2 tensor.
      // This means the same 2x3 matrix is multiplied with each 3x2 matrix in the batch.
      // The results for each batch should be the same as the 2D case.
-     assert(are_tensors_equal(dot_result_broadcast, Tensor({2, 2, 2}, {
+    assert(are_tensors_equal(dot_result_broadcast, Tensor({2, 2, 2}, {
         58.0f, 64.0f,
         139.0f, 154.0f,
         -58.0f, -64.0f,
@@ -195,6 +195,31 @@ int main() {
     })));
     std::cout << "2D x 3D Batched matrix multiplication (broadcasting) test passed." << std::endl;
 
+    // 3D x 2D Batched Matrix Multiplication (Broadcasting)
+    // (2, 2x3) * (3x2) -> Result should be (2, 2x2)
+    Tensor A({2, 2, 3}, {
+        1, 2, 3,
+        4, 5, 6,
+        -1, -2, -3,
+        -4, -5, -6 
+    });
+    
+    Tensor B({3, 2}, {
+        7, 8,
+        9, 10,
+        11, 12,
+    });
+    Tensor C = A.dot(B);
+    
+    // Expected shape: (2, 2, 2)
+    assert(C.get_shape() == std::vector<int>({2, 2, 2}));
+    assert(are_tensors_equal(C, Tensor({2, 2, 2}, {
+        58, 64,
+        139, 154,
+        -58, -64,
+        -139, -154
+    })));
+    std::cout << "3D x 2D Batched matrix multiplication (broadcasting) test passed." << std::endl;
 
     // Test Case: Transpose
     std::cout << "\nTest Case: Transpose" << std::endl;

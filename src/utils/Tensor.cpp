@@ -97,10 +97,6 @@ bool Tensor::is_broadcastable(const std::vector<int>& shape1, const std::vector<
 }
 
 std::vector<int> Tensor::calculate_broadcast_shape(const std::vector<int>& shape1, const std::vector<int>& shape2) {
-    if (!is_broadcastable(shape1, shape2)) {
-        throw std::runtime_error("Shapes are not broadcastable");
-    }
-    
     int max_dims = std::max(shape1.size(), shape2.size());
     std::vector<int> padded1(max_dims, 1);
     std::vector<int> padded2(max_dims, 1);
@@ -110,6 +106,9 @@ std::vector<int> Tensor::calculate_broadcast_shape(const std::vector<int>& shape
     std::copy(shape2.rbegin(), shape2.rend(), padded2.rbegin());
     
     for (int i = 0; i < max_dims; ++i) {
+        if (padded1[i] != padded2[i] && padded1[i] != 1 && padded2[i] != 1) {
+            throw std::runtime_error("Shapes are not broadcastable");
+        }
         result_shape[i] = std::max(padded1[i], padded2[i]);
     }
     
@@ -188,25 +187,19 @@ Tensor Tensor::dot(const Tensor& other) const {
         throw std::runtime_error("Tensors must be at least 2D for matrix multiplication.");
     }
 
-    // For 2D x 3D broadcasting, add a batch dimension of 1 to the 2D tensor
     std::vector<int> shape_a = shape_;
     std::vector<int> shape_b = other.shape_;
-    std::vector<float> data_a = data_;
+    int dims_a = shape_.size();  
+    int dims_b = other.shape_.size();
 
-    // If one tensor has more dimensions, treat the extra dimensions as batch dimensions
-    if (shape_a.size() < shape_b.size()) {
-        shape_a.insert(shape_a.begin(), 1);
-        data_a = data_;
-    }
 
     std::vector<int> batch_dims_a(shape_a.begin(), shape_a.end() - 2);
     std::vector<int> batch_dims_b(shape_b.begin(), shape_b.end() - 2);
     
-    // Verify matrix dimensions compatibility
-    int rows_a = shape_a[shape_a.size() - 2];
-    int cols_a = shape_a[shape_a.size() - 1];
-    int rows_b = shape_b[shape_b.size() - 2];
-    int cols_b = shape_b[shape_b.size() - 1];
+    int rows_a = shape_a[dims_a - 2];
+    int cols_a = shape_a[dims_a - 1];
+    int rows_b = shape_b[dims_b - 2];
+    int cols_b = shape_b[dims_b - 1];
     
     if (cols_a != rows_b) {
         throw std::runtime_error("Inner matrix dimensions must match.");
@@ -218,7 +211,6 @@ Tensor Tensor::dot(const Tensor& other) const {
         batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
     }
 
-    // Construct final result shape: [...batch_dims, rows_a, cols_b]
     std::vector<int> result_shape = batch_shape;
     result_shape.push_back(rows_a);
     result_shape.push_back(cols_b);
@@ -226,10 +218,9 @@ Tensor Tensor::dot(const Tensor& other) const {
     Tensor result(result_shape);
     
     size_t total_batches = batch_shape.empty() ? 1 :
-        std::accumulate(batch_shape.begin(), batch_shape.end(), 1, std::multiplies<int>());
-    
+    std::accumulate(batch_shape.begin(), batch_shape.end(), 1, std::multiplies<int>());
+
     for (size_t batch = 0; batch < total_batches; ++batch) {
-        // Calculate batch indices
         std::vector<int> batch_idx;
         if (!batch_shape.empty()) {
             batch_idx.reserve(batch_shape.size());
@@ -239,39 +230,47 @@ Tensor Tensor::dot(const Tensor& other) const {
                 temp_batch /= batch_shape[i];
             }
         }
-        
-        // Perform matrix multiplication for this batch
+
         for (int i = 0; i < rows_a; ++i) {
             for (int j = 0; j < cols_b; ++j) {
-                float sum = 0.0;
-                for (int k = 0; k < cols_a; ++k) {
-                    // Create complete indices including batch dimensions
-                    std::vector<int> idx_a = batch_idx;
-                    std::vector<int> idx_b = batch_idx;
-                    
-                    // For the 2D tensor being broadcast, always use the original indices
-                    if (shape_.size() < other.shape_.size()) {
-                        idx_a = {i, k};
-                        idx_b.push_back(k);
-                        idx_b.push_back(j);
-                        sum += get(idx_a) * other.get(idx_b);
-                    } else {
-                        idx_a.push_back(i);
-                        idx_a.push_back(k);
-                        idx_b.push_back(k);
-                        idx_b.push_back(j);
-                        sum += get(idx_a) * other.get(idx_b);
-                    }
+            float sum = 0.0f;
+            for (int k = 0; k < cols_a; ++k) {
+                std::vector<int> idx_a, idx_b;
+
+                if (dims_a > dims_b) {
+                // 3D x 2D
+                idx_a = batch_idx;
+                idx_a.push_back(i);
+                idx_a.push_back(k);
+                idx_b = {k, j};
+
+                } else if (dims_a < dims_b) {
+                // 2D x 3D
+                idx_a = {i, k};
+                idx_b = batch_idx;
+                idx_b.push_back(k);
+                idx_b.push_back(j);
+
+                } else {
+                // Same rank: batched 2D×2D or 3D×3D
+                idx_a = batch_idx;
+                idx_a.push_back(i);
+                idx_a.push_back(k);
+                idx_b = batch_idx;
+                idx_b.push_back(k);
+                idx_b.push_back(j);
                 }
-                
-                std::vector<int> result_idx = batch_idx;
-                result_idx.push_back(i);
-                result_idx.push_back(j);
-                result.set(result_idx, sum);
+
+                sum += get(idx_a) * other.get(idx_b);
+            }
+
+            std::vector<int> result_idx = batch_idx;
+            result_idx.push_back(i);
+            result_idx.push_back(j);
+            result.set(result_idx, sum);
             }
         }
     }
-    
     return result;
 }
 

@@ -30,11 +30,11 @@ public:
     // Set element by multi-dimensional index
     void set(const std::vector<int>& indices, float value);
 
-    // Basic tensor operations (declarations)
+    // Basic tensor operations
     Tensor operator+(const Tensor& other) const;
     Tensor operator-(const Tensor& other) const;
     Tensor operator*(const Tensor& other) const; // Element-wise multiplication
-    Tensor dot(const Tensor& other) const;      // Matrix multiplication (or tensor contraction)
+    Tensor dot(const Tensor& other) const;      // Matrix multiplication
     Tensor transpose(const std::vector<int>& permutation) const; // Transpose with permutation
     Tensor reshape(const std::vector<int>& new_shape) const;
 
