@@ -594,10 +594,12 @@ void Tensor::backward_sub(const Tensor &grad_output)
 
 void Tensor::backward_mul(const Tensor &grad_output)
 {
-    // Gradient of Z = A * B (element-wise) with respect to A is dZ/dA = B.
-    // Gradient of Z = A * B (element-wise) with respect to B is dZ/dB = A.
-    // Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * B
-    // dL/dB = dL/dZ * dZ/dB = grad_output * A
+    /*
+    Gradient of Z = A * B (element-wise) with respect to A is dZ/dA = B.
+    Gradient of Z = A * B (element-wise) with respect to B is dZ/dB = A.
+    Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * B
+    dL/dB = dL/dZ * dZ/dB = grad_output * A
+    */
     if (parents_.size() == 2)
     {
         const Tensor *parent_a = parents_[0];
@@ -631,8 +633,7 @@ void Tensor::backward_dot(const Tensor &grad_output)
     Backward pass for Z = A.dot(B):
     dL/dA = dL/dZ . B^T
     dL/dB = A^T . dL/dZ
-    This requires implementing matrix multiplication for gradients and handling batch dimensions
-    and broadcasting correctly.
+    This requires implementing matrix multiplication for gradients and handling batch dimensions and broadcasting correctly.
     */
 
     if (parents_.size() == 2)
@@ -640,25 +641,33 @@ void Tensor::backward_dot(const Tensor &grad_output)
         const Tensor *parent_a = parents_[0];
         const Tensor *parent_b = parents_[1];
 
-        if (grad_output.get_shape().size() == 2 && parent_a->get_shape().size() == 2 && parent_b->get_shape().size() == 2)
-        {
-            // dL/dA = dL/dZ . B^T
-            Tensor grad_a = grad_output.dot(parent_b->transpose({1, 0}));
-            grad_a.creator_op_ = OperationType::None;
-            grad_a.parents_.clear();
-            const_cast<Tensor *>(parent_a)->backward(grad_a);
+        // Calculate dL/dA = dL/dZ . B^T
+        // Need to transpose the last two dimensions of parent_b
+        std::vector<int> b_transpose_perm(parent_b->get_shape().size());
+        std::iota(b_transpose_perm.begin(), b_transpose_perm.end(), 0);
+        std::swap(b_transpose_perm[b_transpose_perm.size() - 1], b_transpose_perm[b_transpose_perm.size() - 2]);
+        Tensor parent_b_transposed = parent_b->transpose(b_transpose_perm);
 
-            // dL/dB = A^T . dL/dZ
-            Tensor grad_b = parent_a->transpose({1, 0}).dot(grad_output);
-            grad_b.creator_op_ = OperationType::None;
-            grad_b.parents_.clear();
-            const_cast<Tensor *>(parent_b)->backward(grad_b);
-            std::cerr << "Warning: Backward pass for 2D Dot operation is implemented, but broadcasting is not handled." << std::endl;
-        }
-        else
-        {
-            std::cerr << "Warning: Backward pass for multi-dimensional Dot operation is not implemented." << std::endl;
-        }
+        Tensor grad_a_intermediate = grad_output.dot(parent_b_transposed);
+
+        // Reduce gradient for parent A
+        Tensor grad_a_propagated;
+        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
+        const_cast<Tensor *>(parent_a)->backward(grad_a_propagated);
+
+        // Calculate dL/dB = A^T . dL/dZ
+        // Need to transpose the last two dimensions of parent_a
+        std::vector<int> a_transpose_perm(parent_a->get_shape().size());
+        std::iota(a_transpose_perm.begin(), a_transpose_perm.end(), 0);
+        std::swap(a_transpose_perm[a_transpose_perm.size() - 1], a_transpose_perm[a_transpose_perm.size() - 2]);
+        Tensor parent_a_transposed = parent_a->transpose(a_transpose_perm);
+
+        Tensor grad_b_intermediate = parent_a_transposed.dot(grad_output);
+
+        // Reduce gradient for parent B
+        Tensor grad_b_propagated;
+        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
+        const_cast<Tensor *>(parent_b)->backward(grad_b_propagated);
     }
     else
     {
