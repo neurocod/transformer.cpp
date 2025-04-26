@@ -9,17 +9,20 @@
 Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}} {}
 
 // Constructor with shape
-Tensor::Tensor(const std::vector<int>& shape) : shape_{shape} {
+Tensor::Tensor(const std::vector<int> &shape) : shape_{shape}
+{
     size_t total_elements = num_elements();
     data_.resize(total_elements, 0.0);
     grad_.resize(total_elements, 0.0);
 }
 
 // Constructor with shape and data
-Tensor::Tensor(const std::vector<int>& shape, const std::vector<float>& data) : shape_{shape}, data_{data} {
+Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data) : shape_{shape}, data_{data}
+{
     size_t total_elements = num_elements();
-    if (data_.size() != total_elements) {
-         throw std::runtime_error("Data size does not match the specified shape in constructor.");
+    if (data_.size() != total_elements)
+    {
+        throw std::runtime_error("Data size does not match the specified shape in constructor.");
     }
     grad_.resize(total_elements, 0.0);
 }
@@ -28,21 +31,26 @@ Tensor::Tensor(const std::vector<int>& shape, const std::vector<float>& data) : 
 Tensor::~Tensor() {}
 
 // Getters
-const std::vector<int>& Tensor::get_shape() const {
+const std::vector<int> &Tensor::get_shape() const
+{
     return shape_;
 }
 
-const std::vector<float>& Tensor::get_data() const {
+const std::vector<float> &Tensor::get_data() const
+{
     return data_;
 }
 
-const std::vector<float>& Tensor::get_grad() const {
+const std::vector<float> &Tensor::get_grad() const
+{
     return grad_;
 }
 
 // Setter for data
-void Tensor::set_data(const std::vector<float>& data) {
-    if (data.size() != num_elements()) {
+void Tensor::set_data(const std::vector<float> &data)
+{
+    if (data.size() != num_elements())
+    {
         throw std::runtime_error("Data size mismatch in set_data.");
     }
     data_ = data;
@@ -50,14 +58,18 @@ void Tensor::set_data(const std::vector<float>& data) {
 }
 
 // Helper to calculate the linear index from multi-dimensional indices
-size_t Tensor::get_linear_index(const std::vector<int>& indices) const {
-    if (indices.size() != shape_.size()) {
+size_t Tensor::get_linear_index(const std::vector<int> &indices) const
+{
+    if (indices.size() != shape_.size())
+    {
         throw std::runtime_error("Number of indices must match tensor dimensions.");
     }
     size_t linear_index = 0;
     size_t stride = 1;
-    for (int i = shape_.size() - 1; i >= 0; --i) {
-        if (indices[i] < 0 || indices[i] >= shape_[i]) {
+    for (int i = shape_.size() - 1; i >= 0; --i)
+    {
+        if (indices[i] < 0 || indices[i] >= shape_[i])
+        {
             throw std::runtime_error("Index out of bounds.");
         }
         linear_index += indices[i] * stride;
@@ -67,229 +79,271 @@ size_t Tensor::get_linear_index(const std::vector<int>& indices) const {
 }
 
 // Get element by multi-dimensional index
-float Tensor::get(const std::vector<int>& indices) const {
+float Tensor::get(const std::vector<int> &indices) const
+{
     return data_[get_linear_index(indices)];
 }
 
 // Set element by multi-dimensional index
-void Tensor::set(const std::vector<int>& indices, float value) {
+void Tensor::set(const std::vector<int> &indices, float value)
+{
     data_[get_linear_index(indices)] = value;
 }
 
-
 // Basic tensor operations
 
-bool Tensor::is_broadcastable(const std::vector<int>& shape1, const std::vector<int>& shape2) {
+bool Tensor::is_broadcastable(const std::vector<int> &shape1, const std::vector<int> &shape2)
+{
     int max_dims = std::max(shape1.size(), shape2.size());
     std::vector<int> padded1(max_dims, 1);
     std::vector<int> padded2(max_dims, 1);
-    
+
     // Pad shapes with 1s from the left
     std::copy(shape1.rbegin(), shape1.rend(), padded1.rbegin());
     std::copy(shape2.rbegin(), shape2.rend(), padded2.rbegin());
-    
-    for (int i = 0; i < max_dims; ++i) {
-        if (padded1[i] != padded2[i] && padded1[i] != 1 && padded2[i] != 1) {
+
+    for (int i = 0; i < max_dims; ++i)
+    {
+        if (padded1[i] != padded2[i] && padded1[i] != 1 && padded2[i] != 1)
+        {
             return false;
         }
     }
     return true;
 }
 
-std::vector<int> Tensor::calculate_broadcast_shape(const std::vector<int>& shape1, const std::vector<int>& shape2) {
+std::vector<int> Tensor::calculate_broadcast_shape(const std::vector<int> &shape1, const std::vector<int> &shape2)
+{
     int max_dims = std::max(shape1.size(), shape2.size());
     std::vector<int> padded1(max_dims, 1);
     std::vector<int> padded2(max_dims, 1);
     std::vector<int> result_shape(max_dims);
-    
+
     std::copy(shape1.rbegin(), shape1.rend(), padded1.rbegin());
     std::copy(shape2.rbegin(), shape2.rend(), padded2.rbegin());
-    
-    for (int i = 0; i < max_dims; ++i) {
-        if (padded1[i] != padded2[i] && padded1[i] != 1 && padded2[i] != 1) {
+
+    for (int i = 0; i < max_dims; ++i)
+    {
+        if (padded1[i] != padded2[i] && padded1[i] != 1 && padded2[i] != 1)
+        {
             throw std::runtime_error("Shapes are not broadcastable");
         }
         result_shape[i] = std::max(padded1[i], padded2[i]);
     }
-    
+
     return result_shape;
 }
 
-Tensor Tensor::broadcast_to(const std::vector<int>& new_shape) const {
-    if (!is_broadcastable(shape_, new_shape)) {
+Tensor Tensor::broadcast_to(const std::vector<int> &new_shape) const
+{
+    if (!is_broadcastable(shape_, new_shape))
+    {
         throw std::runtime_error("Cannot broadcast to target shape");
     }
-    
+
     Tensor result(new_shape);
     std::vector<int> input_idx(shape_.size());
     std::vector<int> output_idx(new_shape.size());
-    
+
     // Iterate through all elements in the result tensor
     size_t total_elements = result.num_elements();
-    for (size_t i = 0; i < total_elements; ++i) {
+    for (size_t i = 0; i < total_elements; ++i)
+    {
         // Calculate output indices
         size_t temp = i;
-        for (int d = new_shape.size() - 1; d >= 0; --d) {
+        for (int d = new_shape.size() - 1; d >= 0; --d)
+        {
             output_idx[d] = temp % new_shape[d];
             temp /= new_shape[d];
         }
-        
+
         // Calculate corresponding input indices
-        for (int d = 0; d < shape_.size(); ++d) {
+        for (int d = 0; d < shape_.size(); ++d)
+        {
             int offset = new_shape.size() - shape_.size();
             input_idx[d] = shape_[d] == 1 ? 0 : output_idx[d + offset];
         }
-        
+
         result.set(output_idx, get(input_idx));
     }
-    
+
     return result;
 }
 
-Tensor Tensor::operator+(const Tensor& other) const {
+Tensor Tensor::operator+(const Tensor &other) const
+{
     std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
     Tensor broadcasted_a = broadcast_to(result_shape);
     Tensor broadcasted_b = other.broadcast_to(result_shape);
-    
+
     Tensor result(result_shape);
-    for (size_t i = 0; i < result.data_.size(); ++i) {
+    for (size_t i = 0; i < result.data_.size(); ++i)
+    {
         result.data_[i] = broadcasted_a.data_[i] + broadcasted_b.data_[i];
     }
     return result;
 }
 
-Tensor Tensor::operator-(const Tensor& other) const {
+Tensor Tensor::operator-(const Tensor &other) const
+{
     std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
     Tensor broadcasted_a = broadcast_to(result_shape);
     Tensor broadcasted_b = other.broadcast_to(result_shape);
-    
+
     Tensor result(result_shape);
-    for (size_t i = 0; i < result.data_.size(); ++i) {
+    for (size_t i = 0; i < result.data_.size(); ++i)
+    {
         result.data_[i] = broadcasted_a.data_[i] - broadcasted_b.data_[i];
     }
     return result;
 }
 
-Tensor Tensor::operator*(const Tensor& other) const {
+Tensor Tensor::operator*(const Tensor &other) const
+{
     std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
     Tensor broadcasted_a = broadcast_to(result_shape);
     Tensor broadcasted_b = other.broadcast_to(result_shape);
-    
+
     Tensor result(result_shape);
-    for (size_t i = 0; i < result.data_.size(); ++i) {
+    for (size_t i = 0; i < result.data_.size(); ++i)
+    {
         result.data_[i] = broadcasted_a.data_[i] * broadcasted_b.data_[i];
     }
     return result;
 }
 
-Tensor Tensor::dot(const Tensor& other) const {
-    if (shape_.size() < 2 || other.shape_.size() < 2) {
+Tensor Tensor::dot(const Tensor &other) const
+{
+    if (shape_.size() < 2 || other.shape_.size() < 2)
+    {
         throw std::runtime_error("Tensors must be at least 2D for matrix multiplication.");
     }
 
-    std::vector<int> shape_a = shape_;
-    std::vector<int> shape_b = other.shape_;
-    int dims_a = shape_.size();  
-    int dims_b = other.shape_.size();
+    std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
+    std::vector<int> batch_dims_b(other.shape_.begin(), other.shape_.end() - 2);
 
+    int rows_a = shape_[shape_.size() - 2];
+    int cols_a = shape_[shape_.size() - 1];
+    int rows_b = other.shape_[other.shape_.size() - 2];
+    int cols_b = other.shape_[other.shape_.size() - 1];
 
-    std::vector<int> batch_dims_a(shape_a.begin(), shape_a.end() - 2);
-    std::vector<int> batch_dims_b(shape_b.begin(), shape_b.end() - 2);
-    
-    int rows_a = shape_a[dims_a - 2];
-    int cols_a = shape_a[dims_a - 1];
-    int rows_b = shape_b[dims_b - 2];
-    int cols_b = shape_b[dims_b - 1];
-    
-    if (cols_a != rows_b) {
+    if (cols_a != rows_b)
+    {
         throw std::runtime_error("Inner matrix dimensions must match.");
     }
 
-    // Calculate batch dimensions using broadcasting rules
-    std::vector<int> batch_shape;
-    if (!batch_dims_a.empty() || !batch_dims_b.empty()) {
-        batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
-    }
+    // Determine output batch dimensions using broadcasting rules
+    std::vector<int> batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
 
     std::vector<int> result_shape = batch_shape;
     result_shape.push_back(rows_a);
     result_shape.push_back(cols_b);
-    
-    Tensor result(result_shape);
-    
-    size_t total_batches = batch_shape.empty() ? 1 :
-    std::accumulate(batch_shape.begin(), batch_shape.end(), 1, std::multiplies<int>());
 
-    for (size_t batch = 0; batch < total_batches; ++batch) {
-        std::vector<int> batch_idx;
-        if (!batch_shape.empty()) {
-            batch_idx.reserve(batch_shape.size());
-            size_t temp_batch = batch;
-            for (int i = batch_shape.size() - 1; i >= 0; --i) {
-                batch_idx.insert(batch_idx.begin(), temp_batch % batch_shape[i]);
-                temp_batch /= batch_shape[i];
-            }
+    Tensor result(result_shape);
+    result.creator_op_ = OperationType::Dot;
+    result.parents_.push_back(this);
+    result.parents_.push_back(&other);
+
+    // Calculate total number of batches
+    size_t total_batches = batch_shape.empty() ? 1 : std::accumulate(batch_shape.begin(), batch_shape.end(), 1, std::multiplies<int>());
+
+    // Calculate strides for efficient indexing
+    std::vector<size_t> stride_a(shape_.size());
+    std::vector<size_t> stride_b(other.shape_.size());
+    std::vector<size_t> stride_result(result_shape.size());
+
+    // Calculate strides for the original tensors
+    stride_a.back() = 1;
+    for (int i = shape_.size() - 2; i >= 0; --i)
+        stride_a[i] = stride_a[i + 1] * shape_[i + 1];
+    stride_b.back() = 1;
+    for (int i = other.shape_.size() - 2; i >= 0; --i)
+        stride_b[i] = stride_b[i + 1] * other.shape_[i + 1];
+    // Calculate strides for the result tensor
+    stride_result.back() = 1;
+    for (int i = result_shape.size() - 2; i >= 0; --i)
+        stride_result[i] = stride_result[i + 1] * result_shape[i + 1];
+
+    // For each batch
+    for (size_t batch_linear_idx = 0; batch_linear_idx < total_batches; ++batch_linear_idx)
+    {
+        // Calculate batch indices for result
+        std::vector<int> batch_idx(batch_shape.size());
+        size_t temp_batch = batch_linear_idx;
+        for (int i = batch_shape.size() - 1; i >= 0; --i)
+        {
+            batch_idx[i] = temp_batch % batch_shape[i];
+            temp_batch /= batch_shape[i];
         }
 
-        for (int i = 0; i < rows_a; ++i) {
-            for (int j = 0; j < cols_b; ++j) {
-            float sum = 0.0f;
-            for (int k = 0; k < cols_a; ++k) {
-                std::vector<int> idx_a, idx_b;
+        // Calculate linear offset for the current batch in result tensor
+        size_t result_batch_offset = 0;
+        for (size_t i = 0; i < batch_idx.size(); ++i)
+        {
+            result_batch_offset += batch_idx[i] * stride_result[i];
+        }
 
-                if (dims_a > dims_b) {
-                // 3D x 2D
-                idx_a = batch_idx;
-                idx_a.push_back(i);
-                idx_a.push_back(k);
-                idx_b = {k, j};
+        for (int i = 0; i < rows_a; ++i)
+        {
+            for (int j = 0; j < cols_b; ++j)
+            {
+                float sum = 0.0f;
+                for (int k = 0; k < cols_a; ++k)
+                {
+                    // Calculate linear indices for elements in the current batch
+                    size_t linear_idx_a = 0;
+                    size_t linear_idx_b = 0;
 
-                } else if (dims_a < dims_b) {
-                // 2D x 3D
-                idx_a = {i, k};
-                idx_b = batch_idx;
-                idx_b.push_back(k);
-                idx_b.push_back(j);
+                    // Handle broadcasting for batch dimensions
+                    for (size_t d = 0; d < batch_dims_a.size(); ++d)
+                    {
+                        // If the batch dimension of tensor A is 1, always use index 0 for that dimension
+                        linear_idx_a += (batch_dims_a[d] == 1 ? 0 : batch_idx[d]) * stride_a[d];
+                    }
+                    for (size_t d = 0; d < batch_dims_b.size(); ++d)
+                    {
+                        // If the batch dimension of tensor B is 1, always use index 0 for that dimension
+                        linear_idx_b += (batch_dims_b[d] == 1 ? 0 : batch_idx[d]) * stride_b[d];
+                    }
 
-                } else {
-                // Same rank: batched 2D×2D or 3D×3D
-                idx_a = batch_idx;
-                idx_a.push_back(i);
-                idx_a.push_back(k);
-                idx_b = batch_idx;
-                idx_b.push_back(k);
-                idx_b.push_back(j);
+                    // Add matrix indices
+                    linear_idx_a += i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
+                    linear_idx_b += k * stride_b[other.shape_.size() - 2] + j * stride_b[other.shape_.size() - 1];
+
+                    sum += data_[linear_idx_a] * other.data_[linear_idx_b];
                 }
 
-                sum += get(idx_a) * other.get(idx_b);
-            }
-
-            std::vector<int> result_idx = batch_idx;
-            result_idx.push_back(i);
-            result_idx.push_back(j);
-            result.set(result_idx, sum);
+                // Calculate linear index for result element
+                size_t result_linear_idx = result_batch_offset + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
+                result.data_[result_linear_idx] = sum;
             }
         }
     }
+
     return result;
 }
 
-Tensor Tensor::transpose(const std::vector<int>& permutation) const {
-    if (permutation.size() != shape_.size()) {
+Tensor Tensor::transpose(const std::vector<int> &permutation) const
+{
+    if (permutation.size() != shape_.size())
+    {
         throw std::runtime_error("Permutation size must match tensor dimension.");
     }
     // Check if permutation is valid (contains all dimensions exactly once)
     std::vector<int> sorted_permutation = permutation;
     std::sort(sorted_permutation.begin(), sorted_permutation.end());
-    for(size_t i = 0; i < sorted_permutation.size(); ++i) {
-        if (sorted_permutation[i] != i) {
+    for (size_t i = 0; i < sorted_permutation.size(); ++i)
+    {
+        if (sorted_permutation[i] != i)
+        {
             throw std::runtime_error("Invalid permutation for transpose.");
         }
     }
 
     // Calculate the new shape based on the permutation
     std::vector<int> new_shape(shape_.size());
-    for(size_t i = 0; i < shape_.size(); ++i) {
+    for (size_t i = 0; i < shape_.size(); ++i)
+    {
         new_shape[i] = shape_[permutation[i]];
     }
 
@@ -301,17 +355,20 @@ Tensor Tensor::transpose(const std::vector<int>& permutation) const {
 
     // Iterate through all elements in the original tensor
     size_t total_elements = num_elements();
-    for (size_t i = 0; i < total_elements; ++i) {
+    for (size_t i = 0; i < total_elements; ++i)
+    {
         // Convert linear index i back to original multi-dimensional indices
         size_t temp_index = i;
         size_t stride = 1;
-        for (int d = shape_.size() - 1; d >= 0; --d) {
+        for (int d = shape_.size() - 1; d >= 0; --d)
+        {
             original_indices[d] = (temp_index / stride) % shape_[d];
             stride *= shape_[d];
         }
 
         // Calculate the corresponding indices in the transposed tensor based on permutation
-        for(size_t d = 0; d < shape_.size(); ++d) {
+        for (size_t d = 0; d < shape_.size(); ++d)
+        {
             transposed_indices[d] = original_indices[permutation[d]];
         }
 
@@ -322,9 +379,11 @@ Tensor Tensor::transpose(const std::vector<int>& permutation) const {
     return result;
 }
 
-Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
+Tensor Tensor::reshape(const std::vector<int> &new_shape) const
+{
     size_t new_num_elements = std::accumulate(new_shape.begin(), new_shape.end(), 1, std::multiplies<size_t>());
-    if (num_elements() != new_num_elements) {
+    if (num_elements() != new_num_elements)
+    {
         throw std::runtime_error("Total number of elements must remain the same during reshape.");
     }
 
@@ -334,17 +393,21 @@ Tensor Tensor::reshape(const std::vector<int>& new_shape) const {
 }
 
 // Gradient handling
-void Tensor::zero_grad() {
+void Tensor::zero_grad()
+{
     grad_.assign(num_elements(), 0.0);
 }
 
-void Tensor::backward(const Tensor& grad_output) {
+void Tensor::backward(const Tensor &grad_output)
+{
     // This is a placeholder
-    if (!are_shapes_compatible(grad_output)) {
-         throw std::runtime_error("Gradient shape mismatch in backward.");
+    if (!are_shapes_compatible(grad_output))
+    {
+        throw std::runtime_error("Gradient shape mismatch in backward.");
     }
     // This simplified version just adds the incoming gradient
-    for(size_t i = 0; i < grad_.size(); ++i) {
+    for (size_t i = 0; i < grad_.size(); ++i)
+    {
         grad_[i] += grad_output.data_[i];
     }
 }
