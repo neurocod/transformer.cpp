@@ -675,57 +675,50 @@ void Tensor::backward_dot(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_transpose(const Tensor &grad_output)
-{
+void Tensor::backward_transpose(const Tensor& grad_output) {
     /*
     Backward pass for Y = X.transpose(p):
     dL/dX = dL/dY.transpose(p_inverse)
-    We need the original permutation 'p' used in the forward pass to calculate 'p_inverse'.
-    This requires storing the permutation in the Tensor or Operation.
+    We use the stored forward permutation to calculate the inverse permutation.
     */
 
-    if (parents_.size() == 1)
-    {
-        const Tensor *parent = parents_[0];
-        if (grad_output.get_shape().size() == 2)
-        {
-            Tensor grad_input = grad_output.transpose({1, 0});
-            grad_input.creator_op_ = OperationType::None;
-            grad_input.parents_.clear();
-            const_cast<Tensor *>(parent)->backward(grad_input);
-            std::cerr << "Warning: Backward pass for 2D Transpose operation is implemented assuming {1,0} permutation." << std::endl;
+     if (parents_.size() == 1) {
+        const Tensor* parent = parents_[0];
+
+        // Calculate the inverse permutation from the stored forward permutation.
+        std::vector<int> inverse_permutation(forward_permutation_.size());
+        for(size_t i = 0; i < forward_permutation_.size(); ++i) {
+            inverse_permutation[forward_permutation_[i]] = i;
         }
-        else
-        {
-            std::cerr << "Warning: Backward pass for multi-dimensional Transpose operation is not implemented." << std::endl;
-        }
-    }
-    else
-    {
-        std::cerr << "Error: Transpose operation expected 1 parent, but found " << parents_.size() << std::endl;
+
+        // Transpose the incoming gradient using the inverse permutation.
+        Tensor grad_input = grad_output.transpose(inverse_permutation);
+
+        // Propagate the gradient to the parent.
+        const_cast<Tensor *>(parent)->backward(grad_input);
+
+    } else {
+         std::cerr << "Error: Transpose operation expected 1 parent, but found " << parents_.size() << std::endl;
     }
 }
 
-void Tensor::backward_reshape(const Tensor &grad_output)
-{
+void Tensor::backward_reshape(const Tensor& grad_output) {
     /*
     Backward pass for Y = X.reshape(new_shape):
     dL/dX = dL/dY.reshape(original_shape_of_X)
-    We need the original shape of the parent tensor before the reshape.
-    This requires storing the original shape in the Tensor or Operation.
+    We use the stored original shape before reshape to reshape the gradient.
     */
 
-    if (parents_.size() == 1)
-    {
-        const Tensor *parent = parents_[0];
-        Tensor grad_input = grad_output.reshape(parent->get_shape());
-        grad_input.creator_op_ = OperationType::None;
-        grad_input.parents_.clear();
+     if (parents_.size() == 1) {
+        const Tensor* parent = parents_[0];
+
+        // Reshape the incoming gradient back to the original shape of the parent.
+        Tensor grad_input = grad_output.reshape(original_shape_before_reshape_);
+
+        // Propagate the gradient to the parent.
         const_cast<Tensor *>(parent)->backward(grad_input);
-        std::cerr << "Warning: Backward pass for Reshape operation is implemented assuming parent's current shape is the original shape." << std::endl;
-    }
-    else
-    {
-        std::cerr << "Error: Reshape operation expected 1 parent, but found " << parents_.size() << std::endl;
+
+    } else {
+         std::cerr << "Error: Reshape operation expected 1 parent, but found " << parents_.size() << std::endl;
     }
 }

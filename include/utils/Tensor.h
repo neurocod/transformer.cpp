@@ -64,6 +64,10 @@ private:
 
     // Stores pointers to the input tensors (parents) of the operation that created this tensor.
     std::vector<const Tensor *> parents_;
+    // Stores the permutation used in the forward transpose operation.
+    std::vector<int> forward_permutation_;
+    // Stores the original shape of the parent tensor before the forward reshape operation.
+    std::vector<int> original_shape_before_reshape_;
 
     // Helper to calculate the linear index from multi-dimensional indices
     size_t get_linear_index(const std::vector<int> &indices) const;
