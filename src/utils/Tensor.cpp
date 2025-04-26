@@ -188,15 +188,25 @@ Tensor Tensor::dot(const Tensor& other) const {
         throw std::runtime_error("Tensors must be at least 2D for matrix multiplication.");
     }
 
-    // Extract batch dimensions (if any) and matrix dimensions
-    std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
-    std::vector<int> batch_dims_b(other.shape_.begin(), other.shape_.end() - 2);
+    // For 2D x 3D broadcasting, add a batch dimension of 1 to the 2D tensor
+    std::vector<int> shape_a = shape_;
+    std::vector<int> shape_b = other.shape_;
+    std::vector<float> data_a = data_;
+
+    // If one tensor has more dimensions, treat the extra dimensions as batch dimensions
+    if (shape_a.size() < shape_b.size()) {
+        shape_a.insert(shape_a.begin(), 1);
+        data_a = data_;
+    }
+
+    std::vector<int> batch_dims_a(shape_a.begin(), shape_a.end() - 2);
+    std::vector<int> batch_dims_b(shape_b.begin(), shape_b.end() - 2);
     
     // Verify matrix dimensions compatibility
-    int rows_a = shape_[shape_.size() - 2];
-    int cols_a = shape_[shape_.size() - 1];
-    int rows_b = other.shape_[other.shape_.size() - 2];
-    int cols_b = other.shape_[other.shape_.size() - 1];
+    int rows_a = shape_a[shape_a.size() - 2];
+    int cols_a = shape_a[shape_a.size() - 1];
+    int rows_b = shape_b[shape_b.size() - 2];
+    int cols_b = shape_b[shape_b.size() - 1];
     
     if (cols_a != rows_b) {
         throw std::runtime_error("Inner matrix dimensions must match.");
@@ -239,12 +249,19 @@ Tensor Tensor::dot(const Tensor& other) const {
                     std::vector<int> idx_a = batch_idx;
                     std::vector<int> idx_b = batch_idx;
                     
-                    idx_a.push_back(i);
-                    idx_a.push_back(k);
-                    idx_b.push_back(k);
-                    idx_b.push_back(j);
-                    
-                    sum += get(idx_a) * other.get(idx_b);
+                    // For the 2D tensor being broadcast, always use the original indices
+                    if (shape_.size() < other.shape_.size()) {
+                        idx_a = {i, k};
+                        idx_b.push_back(k);
+                        idx_b.push_back(j);
+                        sum += get(idx_a) * other.get(idx_b);
+                    } else {
+                        idx_a.push_back(i);
+                        idx_a.push_back(k);
+                        idx_b.push_back(k);
+                        idx_b.push_back(j);
+                        sum += get(idx_a) * other.get(idx_b);
+                    }
                 }
                 
                 std::vector<int> result_idx = batch_idx;

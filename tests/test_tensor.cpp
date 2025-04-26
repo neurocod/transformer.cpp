@@ -65,7 +65,63 @@ bool are_tensors_equal(const Tensor& t1, const Tensor& t2, float tolerance = 1e-
 int main() {
     std::cout << "Starting Tensor class tests..." << std::endl;
 
+    // Test Case: Addition with Broadcasting
+    std::cout << "\nTest Case: Addition" << std::endl;
+    // Broadcasting scalar-like tensor (1x1) with 2D tensor
+    Tensor scalar_like({1, 1}, {2.0});
+    Tensor matrix_2d({2, 3}, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+    Tensor add_result1 = scalar_like + matrix_2d;
+    assert(add_result1.get_shape() == std::vector<int>({2, 3}));
+    assert(are_tensors_equal(add_result1, Tensor({2, 3}, {3.0, 4.0, 5.0, 6.0, 7.0, 8.0})));
+    std::cout << "Addition broadcasting 1x1 to 2x3 test passed." << std::endl;
+
+    // Broadcasting 1D tensor with 2D tensor
+    Tensor vector_1d({1, 3}, {1.0, 2.0, 3.0}); // 1x3 vector
+    Tensor add_result2 = vector_1d + matrix_2d;
+    assert(add_result2.get_shape() == std::vector<int>({2, 3}));
+    assert(are_tensors_equal(add_result2, Tensor({2, 3}, {2.0, 4.0, 6.0, 5.0, 7.0, 9.0})));
+    std::cout << "Addition broadcasting 1x3 to 2x3 test passed." << std::endl;
+
+    // Broadcasting with 3D tensors
+    Tensor tensor_3d_a({2, 1, 3}, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
+    Tensor tensor_3d_b({2, 2, 1}, {1.0, 2.0, 3.0, 4.0});
+    Tensor add_result3 = tensor_3d_a + tensor_3d_b;
+    assert(add_result3.get_shape() == std::vector<int>({2, 2, 3}));
+    assert(are_tensors_equal(add_result3, Tensor({2, 2, 3}, {
+        2.0, 3.0, 4.0,  // batch 0, row 0
+        3.0, 4.0, 5.0,  // batch 0, row 1
+        7.0, 8.0, 9.0,  // batch 1, row 0
+        8.0, 9.0, 10.0  // batch 1, row 1
+    })));
+    std::cout << "Addition broadcasting 3D tensors test passed." << std::endl;
+
+    // Subtraction with Broadcasting
+    std::cout << "\nTest Case: Subtraction" << std::endl;
+    // Broadcasting scalar-like tensor with 2D tensor
+    Tensor sub_result1 = matrix_2d - scalar_like;
+    assert(sub_result1.get_shape() == std::vector<int>({2, 3}));
+    assert(are_tensors_equal(sub_result1, Tensor({2, 3}, {-1.0, 0.0, 1.0, 2.0, 3.0, 4.0})));
+    std::cout << "Subtraction broadcasting 1x1 from 2x3 test passed." << std::endl;
+
+    // Broadcasting 1D tensor from 2D tensor
+    Tensor sub_result2 = matrix_2d - vector_1d;
+    assert(sub_result2.get_shape() == std::vector<int>({2, 3}));
+    assert(are_tensors_equal(sub_result2, Tensor({2, 3}, {0.0, 0.0, 0.0, 3.0, 3.0, 3.0})));
+    std::cout << "Subtraction broadcasting 1x3 from 2x3 test passed." << std::endl;
+
+    // Test 3: Broadcasting with 3D tensors
+    Tensor sub_result3 = tensor_3d_a - tensor_3d_b;
+    assert(sub_result3.get_shape() == std::vector<int>({2, 2, 3}));
+    assert(are_tensors_equal(sub_result3, Tensor({2, 2, 3}, {
+        0.0, 1.0, 2.0,   // batch 0, row 0
+        -1.0, 0.0, 1.0,  // batch 0, row 1
+        1.0, 2.0, 3.0,   // batch 1, row 0
+        0.0, 1.0, 2.0    // batch 1, row 1
+    })));
+    std::cout << "Subtraction broadcasting 3D tensors test passed." << std::endl;
+
     // Test Case: Dot Product (Matrix Multiplication)
+    std::cout << "\nTest Case: Dot Product (Matrix Multiplication)" << std::endl;
     // 2D Matrix Multiplication
     Tensor mat_a({2, 3}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}); // 2x3 matrix
     Tensor mat_b({3, 2}, {7.0f, 8.0f, 9.0f, 10.0f, 11.0f, 12.0f}); // 3x2 matrix
