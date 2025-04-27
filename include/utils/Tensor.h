@@ -53,6 +53,8 @@ public:
     // Gradient handling (simplified for now)
     void zero_grad();
     void backward(const Tensor &grad_output); // Placeholder
+    // Stores pointers to the input tensors (parents) of the operation that created this tensor.
+    std::vector<Tensor *> parents_;
 
 private:
     std::vector<int> shape_;
@@ -62,8 +64,6 @@ private:
     // Stores the type of operation that produced this tensor.
     OperationType creator_op_ = OperationType::None;
 
-    // Stores pointers to the input tensors (parents) of the operation that created this tensor.
-    std::vector<const Tensor *> parents_;
     // Stores the permutation used in the forward transpose operation.
     std::vector<int> forward_permutation_;
     // Stores the original shape of the parent tensor before the forward reshape operation.
@@ -85,6 +85,19 @@ private:
         if (shape_.empty())
             return 0;
         return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
+    }
+
+    // Helper to calculate strides for efficient access
+    std::vector<size_t> calculate_strides(const std::vector<int>& shape) const 
+    {
+        std::vector<size_t> strides(shape.size());
+        if (!shape.empty()) {
+            strides.back() = 1;
+            for (int i = shape.size() - 2; i >= 0; --i) {
+                strides[i] = strides[i + 1] * shape[i + 1];
+            }
+        }
+        return strides;
     }
 
     // Helper to check if shapes are compatible for element-wise operations
