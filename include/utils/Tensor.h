@@ -54,12 +54,12 @@ public:
     void zero_grad();
     void backward(const Tensor &grad_output); // Placeholder
     // Stores pointers to the input tensors (parents) of the operation that created this tensor.
-    std::vector<Tensor *> parents_;
 
 private:
     std::vector<int> shape_;
     std::vector<float> data_;
     std::vector<float> grad_;
+    std::vector<Tensor*> parents_;
 
     // Stores the type of operation that produced this tensor.
     OperationType creator_op_ = OperationType::None;

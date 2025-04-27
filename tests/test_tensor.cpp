@@ -263,20 +263,6 @@ void test_backward_pass() {
     Tensor H = G.transpose({1, 0});
     Tensor I = H.reshape({4, 1});
 
-    // Print the entire parent tree of I
-    std::cout << "Parent Tree:" << std::endl;
-    print_parent_tree(I);
-    // Print the parent data to identify them
-    std::cout << "Parent Nodes:" << std::endl;
-    for (const auto parent : I.parents_) {
-        std::cout << "  Parent Data: [";
-        const auto& parent_data = parent->get_data();
-        for (size_t i = 0; i < parent_data.size(); ++i) {
-            std::cout << parent_data[i] << (i == parent_data.size() - 1 ? "" : ", ");
-        }
-        std::cout << "]" << std::endl;
-    }
-
     Tensor grad_I({4, 1}, {1.0f, 1.0f, 1.0f, 1.0f});
     I.backward(grad_I);
 
@@ -297,6 +283,40 @@ void test_backward_pass() {
     std::cout << "Backward Pass through a Chain of Operations test passed." << std::endl;
 }
 
+void test_backward_pass_with_broadcasting_operations() {
+    std::cout << "\nTest Case: Backward Pass with Broadcasting" << std::endl;
+
+    Tensor A({2, 3}, {1.0f, 2.0f, 3.0f,
+                      4.0f, 5.0f, 6.0f});
+    Tensor B({3}, {0.5f, 1.0f, 1.5f});
+    Tensor C({2, 1}, {2.0f, 3.0f});
+    Tensor D({1, 3}, {1.0f, 2.0f, 3.0f});
+
+    Tensor E = A + B;
+    Tensor F = E - D;
+    Tensor G = F * C;
+    Tensor H = G.reshape({6, 1});
+
+    Tensor grad_H({6, 1}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
+    H.backward(grad_H);
+
+    Tensor expected_grad_A({2, 3}, {2.0f, 2.0f, 2.0, 3.0f, 3.0f, 3.0f});
+    Tensor expected_grad_B({3}, {5.0f, 5.0f, 5.0f});
+    Tensor expected_grad_C({2, 1}, {3.0f, 12.0f});
+    Tensor expected_grad_D({1, 3}, {-5.0f, -5.0f, -5.0f});
+
+    assert(are_tensors_equal(Tensor(A.get_shape(), A.get_grad()), expected_grad_A));
+    std::cout << "  Gradient of A verified." << std::endl;
+    assert(are_tensors_equal(Tensor(B.get_shape(), B.get_grad()), expected_grad_B));
+    std::cout << "  Gradient of B verified." << std::endl;
+    assert(are_tensors_equal(Tensor(C.get_shape(), C.get_grad()), expected_grad_C));
+    std::cout << "  Gradient of C verified." << std::endl;
+    assert(are_tensors_equal(Tensor(D.get_shape(), D.get_grad()), expected_grad_D));
+    std::cout << "  Gradient of D verified." << std::endl;
+
+    std::cout << "Backward Pass with Broadcasting over test passed." << std::endl;
+}
+
 int main() {
     std::cout << "Starting Tensor class tests..." << std::endl;
 
@@ -306,6 +326,7 @@ int main() {
     test_transpose();
     test_reshape();
     test_backward_pass();
+    test_backward_pass_with_broadcasting_operations();
 
     std::cout << "\nAll Tensor class tests completed." << std::endl;
     return 0;

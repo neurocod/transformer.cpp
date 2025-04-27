@@ -6,10 +6,10 @@
 #include <algorithm>
 
 // Default constructor
-Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}}, creator_op_(OperationType::None), parents_{{}} {}
+Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}}, creator_op_(OperationType::None), parents_{} {}
 
 // Constructor with shape
-Tensor::Tensor(const std::vector<int> &shape) : shape_{shape}, creator_op_(OperationType::None), parents_{{}}
+Tensor::Tensor(const std::vector<int> &shape) : shape_{shape}, creator_op_(OperationType::None), parents_{}
 {
     size_t total_elements = num_elements();
     data_.resize(total_elements, 0.0f);
@@ -17,7 +17,7 @@ Tensor::Tensor(const std::vector<int> &shape) : shape_{shape}, creator_op_(Opera
 }
 
 // Constructor with shape and data
-Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data) : shape_{shape}, data_{data}, creator_op_(OperationType::None), parents_{{}}
+Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data) : shape_{shape}, data_{data}, creator_op_(OperationType::None), parents_{}
 {
     size_t total_elements = num_elements();
     if (data_.size() != total_elements)
@@ -557,14 +557,12 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
 {
     const std::vector<int>& grad_shape = grad_output.get_shape();
 
-    // If shapes are identical, no reduction needed, just copy/accumulate
+    // If shapes are identical, no reduction needed
     if (grad_shape == parent_shape) {
         parent_grad = Tensor(parent_shape);
-        parent_grad.grad_ = grad_output.get_data();
-        // Note: This assumes parent_grad wasn't pre-initialized. If accumulating, add instead.
+        parent_grad.data_ = grad_output.get_data();
         return;
     }
-
 
     // Initialize parent_grad with zeros and the correct shape
     parent_grad = Tensor(parent_shape);
@@ -635,11 +633,9 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
              }
         }
 
-
         // Assign the sum to parent_grad.data_
         parent_grad.data_[p_idx] = sum_val;
     }
-     parent_grad.grad_ = parent_grad.data_;
 }
 
 // Backward methods for specific operations
