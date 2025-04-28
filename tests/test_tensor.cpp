@@ -63,7 +63,7 @@ bool are_tensors_equal(const Tensor& t1, const Tensor& t2, float tolerance = 1e-
 
 void test_addition() {
     std::cout << "\nTest Case: Addition" << std::endl;
-    Tensor scalar_like({1, 1}, {2.0});
+    Tensor scalar_like({1, 1}, {{2.0}});
     Tensor matrix_2d({2, 3}, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
     Tensor add_result1 = scalar_like + matrix_2d;
     assert(add_result1.get_shape() == std::vector<int>({2, 3}));
@@ -91,7 +91,7 @@ void test_addition() {
 
 void test_subtraction() {
     std::cout << "\nTest Case: Subtraction" << std::endl;
-    Tensor scalar_like({1, 1}, {2.0});
+    Tensor scalar_like({1, 1}, {{2.0}});
     Tensor matrix_2d({2, 3}, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
     Tensor sub_result1 = matrix_2d - scalar_like;
     assert(sub_result1.get_shape() == std::vector<int>({2, 3}));
@@ -228,25 +228,6 @@ void test_reshape() {
     assert(reshape_result3.get_shape() == std::vector<int>({4, 2}));
     assert(are_tensors_equal(reshape_result3, Tensor({4, 2}, {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0})));
     std::cout << "Reshape 2x2x2 to 4x2 test passed." << std::endl;
-}
-
-// Recursive function to print the parent tree
-void print_parent_tree(const Tensor& tensor, int depth = 0) {
-    std::string indent(depth * 2, ' ');
-    std::cout << indent << "Tensor Shape: [";
-    for (size_t i = 0; i < tensor.get_shape().size(); ++i) {
-        std::cout << tensor.get_shape()[i] << (i == tensor.get_shape().size() - 1 ? "" : ", ");
-    }
-    std::cout << "], Data: [";
-    const auto& data = tensor.get_data();
-    for (size_t i = 0; i < data.size(); ++i) {
-        std::cout << data[i] << (i == data.size() - 1 ? "" : ", ");
-    }
-    std::cout << "]" << std::endl;
-
-    for (const auto parent : tensor.parents_) {
-        print_parent_tree(*parent, depth + 1);
-    }
 }
 
 void test_backward_pass() {
