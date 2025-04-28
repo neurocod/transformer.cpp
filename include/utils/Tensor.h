@@ -22,9 +22,9 @@ public:
     // Constructor
     Tensor();
     // Constructor with shape
-    Tensor(const std::vector<int> &shape);
+    Tensor(const std::vector<int> &shape, bool is_optimizable = false);
     // Constructor with shape and data (initializer list or vector)
-    Tensor(const std::vector<int> &shape, const std::vector<float> &data);
+    Tensor(const std::vector<int> &shape, const std::vector<float> &data, bool is_optimizable = false);
 
     // Destructor
     ~Tensor();
@@ -37,10 +37,14 @@ public:
     // Setter for data
     void set_data(const std::vector<float> &data);
 
+    // Add a static method to get the list of optimizable tensors
+    static std::vector<Tensor*>& get_optimizable_tensors();
     // Get element by multi-dimensional index
     float get(const std::vector<int> &indices) const;
     // Set element by multi-dimensional index
     void set(const std::vector<int> &indices, float value);
+    // Add a getter for the is_optimizable flag
+    bool is_optimizable() const { return is_optimizable_; }
 
     // Basic tensor operations
     Tensor operator+(const Tensor &other) const;
@@ -56,14 +60,15 @@ public:
     // Stores pointers to the input tensors (parents) of the operation that created this tensor.
 
 private:
+    static std::vector<Tensor*> optimizable_tensors_;
+
     std::vector<int> shape_;
     std::vector<float> data_;
     std::vector<float> grad_;
     std::vector<Tensor*> parents_;
-
+    bool is_optimizable_ = false;
     // Stores the type of operation that produced this tensor.
     OperationType creator_op_ = OperationType::None;
-
     // Stores the permutation used in the forward transpose operation.
     std::vector<int> forward_permutation_;
     // Stores the original shape of the parent tensor before the forward reshape operation.

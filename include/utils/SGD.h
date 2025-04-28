@@ -8,9 +8,9 @@
 
 class SGD : public Optimizer {
     public:
-        // Constructor takes parameters and a learning rate
-        SGD(std::vector<Tensor*>& parameters, float learning_rate)
-            : Optimizer(parameters), learning_rate_(learning_rate) {}
+        // Constructor takes a learning rate
+        SGD(float learning_rate)
+            : learning_rate_(learning_rate) {}
     
         // Destructor
         ~SGD() override = default;

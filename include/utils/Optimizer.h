@@ -10,8 +10,8 @@ class Tensor;
 // Base class for all optimizers
 class Optimizer {
 public:
-    // Constructor takes a vector of pointers to the parameters (Tensors) to optimize
-    Optimizer(std::vector<Tensor*>& parameters) : parameters_(parameters) {}
+    // Constructor
+    Optimizer() {}
 
     virtual ~Optimizer() = default;
 
@@ -29,7 +29,7 @@ public:
 
 protected:
     // List of pointers to the parameters to update
-    std::vector<Tensor*>& parameters_;
+    std::vector<Tensor*>& parameters_ = Tensor::get_optimizable_tensors();
 };
 
 #endif // TRANSFORMER_CPP_OPTIMIZER_H

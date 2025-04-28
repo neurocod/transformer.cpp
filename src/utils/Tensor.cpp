@@ -5,19 +5,24 @@
 #include <numeric>
 #include <algorithm>
 
+std::vector<Tensor*> Tensor::optimizable_tensors_; 
+
 // Default constructor
-Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}}, creator_op_(OperationType::None), parents_{} {}
+Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}}, creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
 
 // Constructor with shape
-Tensor::Tensor(const std::vector<int> &shape) : shape_{shape}, creator_op_(OperationType::None), parents_{}
+Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable = false) : shape_{shape}, creator_op_(OperationType::None), parents_{}
 {
     size_t total_elements = num_elements();
     data_.resize(total_elements, 0.0f);
     grad_.resize(total_elements, 0.0f);
+    if (is_optimizable_) {
+        optimizable_tensors_.push_back(this);
+    }
 }
 
 // Constructor with shape and data
-Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data) : shape_{shape}, data_{data}, creator_op_(OperationType::None), parents_{}
+Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data, bool is_optimizable = false) : shape_{shape}, data_{data}, creator_op_(OperationType::None), parents_{}
 {
     size_t total_elements = num_elements();
     if (data_.size() != total_elements)
@@ -25,10 +30,19 @@ Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data) : 
         throw std::runtime_error("Data size does not match the specified shape in constructor.");
     }
     grad_.resize(total_elements, 0.0f);
+    if (is_optimizable_) {
+        optimizable_tensors_.push_back(this);
+    }
 }
 
 // Destructor
-Tensor::~Tensor() {}
+Tensor::~Tensor() {
+    if (is_optimizable_) {
+        optimizable_tensors_.erase(
+            std::remove(optimizable_tensors_.begin(), optimizable_tensors_.end(), this),
+            optimizable_tensors_.end());
+    }
+}
 
 // Getters
 const std::vector<int> &Tensor::get_shape() const
@@ -44,6 +58,10 @@ const std::vector<float> &Tensor::get_data() const
 const std::vector<float> &Tensor::get_grad() const
 {
     return grad_;
+}
+
+std::vector<Tensor*>& Tensor::get_optimizable_tensors() {
+    return optimizable_tensors_;
 }
 
 // Setter for data
@@ -240,7 +258,7 @@ Tensor Tensor::dot(const Tensor &other) const
             throw std::runtime_error("Vector dot product requires vectors of the same size.");
         }
         // Result is a scalar (1D tensor with size 1)
-        Tensor result({1}, {0.0f});
+        Tensor result({1}, {0.0f}, false);
         result.creator_op_ = OperationType::Dot;
         result.parents_.push_back(const_cast<Tensor*>(this));
         result.parents_.push_back(const_cast<Tensor*>(&other));

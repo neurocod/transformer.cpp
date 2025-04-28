@@ -10,9 +10,9 @@ Linear::Linear(int input_dim, int output_dim)
 {
 
     // Weights shape: (input_dim, output_dim)
-    weights_ = Tensor({input_dim, output_dim});
+    weights_ = Tensor({input_dim, output_dim}, true);
     // Biases shape: (1, output_dim) - assuming broadcasting will handle batch dimension
-    biases_ = Tensor({1, output_dim_});
+    biases_ = Tensor({1, output_dim_}, true);
 
     // Initialize weights and biases with random values
     std::random_device rd;
