@@ -5,7 +5,7 @@
 #include <numeric>
 #include <algorithm>
 
-std::vector<Tensor*> Tensor::optimizable_tensors_; 
+std::vector<Tensor *> Tensor::optimizable_tensors_;
 
 // Default constructor
 Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}}, creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
@@ -16,7 +16,8 @@ Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable) : shape_{shap
     size_t total_elements = num_elements();
     data_.resize(total_elements, 0.0f);
     grad_.resize(total_elements, 0.0f);
-    if (is_optimizable_) {
+    if (is_optimizable_)
+    {
         optimizable_tensors_.push_back(this);
     }
 }
@@ -30,14 +31,17 @@ Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data, bo
         throw std::runtime_error("Data size does not match the specified shape in constructor.");
     }
     grad_.resize(total_elements, 0.0f);
-    if (is_optimizable_) {
+    if (is_optimizable_)
+    {
         optimizable_tensors_.push_back(this);
     }
 }
 
 // Destructor
-Tensor::~Tensor() {
-    if (is_optimizable_) {
+Tensor::~Tensor()
+{
+    if (is_optimizable_)
+    {
         optimizable_tensors_.erase(
             std::remove(optimizable_tensors_.begin(), optimizable_tensors_.end(), this),
             optimizable_tensors_.end());
@@ -60,7 +64,8 @@ const std::vector<float> &Tensor::get_grad() const
     return grad_;
 }
 
-std::vector<Tensor*>& Tensor::get_optimizable_tensors() {
+std::vector<Tensor *> &Tensor::get_optimizable_tensors()
+{
     return optimizable_tensors_;
 }
 
@@ -201,8 +206,8 @@ Tensor Tensor::operator+(const Tensor &other) const
     Tensor result(result_shape);
     // Record operation and parents for backward pass
     result.creator_op_ = OperationType::Add;
-    result.parents_.push_back(const_cast<Tensor*>(this));
-    result.parents_.push_back(const_cast<Tensor*>(&other));
+    result.parents_.push_back(const_cast<Tensor *>(this));
+    result.parents_.push_back(const_cast<Tensor *>(&other));
 
     for (size_t i = 0; i < result.data_.size(); ++i)
     {
@@ -219,8 +224,8 @@ Tensor Tensor::operator-(const Tensor &other) const
 
     Tensor result(result_shape);
     result.creator_op_ = OperationType::Sub;
-    result.parents_.push_back(const_cast<Tensor*>(this));
-    result.parents_.push_back(const_cast<Tensor*>(&other));
+    result.parents_.push_back(const_cast<Tensor *>(this));
+    result.parents_.push_back(const_cast<Tensor *>(&other));
 
     for (size_t i = 0; i < result.data_.size(); ++i)
     {
@@ -237,8 +242,8 @@ Tensor Tensor::operator*(const Tensor &other) const
 
     Tensor result(result_shape);
     result.creator_op_ = OperationType::Mul;
-    result.parents_.push_back(const_cast<Tensor*>(this));
-    result.parents_.push_back(const_cast<Tensor*>(&other));
+    result.parents_.push_back(const_cast<Tensor *>(this));
+    result.parents_.push_back(const_cast<Tensor *>(&other));
 
     for (size_t i = 0; i < result.data_.size(); ++i)
     {
@@ -247,58 +252,87 @@ Tensor Tensor::operator*(const Tensor &other) const
     return result;
 }
 
+Tensor Tensor::operator/(const Tensor &other) const
+{
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
+    Tensor broadcasted_a = broadcast_to(result_shape);
+    Tensor broadcasted_b = other.broadcast_to(result_shape);
+
+    Tensor result(result_shape);
+    result.creator_op_ = OperationType::Div;
+    result.parents_.push_back(const_cast<Tensor *>(this));   // numerator
+    result.parents_.push_back(const_cast<Tensor *>(&other)); // denominator
+
+    for (size_t i = 0; i < result.data_.size(); ++i)
+    {
+        if (broadcasted_b.data_[i] == 0.0f)
+        {
+            throw std::runtime_error("Division by zero encountered in Tensor division.");
+        }
+        result.data_[i] = broadcasted_a.data_[i] / broadcasted_b.data_[i];
+    }
+    return result;
+}
+
 Tensor Tensor::dot(const Tensor &other) const
 {
-    if (shape_.size() < 1 || other.shape_.size() < 1) {
-         throw std::runtime_error("Dot product requires tensors with at least 1 dimension.");
+    if (shape_.size() < 1 || other.shape_.size() < 1)
+    {
+        throw std::runtime_error("Dot product requires tensors with at least 1 dimension.");
     }
     // Vector dot product
-    if (shape_.size() == 1 && other.shape_.size() == 1) {
-        if (shape_[0] != other.shape_[0]) {
+    if (shape_.size() == 1 && other.shape_.size() == 1)
+    {
+        if (shape_[0] != other.shape_[0])
+        {
             throw std::runtime_error("Vector dot product requires vectors of the same size.");
         }
         // Result is a scalar (1D tensor with size 1)
         Tensor result({1}, {0.0f}, false);
         result.creator_op_ = OperationType::Dot;
-        result.parents_.push_back(const_cast<Tensor*>(this));
-        result.parents_.push_back(const_cast<Tensor*>(&other));
-        for (size_t i = 0; i < shape_[0]; ++i) {
+        result.parents_.push_back(const_cast<Tensor *>(this));
+        result.parents_.push_back(const_cast<Tensor *>(&other));
+        for (size_t i = 0; i < shape_[0]; ++i)
+        {
             result.data_[0] += data_[i] * other.data_[i];
         }
         return result;
-
-    } 
+    }
     // Matrix-vector product
-    else if (shape_.size() >= 2 && other.shape_.size() == 1) {
-         int cols_a = shape_.back();
-         int vec_size = other.shape_[0];
-         if (cols_a != vec_size) {
-             throw std::runtime_error("Matrix-vector product: Inner dimensions must match (" +
-                                      std::to_string(cols_a) + " vs " + std::to_string(vec_size) + ").");
-         }
-         // Result shape is the matrix shape excluding the last dimension
-         std::vector<int> result_shape(shape_.begin(), shape_.end() - 1);
-         Tensor result(result_shape);
-         result.creator_op_ = OperationType::Dot;
-         result.parents_.push_back(const_cast<Tensor*>(this));
-         result.parents_.push_back(const_cast<Tensor*>(&other));
+    else if (shape_.size() >= 2 && other.shape_.size() == 1)
+    {
+        int cols_a = shape_.back();
+        int vec_size = other.shape_[0];
+        if (cols_a != vec_size)
+        {
+            throw std::runtime_error("Matrix-vector product: Inner dimensions must match (" +
+                                     std::to_string(cols_a) + " vs " + std::to_string(vec_size) + ").");
+        }
+        // Result shape is the matrix shape excluding the last dimension
+        std::vector<int> result_shape(shape_.begin(), shape_.end() - 1);
+        Tensor result(result_shape);
+        result.creator_op_ = OperationType::Dot;
+        result.parents_.push_back(const_cast<Tensor *>(this));
+        result.parents_.push_back(const_cast<Tensor *>(&other));
 
-         size_t outer_elements = result.num_elements();
-         size_t matrix_stride = cols_a;
+        size_t outer_elements = result.num_elements();
+        size_t matrix_stride = cols_a;
 
-         for(size_t i = 0; i < outer_elements; ++i) {
-             float sum = 0.0f;
-             size_t matrix_row_start_idx = i * matrix_stride;
-             for(int k = 0; k < cols_a; ++k) {
-                 sum += data_[matrix_row_start_idx + k] * other.data_[k];
-             }
-             result.data_[i] = sum;
-         }
-         return result;
-
+        for (size_t i = 0; i < outer_elements; ++i)
+        {
+            float sum = 0.0f;
+            size_t matrix_row_start_idx = i * matrix_stride;
+            for (int k = 0; k < cols_a; ++k)
+            {
+                sum += data_[matrix_row_start_idx + k] * other.data_[k];
+            }
+            result.data_[i] = sum;
+        }
+        return result;
     }
     // Matrix-matrix product (batched)
-    else if (shape_.size() >= 2 && other.shape_.size() >= 2) {
+    else if (shape_.size() >= 2 && other.shape_.size() >= 2)
+    {
         int rows_a = shape_[shape_.size() - 2];
         int cols_a = shape_[shape_.size() - 1];
         int rows_b = other.shape_[other.shape_.size() - 2];
@@ -321,8 +355,8 @@ Tensor Tensor::dot(const Tensor &other) const
 
         Tensor result(result_shape);
         result.creator_op_ = OperationType::Dot;
-        result.parents_.push_back(const_cast<Tensor*>(this));
-        result.parents_.push_back(const_cast<Tensor*>(&other));
+        result.parents_.push_back(const_cast<Tensor *>(this));
+        result.parents_.push_back(const_cast<Tensor *>(&other));
 
         std::vector<size_t> stride_a = calculate_strides(shape_);
         std::vector<size_t> stride_b = calculate_strides(other.shape_);
@@ -337,10 +371,12 @@ Tensor Tensor::dot(const Tensor &other) const
             // Calculate multi-dimensional batch index for current batch
             std::vector<int> batch_idx(batch_shape.size());
             size_t temp_batch_linear = batch_linear_idx;
-            for (size_t i = 0; i < batch_shape.size(); ++i) {
-                 if (batch_strides_result[i] == 0) continue;
-                 batch_idx[i] = temp_batch_linear / batch_strides_result[i];
-                 temp_batch_linear %= batch_strides_result[i];
+            for (size_t i = 0; i < batch_shape.size(); ++i)
+            {
+                if (batch_strides_result[i] == 0)
+                    continue;
+                batch_idx[i] = temp_batch_linear / batch_strides_result[i];
+                temp_batch_linear %= batch_strides_result[i];
             }
 
             // Calculate linear offset for the start of the current batch in each tensor
@@ -348,45 +384,54 @@ Tensor Tensor::dot(const Tensor &other) const
             int batch_offset_a = batch_shape.size() - batch_dims_a.size();
             int batch_offset_b = batch_shape.size() - batch_dims_b.size();
 
-            for (size_t i = 0; i < batch_shape.size(); ++i) {
-                 // Handle broadcasting: if original batch dim was 1, use index 0, else use current batch_idx
-                if (i >= batch_offset_a) {
+            for (size_t i = 0; i < batch_shape.size(); ++i)
+            {
+                // Handle broadcasting: if original batch dim was 1, use index 0, else use current batch_idx
+                if (i >= batch_offset_a)
+                {
                     offset_a += (batch_dims_a[i - batch_offset_a] == 1 ? 0 : batch_idx[i]) * stride_a[i - batch_offset_a];
                 }
-                 if (i >= batch_offset_b) {
+                if (i >= batch_offset_b)
+                {
                     offset_b += (batch_dims_b[i - batch_offset_b] == 1 ? 0 : batch_idx[i]) * stride_b[i - batch_offset_b];
-                 }
+                }
                 offset_result += batch_idx[i] * stride_result[i];
             }
 
-
             // Matrix Multiplication for the Current Batch
-            for (int i = 0; i < rows_a; ++i) {
-                for (int j = 0; j < cols_b; ++j) {
+            for (int i = 0; i < rows_a; ++i)
+            {
+                for (int j = 0; j < cols_b; ++j)
+                {
                     float sum = 0.0f;
-                    for (int k = 0; k < cols_a; ++k) {
+                    for (int k = 0; k < cols_a; ++k)
+                    {
                         // Calculate linear indices within the current batch
                         size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
                         size_t idx_b = offset_b + k * stride_b[other.shape_.size() - 2] + j * stride_b[other.shape_.size() - 1];
 
                         // Bounds checking
-                        if (idx_a >= data_.size() || idx_b >= other.data_.size()) {
+                        if (idx_a >= data_.size() || idx_b >= other.data_.size())
+                        {
                             throw std::runtime_error("Index out of bounds during dot product calculation.");
                         }
                         sum += data_[idx_a] * other.data_[idx_b];
                     }
                     // Calculate result linear index within the current batch
                     size_t idx_result = offset_result + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
-                     if (idx_result >= result.data_.size()) {
-                         throw std::runtime_error("Result index out of bounds during dot product calculation.");
-                     }
+                    if (idx_result >= result.data_.size())
+                    {
+                        throw std::runtime_error("Result index out of bounds during dot product calculation.");
+                    }
                     result.data_[idx_result] = sum;
                 }
             }
         }
         return result;
-    } else {
-         throw std::runtime_error("Unsupported shapes for dot product.");
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported shapes for dot product.");
     }
 }
 
@@ -401,22 +446,28 @@ Tensor Tensor::transpose(const std::vector<int> &permutation) const
     std::vector<int> sorted_permutation = permutation;
     std::sort(sorted_permutation.begin(), sorted_permutation.end());
     bool valid_perm = true;
-    if (shape_.size() > 0) {
-        for (size_t i = 0; i < sorted_permutation.size(); ++i) {
-            if (sorted_permutation[i] != static_cast<int>(i)) {
+    if (shape_.size() > 0)
+    {
+        for (size_t i = 0; i < sorted_permutation.size(); ++i)
+        {
+            if (sorted_permutation[i] != static_cast<int>(i))
+            {
                 valid_perm = false;
                 break;
             }
         }
-    } else if (!permutation.empty()) {
+    }
+    else if (!permutation.empty())
+    {
         valid_perm = false;
     }
 
-
-    if (!valid_perm) {
-         std::string perm_str = "[";
-         for(size_t k=0; k<permutation.size(); ++k) perm_str += std::to_string(permutation[k]) + (k==permutation.size()-1 ? "" : ", ");
-         perm_str += "]";
+    if (!valid_perm)
+    {
+        std::string perm_str = "[";
+        for (size_t k = 0; k < permutation.size(); ++k)
+            perm_str += std::to_string(permutation[k]) + (k == permutation.size() - 1 ? "" : ", ");
+        perm_str += "]";
         throw std::runtime_error("Invalid permutation " + perm_str + " for transpose.");
     }
 
@@ -428,39 +479,47 @@ Tensor Tensor::transpose(const std::vector<int> &permutation) const
 
     Tensor result(new_shape);
     result.creator_op_ = OperationType::Transpose;
-    result.parents_.push_back(const_cast<Tensor*>(this));
+    result.parents_.push_back(const_cast<Tensor *>(this));
     result.forward_permutation_ = permutation;
 
     // Efficient Transposition
-    if (num_elements() == 0) return result;
+    if (num_elements() == 0)
+        return result;
 
     std::vector<size_t> old_strides(shape_.size());
     std::vector<size_t> new_strides(new_shape.size());
     old_strides.back() = 1;
     new_strides.back() = 1;
-    for (int i = shape_.size() - 2; i >= 0; --i) old_strides[i] = old_strides[i + 1] * shape_[i + 1];
-    for (int i = new_shape.size() - 2; i >= 0; --i) new_strides[i] = new_strides[i + 1] * new_shape[i + 1];
+    for (int i = shape_.size() - 2; i >= 0; --i)
+        old_strides[i] = old_strides[i + 1] * shape_[i + 1];
+    for (int i = new_shape.size() - 2; i >= 0; --i)
+        new_strides[i] = new_strides[i + 1] * new_shape[i + 1];
 
     std::vector<int> current_indices(shape_.size());
     size_t total_elements = num_elements();
 
-    for (size_t i = 0; i < total_elements; ++i) {
+    for (size_t i = 0; i < total_elements; ++i)
+    {
         // Calculate original multi-dimensional indices from linear index i
         size_t temp_linear_idx = i;
-        for (size_t d = 0; d < shape_.size(); ++d) {
-             if (old_strides[d] == 0) continue;
-             current_indices[d] = temp_linear_idx / old_strides[d];
-             temp_linear_idx %= old_strides[d];
+        for (size_t d = 0; d < shape_.size(); ++d)
+        {
+            if (old_strides[d] == 0)
+                continue;
+            current_indices[d] = temp_linear_idx / old_strides[d];
+            temp_linear_idx %= old_strides[d];
         }
 
         // Calculate new linear index based on permuted indices
         size_t new_linear_idx = 0;
-        for (size_t d = 0; d < new_shape.size(); ++d) {
+        for (size_t d = 0; d < new_shape.size(); ++d)
+        {
             new_linear_idx += current_indices[permutation[d]] * new_strides[d];
         }
 
         // Bounds checks
-        if (i >= data_.size() || new_linear_idx >= result.data_.size()) {
+        if (i >= data_.size() || new_linear_idx >= result.data_.size())
+        {
             throw std::runtime_error("Index out of bounds during transpose calculation.");
         }
         result.data_[new_linear_idx] = data_[i];
@@ -473,43 +532,55 @@ Tensor Tensor::reshape(const std::vector<int> &new_shape) const
 {
     size_t current_elements = num_elements();
     size_t new_num_elements = 1;
-     bool has_neg_one = false;
-     int neg_one_idx = -1;
-     for(size_t i = 0; i < new_shape.size(); ++i) {
-         if (new_shape[i] == -1) {
-             if (has_neg_one) throw std::runtime_error("Reshape can only have one dimension specified as -1.");
-             has_neg_one = true;
-             neg_one_idx = i;
-         } else if (new_shape[i] <= 0) {
-              throw std::runtime_error("Reshape dimensions must be positive or -1.");
-         } else {
-             new_num_elements *= new_shape[i];
-         }
-     }
+    bool has_neg_one = false;
+    int neg_one_idx = -1;
+    for (size_t i = 0; i < new_shape.size(); ++i)
+    {
+        if (new_shape[i] == -1)
+        {
+            if (has_neg_one)
+                throw std::runtime_error("Reshape can only have one dimension specified as -1.");
+            has_neg_one = true;
+            neg_one_idx = i;
+        }
+        else if (new_shape[i] <= 0)
+        {
+            throw std::runtime_error("Reshape dimensions must be positive or -1.");
+        }
+        else
+        {
+            new_num_elements *= new_shape[i];
+        }
+    }
 
-     std::vector<int> actual_new_shape = new_shape;
-     if (has_neg_one) {
-         if (current_elements == 0 && new_num_elements > 0) {
-             throw std::runtime_error("Cannot infer dimension for -1 when reshaping an empty tensor to a non-empty one.");
-         }
-         if (new_num_elements == 0) {
-              throw std::runtime_error("Internal error: product of positive dimensions is zero in reshape.");
-         }
-         if (current_elements % new_num_elements != 0) {
-             throw std::runtime_error("Cannot infer dimension for -1: total elements not divisible by product of other dimensions.");
-         }
-         actual_new_shape[neg_one_idx] = current_elements / new_num_elements;
-         new_num_elements = current_elements;
-     }
-
+    std::vector<int> actual_new_shape = new_shape;
+    if (has_neg_one)
+    {
+        if (current_elements == 0 && new_num_elements > 0)
+        {
+            throw std::runtime_error("Cannot infer dimension for -1 when reshaping an empty tensor to a non-empty one.");
+        }
+        if (new_num_elements == 0)
+        {
+            throw std::runtime_error("Internal error: product of positive dimensions is zero in reshape.");
+        }
+        if (current_elements % new_num_elements != 0)
+        {
+            throw std::runtime_error("Cannot infer dimension for -1: total elements not divisible by product of other dimensions.");
+        }
+        actual_new_shape[neg_one_idx] = current_elements / new_num_elements;
+        new_num_elements = current_elements;
+    }
 
     if (current_elements != new_num_elements)
     {
         std::string old_shape_str = "[";
-        for(size_t k=0; k<shape_.size(); ++k) old_shape_str += std::to_string(shape_[k]) + (k==shape_.size()-1 ? "" : ", ");
+        for (size_t k = 0; k < shape_.size(); ++k)
+            old_shape_str += std::to_string(shape_[k]) + (k == shape_.size() - 1 ? "" : ", ");
         old_shape_str += "]";
         std::string new_shape_str = "[";
-        for(size_t k=0; k<new_shape.size(); ++k) new_shape_str += std::to_string(new_shape[k]) + (k==new_shape.size()-1 ? "" : ", ");
+        for (size_t k = 0; k < new_shape.size(); ++k)
+            new_shape_str += std::to_string(new_shape[k]) + (k == new_shape.size() - 1 ? "" : ", ");
         new_shape_str += "]";
         throw std::runtime_error("Total number of elements must remain the same during reshape. Cannot reshape " +
                                  old_shape_str + " (" + std::to_string(current_elements) + " elements) to " +
@@ -518,8 +589,24 @@ Tensor Tensor::reshape(const std::vector<int> &new_shape) const
 
     Tensor result(actual_new_shape, data_);
     result.creator_op_ = OperationType::Reshape;
-    result.parents_.push_back(const_cast<Tensor*>(this));
+    result.parents_.push_back(const_cast<Tensor *>(this));
     result.original_shape_before_reshape_ = this->shape_;
+
+    return result;
+}
+
+Tensor Tensor::sum() const
+{
+    Tensor result({1});
+    result.creator_op_ = OperationType::Sum;
+    result.parents_.push_back(const_cast<Tensor *>(this));
+
+    float total_sum = 0.0f;
+    for (float val : data_)
+    {
+        total_sum += val;
+    }
+    result.data_[0] = total_sum;
 
     return result;
 }
@@ -566,6 +653,12 @@ void Tensor::backward(const Tensor &grad_output)
         case OperationType::Reshape:
             backward_reshape(grad_output);
             break;
+        case OperationType::Sum:
+            backward_sum(grad_output);
+            break;
+        case OperationType::Div:
+            backward_div(grad_output);
+            break;
         }
     }
 }
@@ -573,10 +666,11 @@ void Tensor::backward(const Tensor &grad_output)
 // Helper to reduce gradient for broadcasting
 void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, const std::vector<int> &parent_shape)
 {
-    const std::vector<int>& grad_shape = grad_output.get_shape();
+    const std::vector<int> &grad_shape = grad_output.get_shape();
 
     // If shapes are identical, no reduction needed
-    if (grad_shape == parent_shape) {
+    if (grad_shape == parent_shape)
+    {
         parent_grad = Tensor(parent_shape);
         parent_grad.data_ = grad_output.get_data();
         return;
@@ -591,21 +685,26 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
     int grad_dim_offset = max_dims - grad_shape.size();
     int parent_dim_offset = max_dims - parent_shape.size();
 
-    for (int i = 0; i < max_dims; ++i) {
+    for (int i = 0; i < max_dims; ++i)
+    {
         int grad_dim = (i < grad_dim_offset) ? 1 : grad_shape[i - grad_dim_offset];
         int parent_dim = (i < parent_dim_offset) ? 1 : parent_shape[i - parent_dim_offset];
 
-        if (parent_dim == 1 && grad_dim > 1) {
+        if (parent_dim == 1 && grad_dim > 1)
+        {
             dims_to_sum.push_back(i);
-        } else if (parent_dim != grad_dim && parent_dim != 1) {
-             // Should have been caught by is_broadcastable earlier
-             throw std::runtime_error("Inconsistent shapes found during gradient reduction.");
+        }
+        else if (parent_dim != grad_dim && parent_dim != 1)
+        {
+            // Should have been caught by is_broadcastable earlier
+            throw std::runtime_error("Inconsistent shapes found during gradient reduction.");
         }
     }
 
     // Perform Reduction
     size_t parent_total_elements = parent_grad.num_elements();
-    if (parent_total_elements == 0) return;
+    if (parent_total_elements == 0)
+        return;
 
     std::vector<size_t> parent_strides = calculate_strides(parent_shape);
     std::vector<size_t> grad_strides = calculate_strides(grad_shape);
@@ -613,13 +712,14 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
     std::vector<int> parent_indices(parent_shape.size());
     std::vector<int> grad_indices_template(grad_shape.size());
 
-
-    for (size_t p_idx = 0; p_idx < parent_total_elements; ++p_idx) {
+    for (size_t p_idx = 0; p_idx < parent_total_elements; ++p_idx)
+    {
         // Get multi-dim indices for parent_grad[p_idx]
         size_t temp_p_idx = p_idx;
-        for (int d = parent_shape.size() - 1; d >= 0; --d) {
-             parent_indices[d] = temp_p_idx % parent_shape[d];
-             temp_p_idx /= parent_shape[d];
+        for (int d = parent_shape.size() - 1; d >= 0; --d)
+        {
+            parent_indices[d] = temp_p_idx % parent_shape[d];
+            temp_p_idx /= parent_shape[d];
         }
 
         // Determine the corresponding range/indices in grad_output to sum
@@ -628,27 +728,32 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
         std::vector<int> current_grad_indices(grad_shape.size());
 
         // Iterate through all grad_output elements and check if they map to the current parent element
-        for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx) {
-             // Get multi-dim indices for grad_output[g_idx]
-             size_t temp_g_idx = g_idx;
-             for (int d = grad_shape.size() - 1; d >= 0; --d) {
-                  current_grad_indices[d] = temp_g_idx % grad_shape[d];
-                  temp_g_idx /= grad_shape[d];
-             }
+        for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx)
+        {
+            // Get multi-dim indices for grad_output[g_idx]
+            size_t temp_g_idx = g_idx;
+            for (int d = grad_shape.size() - 1; d >= 0; --d)
+            {
+                current_grad_indices[d] = temp_g_idx % grad_shape[d];
+                temp_g_idx /= grad_shape[d];
+            }
 
-             // Check if this grad element corresponds to the current parent element
-             bool corresponds = true;
-             int p_offset = grad_shape.size() - parent_shape.size();
-             for(size_t d = 0; d < parent_shape.size(); ++d) {
-                 if (parent_shape[d] != 1 && parent_indices[d] != current_grad_indices[d + p_offset]) {
-                     corresponds = false;
-                     break;
-                 }
-             }
+            // Check if this grad element corresponds to the current parent element
+            bool corresponds = true;
+            int p_offset = grad_shape.size() - parent_shape.size();
+            for (size_t d = 0; d < parent_shape.size(); ++d)
+            {
+                if (parent_shape[d] != 1 && parent_indices[d] != current_grad_indices[d + p_offset])
+                {
+                    corresponds = false;
+                    break;
+                }
+            }
 
-             if (corresponds) {
-                 sum_val += grad_output.data_[g_idx];
-             }
+            if (corresponds)
+            {
+                sum_val += grad_output.data_[g_idx];
+            }
         }
 
         // Assign the sum to parent_grad.data_
@@ -865,5 +970,104 @@ void Tensor::backward_reshape(const Tensor &grad_output)
     else
     {
         std::cerr << "Error: Reshape operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_sum(const Tensor &grad_output)
+{
+    /*
+    Backward pass for Y = sum(X):
+    dL/dX = dL/dY * dY/dX
+    Since Y = sum(X_i), dY/dX_i = 1 for all i.
+    So, dL/dX_i = dL/dY * 1 = dL/dY.
+    The gradient dL/dY is the incoming grad_output (which should be a scalar).
+    */
+
+    if (parents_.size() == 1)
+    {
+        Tensor *parent = parents_[0];
+
+        // The incoming gradient should be a scalar (shape {1})
+        if (grad_output.get_shape().size() != 1 || grad_output.get_shape()[0] != 1)
+        {
+            throw std::runtime_error("Gradient for sum operation must be a scalar.");
+        }
+        float grad_value = grad_output.get_data()[0];
+
+        Tensor grad_input(parent->get_shape());
+        std::fill(grad_input.data_.begin(), grad_input.data_.end(), grad_value);
+
+        parent->backward(grad_input);
+    }
+    else
+    {
+        std::cerr << "Error: Sum operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_div(const Tensor &grad_output)
+{
+    /*
+    Backward pass for Z = A / B (element-wise):
+    dL/dA = dL/dZ * dZ/dA = grad_output * (1 / B)
+    dL/dB = dL/dZ * dZ/dB = grad_output * (-A / B^2)
+    */
+    if (parents_.size() == 2)
+    {
+        Tensor *parent_a = parents_[0]; // Numerator
+        Tensor *parent_b = parents_[1]; // Denominator
+
+        const std::vector<float> &parent_b_data = parent_b->get_data();
+
+        // Gradient for parent A: grad_output * (1 / parent_b)
+        std::vector<int> result_shape_a = calculate_broadcast_shape(grad_output.get_shape(), parent_b->get_shape());
+        Tensor broadcasted_grad_a = grad_output.broadcast_to(result_shape_a);
+        Tensor broadcasted_parent_b = parent_b->broadcast_to(result_shape_a);
+
+        Tensor grad_a_intermediate(result_shape_a);
+        for (size_t i = 0; i < grad_a_intermediate.data_.size(); ++i)
+        {
+            if (broadcasted_parent_b.data_[i] == 0.0f)
+            {
+                grad_a_intermediate.data_[i] = 0.0f;
+            }
+            else
+            {
+                grad_a_intermediate.data_[i] = broadcasted_grad_a.data_[i] / broadcasted_parent_b.data_[i];
+            }
+        }
+
+        // Reduce gradient for parent A
+        Tensor grad_a_propagated;
+        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
+        parent_a->backward(grad_a_propagated);
+
+        // Fradient for parent B: grad_output * (-parent_a / (parent_b * parent_b))
+        std::vector<int> result_shape_b = calculate_broadcast_shape(calculate_broadcast_shape(grad_output.get_shape(), parent_a->get_shape()), parent_b->get_shape());
+        Tensor broadcasted_grad_b = grad_output.broadcast_to(result_shape_b);
+        Tensor broadcasted_parent_a = parent_a->broadcast_to(result_shape_b);
+        Tensor broadcasted_parent_b_b = parent_b->broadcast_to(result_shape_b);
+
+        Tensor grad_b_intermediate(result_shape_b);
+        for (size_t i = 0; i < grad_b_intermediate.data_.size(); ++i)
+        {
+            if (broadcasted_parent_b_b.data_[i] == 0.0f)
+            {
+                grad_b_intermediate.data_[i] = 0.0f;
+            }
+            else
+            {
+                grad_b_intermediate.data_[i] = broadcasted_grad_b.data_[i] * (-broadcasted_parent_a.data_[i] / (broadcasted_parent_b_b.data_[i] * broadcasted_parent_b_b.data_[i]));
+            }
+        }
+
+        // Reduce gradient for parent B
+        Tensor grad_b_propagated;
+        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
+        parent_b->backward(grad_b_propagated);
+    }
+    else
+    {
+        std::cerr << "Error: Division operation expected 2 parents, but found " << parents_.size() << std::endl;
     }
 }

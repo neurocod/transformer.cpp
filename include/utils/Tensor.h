@@ -13,7 +13,9 @@ enum class OperationType
     Mul,
     Dot,
     Transpose,
-    Reshape
+    Reshape,
+    Sum,
+    Div
 };
 
 class Tensor
@@ -36,9 +38,13 @@ public:
 
     // Setter for data
     void set_data(const std::vector<float> &data);
+    // Setter of parents
+    void set_parents(const std::vector<Tensor *> &parents) { parents_ = parents; }
+    // Setter of creator operation
+    void set_creator_op(OperationType op) { creator_op_ = op; }
 
     // Add a static method to get the list of optimizable tensors
-    static std::vector<Tensor*>& get_optimizable_tensors();
+    static std::vector<Tensor *> &get_optimizable_tensors();
     // Get element by multi-dimensional index
     float get(const std::vector<int> &indices) const;
     // Set element by multi-dimensional index
@@ -49,23 +55,33 @@ public:
     // Basic tensor operations
     Tensor operator+(const Tensor &other) const;
     Tensor operator-(const Tensor &other) const;
-    Tensor operator*(const Tensor &other) const;                 // Element-wise multiplication
+    Tensor operator*(const Tensor &other) const; // Element-wise multiplication
+    Tensor operator/(const Tensor &other) const;
     Tensor dot(const Tensor &other) const;                       // Matrix multiplication
     Tensor transpose(const std::vector<int> &permutation) const; // Transpose with permutation
     Tensor reshape(const std::vector<int> &new_shape) const;
+    Tensor sum() const;
 
     // Gradient handling (simplified for now)
     void zero_grad();
     void backward(const Tensor &grad_output); // Placeholder
     // Stores pointers to the input tensors (parents) of the operation that created this tensor.
 
+    // Helper to calculate total number of elements from shape
+    size_t num_elements() const
+    {
+        if (shape_.empty())
+            return 0;
+        return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
+    }
+
 private:
-    static std::vector<Tensor*> optimizable_tensors_;
+    static std::vector<Tensor *> optimizable_tensors_;
 
     std::vector<int> shape_;
     std::vector<float> data_;
     std::vector<float> grad_;
-    std::vector<Tensor*> parents_;
+    std::vector<Tensor *> parents_;
     bool is_optimizable_ = false;
     // Stores the type of operation that produced this tensor.
     OperationType creator_op_ = OperationType::None;
@@ -84,21 +100,15 @@ private:
     // Helper to check if two shapes are broadcastable
     static bool is_broadcastable(const std::vector<int> &shape1, const std::vector<int> &shape2);
 
-    // Helper to calculate total number of elements from shape
-    size_t num_elements() const
-    {
-        if (shape_.empty())
-            return 0;
-        return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
-    }
-
     // Helper to calculate strides for efficient access
-    std::vector<size_t> calculate_strides(const std::vector<int>& shape) const 
+    std::vector<size_t> calculate_strides(const std::vector<int> &shape) const
     {
         std::vector<size_t> strides(shape.size());
-        if (!shape.empty()) {
+        if (!shape.empty())
+        {
             strides.back() = 1;
-            for (int i = shape.size() - 2; i >= 0; --i) {
+            for (int i = shape.size() - 2; i >= 0; --i)
+            {
                 strides[i] = strides[i + 1] * shape[i + 1];
             }
         }
@@ -119,6 +129,8 @@ private:
     void backward_dot(const Tensor &grad_output);
     void backward_transpose(const Tensor &grad_output);
     void backward_reshape(const Tensor &grad_output);
+    void backward_sum(const Tensor &grad_output);
+    void backward_div(const Tensor &grad_output);
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H
