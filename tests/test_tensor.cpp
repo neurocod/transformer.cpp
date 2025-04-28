@@ -1,4 +1,3 @@
-// tests/test_tensor.cpp
 #include "utils/Tensor.h"
 #include <iostream>
 #include <vector>
@@ -17,7 +16,7 @@ void print_tensor(const Tensor &t, const std::string &name)
     }
     std::cout << "]" << std::endl;
 
-    std::cout << "Data: [";
+    std::cout << "Grad: [";
     const auto &data = t.get_data();
     size_t print_limit = std::min((size_t)20, data.size()); // Print up to 20 elements
     for (size_t i = 0; i < print_limit; ++i)
@@ -30,18 +29,18 @@ void print_tensor(const Tensor &t, const std::string &name)
     }
     std::cout << "]" << std::endl;
 
-    std::cout << "Grad: [";
-    const auto &grad = t.get_grad();
-    print_limit = std::min((size_t)20, grad.size()); // Print up to 20 elements
-    for (size_t i = 0; i < print_limit; ++i)
-    {
-        std::cout << grad[i] << (i == print_limit - 1 ? "" : ", ");
-    }
-    if (grad.size() > print_limit)
-    {
-        std::cout << ", ...";
-    }
-    std::cout << "]" << std::endl;
+    // std::cout << "Grad: [";
+    // const auto &grad = t.get_grad();
+    // print_limit = std::min((size_t)20, grad.size()); // Print up to 20 elements
+    // for (size_t i = 0; i < print_limit; ++i)
+    // {
+    //     std::cout << grad[i] << (i == print_limit - 1 ? "" : ", ");
+    // }
+    // if (grad.size() > print_limit)
+    // {
+    //     std::cout << ", ...";
+    // }
+    // std::cout << "]" << std::endl;
     std::cout << "--------------------------" << std::endl;
 }
 
@@ -231,6 +230,72 @@ void test_reshape()
     std::cout << "Reshape 2x2x2 to 4x2 test passed." << std::endl;
 }
 
+void test_sum() {
+    std::cout << "\nTest Case: Sum" << std::endl;
+
+    // Simple 1D tensor
+    Tensor t1d({5}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f});
+    Tensor sum_result1 = t1d.sum();
+
+    assert(sum_result1.get_shape() == std::vector<int>({1}));
+    assert(are_tensors_equal(sum_result1, Tensor({1}, {{15.0f}}))); // 1 + 2 + 3 + 4 + 5 = 15
+    std::cout << "  1D Tensor sum forward pass passed." << std::endl;
+
+    // 2D tensor
+    Tensor t2d({2, 3}, {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f});
+    Tensor sum_result2 = t2d.sum();
+
+    assert(sum_result2.get_shape() == std::vector<int>({1}));
+    assert(are_tensors_equal(sum_result2, Tensor({1}, {{21.0f}}))); // 1+2+3+4+5+6 = 21
+    std::cout << "  2D Tensor sum forward pass passed." << std::endl;
+
+    // Empty tensor
+    Tensor t_empty({0}, {});
+    Tensor sum_result_empty = t_empty.sum();
+    assert(sum_result_empty.get_shape() == std::vector<int>({1}));
+    assert(are_tensors_equal(sum_result_empty, Tensor({1}, {{0.0f}})));
+    std::cout << "  Empty Tensor sum forward pass passed." << std::endl;
+
+    std::cout << "Sum test completed." << std::endl;
+}
+
+void test_division() {
+    std::cout << "\nTest Case: Division" << std::endl;
+
+    // Element-wise division without broadcasting
+    Tensor A({2, 2}, {4.0f, 6.0f, 8.0f, 10.0f});
+    Tensor B({2, 2}, {2.0f, 3.0f, 4.0f, 5.0f});
+
+    Tensor C = A / B; // C = {2.0, 2.0, 2.0, 2.0}
+
+    assert(C.get_shape() == std::vector<int>({2, 2}));
+    assert(are_tensors_equal(C, Tensor({2, 2}, {2.0f, 2.0f, 2.0f, 2.0f})));
+    std::cout << "  Element-wise division forward pass passed." << std::endl;
+
+    // Division with broadcasting (scalar denominator)
+    Tensor D({2, 2}, {10.0f, 20.0f, 30.0f, 40.0f});
+    Tensor E({1}, {{10.0f}}); // Scalar tensor
+
+    Tensor F = D / E; // F = {1.0, 2.0, 3.0, 4.0}
+
+    assert(F.get_shape() == std::vector<int>({2, 2}));
+    assert(are_tensors_equal(F, Tensor({2, 2}, {1.0f, 2.0f, 3.0f, 4.0f})));
+    std::cout << "  Division with scalar broadcasting forward pass passed." << std::endl;
+
+    // Division with broadcasting (row vector numerator)
+    Tensor G({2, 2}, {10.0f, 20.0f, 30.0f, 40.0f});
+    Tensor H({1, 2}, {2.0f, 5.0f}); // Row vector
+
+    Tensor I = G / H; // I = {10/2, 20/5, 30/2, 40/5} = {5.0, 4.0, 15.0, 8.0}
+
+    assert(I.get_shape() == std::vector<int>({2, 2}));
+    assert(are_tensors_equal(I, Tensor({2, 2}, {5.0f, 4.0f, 15.0f, 8.0f})));
+    std::cout << "  Division with row vector broadcasting forward pass passed." << std::endl;
+
+
+    std::cout << "Division test completed." << std::endl;
+}
+
 void test_backward_pass()
 {
     std::cout << "\nTest Case: Backward Pass through a Chain of Operations" << std::endl;
@@ -239,29 +304,39 @@ void test_backward_pass()
     Tensor B({2, 2}, {0.5f, 1.0f, 1.5f, 2.0f});
     Tensor C({2, 2}, {2.0f, 1.0f, 1.0f, 2.0f});
     Tensor D({2, 2}, {1.0f, 0.0f, 0.0f, 1.0f});
+    Tensor E({1}, {{10.0f}});
 
-    Tensor E = A + B;
-    Tensor F = E * C;
-    Tensor G = F.dot(D);
-    Tensor H = G.transpose({1, 0});
-    Tensor I = H.reshape({4, 1});
+    Tensor T1 = A + B; // {1.5, 3.0, 4.5, 6.0}
+    Tensor T2 = T1 * C; // {3.0, 3.0, 4.5, 12.0}
+    Tensor T3 = T2.dot(D); // {3.0, 3.0, 4.5, 12.0} . {1,0; 0,1} = {3.0, 3.0, 4.5, 12.0}
+    Tensor T4 = T3.transpose({1, 0}); // {3.0, 4.5, 3.0, 12.0}
+    Tensor T5 = T4.reshape({4, 1}); // {3.0, 4.5, 3.0, 12.0} (column vector)
+    Tensor T6 = T5 / E; // {0.3, 0.45, 0.3, 1.2} (column vector)
+    Tensor final_loss = T6.sum(); // {2.25} (scalar)
 
-    Tensor grad_I({4, 1}, {1.0f, 1.0f, 1.0f, 1.0f});
-    I.backward(grad_I);
+    assert(final_loss.get_shape() == std::vector<int>({1}));
+    assert(are_tensors_equal(final_loss, Tensor({1}, {{2.25f}})));
+    std::cout << "  Complex chain forward pass passed." << std::endl;
 
-    Tensor expected_grad_A({2, 2}, {2.0f, 1.0f, 1.0f, 2.0f});
-    Tensor expected_grad_B({2, 2}, {2.0f, 1.0f, 1.0f, 2.0f});
-    Tensor expected_grad_C({2, 2}, {1.5f, 3.0f, 4.5f, 6.0f});
-    Tensor expected_grad_D({2, 2}, {7.5f, 7.5f, 15.0f, 15.0f});
+    Tensor grad_Final_Loss({1}, {{1.0f}});
+    final_loss.backward(grad_Final_Loss);
+
+    Tensor expected_grad_A({2, 2}, {0.2f, 0.1f, 0.1f, 0.2f});
+    Tensor expected_grad_B({2, 2}, {0.2f, 0.1f, 0.1f, 0.2f});
+    Tensor expected_grad_C({2, 2}, {0.15f, 0.3f, 0.45f, 0.6f});
+    Tensor expected_grad_D({2, 2}, {0.75f, 0.75f, 1.5f, 1.5f});
+    Tensor expected_grad_E({1}, {{-0.225f}});
 
     assert(are_tensors_equal(Tensor(A.get_shape(), A.get_grad()), expected_grad_A));
     std::cout << "  Gradient of A verified." << std::endl;
     assert(are_tensors_equal(Tensor(B.get_shape(), B.get_grad()), expected_grad_B));
     std::cout << "  Gradient of B verified." << std::endl;
-    assert(are_tensors_equal(Tensor(C.get_shape(), C.get_grad()), expected_grad_C));
+    assert(are_tensors_equal(Tensor(C.get_shape(), C.get_grad()), expected_grad_C, 1e-3));
     std::cout << "  Gradient of C verified." << std::endl;
     assert(are_tensors_equal(Tensor(D.get_shape(), D.get_grad()), expected_grad_D));
     std::cout << "  Gradient of D verified." << std::endl;
+    assert(are_tensors_equal(Tensor(E.get_shape(), E.get_grad()), expected_grad_E));
+    std::cout << "  Gradient of E verified." << std::endl;
 
     std::cout << "Backward Pass through a Chain of Operations test passed." << std::endl;
 }
@@ -270,33 +345,44 @@ void test_backward_pass_with_broadcasting_operations()
 {
     std::cout << "\nTest Case: Backward Pass with Broadcasting" << std::endl;
 
+    // Chain: A + B -> - D -> * C -> / E -> sum -> reshape
     Tensor A({2, 3}, {1.0f, 2.0f, 3.0f,
                       4.0f, 5.0f, 6.0f});
     Tensor B({3}, {0.5f, 1.0f, 1.5f});
     Tensor C({2, 1}, {2.0f, 3.0f});
     Tensor D({1, 3}, {1.0f, 2.0f, 3.0f});
+    Tensor E({1}, {{10.0f}});
 
-    Tensor E = A + B;
-    Tensor F = E - D;
-    Tensor G = F * C;
-    Tensor H = G.reshape({6, 1});
+    Tensor T1 = A + B; // {1.5, 3.0, 4.5; 4.5, 6.0, 7.5} (2x3)
+    Tensor T2 = T1 - D; // {0.5, 1.0, 1.5; 3.5, 4.0, 4.5} (2x3)
+    Tensor T3 = T2 * C; // {1.0, 2.0, 3.0; 10.5, 12.0, 13.5} (2x3)
+    Tensor T4 = T3 / E; // {0.1, 0.2, 0.3; 1.05, 1.2, 1.35} (2x3)
+    Tensor T5 = T4.sum(); // {4.2} (scalar)
+    Tensor final = T5.reshape({1, 1}); // {4.2} (1x1)
 
-    Tensor grad_H({6, 1}, {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f});
-    H.backward(grad_H);
+    assert(final.get_shape() == std::vector<int>({1, 1}));
+    assert(are_tensors_equal(final, Tensor({1, 1}, {{4.2f}})));
+    std::cout << "  Complex chain with broadcasting forward pass passed." << std::endl;
 
-    Tensor expected_grad_A({2, 3}, {2.0f, 2.0f, 2.0, 3.0f, 3.0f, 3.0f});
-    Tensor expected_grad_B({3}, {5.0f, 5.0f, 5.0f});
-    Tensor expected_grad_C({2, 1}, {3.0f, 12.0f});
-    Tensor expected_grad_D({1, 3}, {-5.0f, -5.0f, -5.0f});
+    Tensor grad_final({1, 1}, {{1.0f}});
+    final.backward(grad_final);
+
+    Tensor expected_grad_A({2, 3}, {0.2f, 0.2f, 0.2f, 0.3f, 0.3f, 0.3f});
+    Tensor expected_grad_B({3}, {0.5f, 0.5f, 0.5f});
+    Tensor expected_grad_C({2, 1}, {0.3f, 1.2f});
+    Tensor expected_grad_D({1, 3}, {-0.5f, -0.5f, -0.5f});
+    Tensor expected_grad_E({1}, {{-0.42f}});
 
     assert(are_tensors_equal(Tensor(A.get_shape(), A.get_grad()), expected_grad_A));
     std::cout << "  Gradient of A verified." << std::endl;
-    assert(are_tensors_equal(Tensor(B.get_shape(), B.get_grad()), expected_grad_B));
+    assert(are_tensors_equal(Tensor(B.get_shape(), B.get_grad()), expected_grad_B, 1e-6));
     std::cout << "  Gradient of B verified." << std::endl;
-    assert(are_tensors_equal(Tensor(C.get_shape(), C.get_grad()), expected_grad_C));
+    assert(are_tensors_equal(Tensor(C.get_shape(), C.get_grad()), expected_grad_C, 1e-6));
     std::cout << "  Gradient of C verified." << std::endl;
-    assert(are_tensors_equal(Tensor(D.get_shape(), D.get_grad()), expected_grad_D));
+    assert(are_tensors_equal(Tensor(D.get_shape(), D.get_grad()), expected_grad_D, 1e-6));
     std::cout << "  Gradient of D verified." << std::endl;
+    assert(are_tensors_equal(Tensor(E.get_shape(), E.get_grad()), expected_grad_E, 1e-6));
+    std::cout << "  Gradient of E verified." << std::endl;
 
     std::cout << "Backward Pass with Broadcasting over test passed." << std::endl;
 }
@@ -310,6 +396,8 @@ int main()
     test_dot_product();
     test_transpose();
     test_reshape();
+    test_sum();
+    test_division();
     test_backward_pass();
     test_backward_pass_with_broadcasting_operations();
 

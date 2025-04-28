@@ -19,7 +19,7 @@ public:
 
 private:
     Tensor weights_; // Weight matrix (output_dim, input_dim)
-    Tensor biases_;  // Bias vector (1, output_dim) - assuming broadcasting will handle batch dimensions
+    Tensor biases_;  // Bias vector (1, output_dim)
 
     int input_dim_;
     int output_dim_;

@@ -636,27 +636,35 @@ void Tensor::backward(const Tensor &grad_output)
         switch (creator_op_)
         {
         case OperationType::Add:
+            std::cout << "Backward Add" << std::endl;
             backward_add(grad_output);
             break;
         case OperationType::Sub:
+            std::cout << "Backward Sub" << std::endl;
             backward_sub(grad_output);
             break;
         case OperationType::Mul:
+            std::cout << "Backward Mul" << std::endl;
             backward_mul(grad_output);
             break;
         case OperationType::Dot:
+            std::cout << "Backward Dot" << std::endl;
             backward_dot(grad_output);
             break;
         case OperationType::Transpose:
+            std::cout << "Backward Transpose" << std::endl;
             backward_transpose(grad_output);
             break;
         case OperationType::Reshape:
+            std::cout << "Backward Reshape" << std::endl;
             backward_reshape(grad_output);
             break;
         case OperationType::Sum:
+            std::cout << "Backward Sum" << std::endl;
             backward_sum(grad_output);
             break;
         case OperationType::Div:
+            std::cout << "Backward Div" << std::endl;
             backward_div(grad_output);
             break;
         }
@@ -675,6 +683,15 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
         parent_grad.data_ = grad_output.get_data();
         return;
     }
+
+    std::cout << "Parent shape: [";
+    for (size_t i = 0; i < parent_shape.size(); ++i) {
+        std::cout << parent_shape[i];
+        if (i < parent_shape.size() - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "]" << std::endl;
 
     // Initialize parent_grad with zeros and the correct shape
     parent_grad = Tensor(parent_shape);

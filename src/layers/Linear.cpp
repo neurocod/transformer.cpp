@@ -8,10 +8,9 @@
 Linear::Linear(int input_dim, int output_dim)
     : input_dim_(input_dim), output_dim_(output_dim)
 {
-
     // Weights shape: (input_dim, output_dim)
     weights_ = Tensor({input_dim, output_dim}, true);
-    // Biases shape: (1, output_dim) - assuming broadcasting will handle batch dimension
+    // Biases shape: (1, output_dim)
     biases_ = Tensor({1, output_dim_}, true);
 
     // Initialize weights and biases with random values
@@ -42,18 +41,13 @@ Tensor Linear::forward(const Tensor &input)
     // Weights shape is (input_dim, output_dim)
     // output = input * weights + biases
 
-    // Check input shape compatibility
     if (input.get_shape().empty() || input.get_shape().back() != input_dim_)
     {
         throw std::runtime_error("Input tensor's last dimension is incompatible with Linear layer input dimension.");
     }
 
-    // Transpose weights from (output_dim, input_dim) to (input_dim, output_dim)
-    std::vector<int> weights_permutation = {1, 0};
-    Tensor transposed_weights = weights_.transpose(weights_permutation);
-
-    Tensor output = input.dot(transposed_weights);
-    output = output + biases_;
+    Tensor product = input.dot(weights_);
+    Tensor output = product + biases_;
 
     return output;
 }

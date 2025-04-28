@@ -65,7 +65,6 @@ public:
     // Gradient handling (simplified for now)
     void zero_grad();
     void backward(const Tensor &grad_output); // Placeholder
-    // Stores pointers to the input tensors (parents) of the operation that created this tensor.
 
     // Helper to calculate total number of elements from shape
     size_t num_elements() const
@@ -74,6 +73,9 @@ public:
             return 0;
         return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
     }
+
+    // Getter of parents
+    const std::vector<Tensor *> &get_parents() const { return parents_; }
 
 private:
     static std::vector<Tensor *> optimizable_tensors_;

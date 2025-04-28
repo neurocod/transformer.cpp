@@ -22,7 +22,7 @@ public:
     // Zeros the gradients of all parameters managed by this optimizer
     void zero_grad()
     {
-        for (auto param : parameters_)
+        for (Tensor *param : parameters_)
         {
             if (param)
             {
