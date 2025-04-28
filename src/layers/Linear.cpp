@@ -53,8 +53,6 @@ Tensor Linear::forward(const Tensor &input)
     Tensor transposed_weights = weights_.transpose(weights_permutation);
 
     Tensor output = input.dot(transposed_weights);
-
-    // TODO: Change the + operation to use broadcasting
     output = output + biases_;
 
     return output;
