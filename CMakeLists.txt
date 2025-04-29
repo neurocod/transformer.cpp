@@ -15,6 +15,8 @@ add_executable(neural_network
     src/layers/PositionwiseFeedForward.cpp
     src/layers/MultiHeadAttention.cpp
     src/layers/Dropout.cpp
+    src/models/DecoderLayer.cpp
+    src/models/EncoderLayer.cpp
 )
 
 add_executable(test_tensor
