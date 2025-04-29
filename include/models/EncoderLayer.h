@@ -21,7 +21,7 @@ public:
     EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim, float dropout_rate = 0.1f);
 
     // Forward pass
-    std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor>& input, bool is_training);
+    std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor>& input, std::shared_ptr<Tensor> &padding_mask, bool is_training);
 
     // Destructor
     ~EncoderLayer() = default;

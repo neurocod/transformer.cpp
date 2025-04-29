@@ -12,11 +12,13 @@ EncoderLayer::EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim, floa
 {
 }
 
-std::shared_ptr<Tensor> EncoderLayer::forward(std::shared_ptr<Tensor>& input, bool is_training)
+std::shared_ptr<Tensor> EncoderLayer::forward(std::shared_ptr<Tensor> &input,
+                                              std::shared_ptr<Tensor> &padding_mask,
+                                              bool is_training)
 {
     // Input shape: (batch_size, sequence_length, embed_dim)
 
-    std::shared_ptr<Tensor> attention_output = self_attention_.forward(input, input, input);
+    std::shared_ptr<Tensor> attention_output = self_attention_.forward(input, input, input, padding_mask);
 
     std::shared_ptr<Tensor> attention_output_dropped = dropout1_.forward(attention_output, is_training);
 
