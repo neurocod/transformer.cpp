@@ -22,7 +22,8 @@ enum class OperationType
     Sigmoid,
     Tanh,
     LogSoftmax,
-    NegativeLogLikelihood
+    NegativeLogLikelihood,
+    LayerNorm
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor>
@@ -37,6 +38,19 @@ public:
 
     // Destructor
     ~Tensor();
+
+    // Intermediate values for different functions
+    // Backward permutation
+    std::vector<int> forward_permutation_;
+    // Backward reshape
+    std::vector<int> original_shape_before_reshape_;
+    // Layernorm
+    std::shared_ptr<Tensor> layernorm_gamma_;
+    std::shared_ptr<Tensor> layernorm_beta_;
+    std::shared_ptr<Tensor> layernorm_mean_;
+    std::shared_ptr<Tensor> layernorm_inv_stddev_;
+    std::shared_ptr<Tensor> layernorm_centered_input_;
+    float layernorm_epsilon_;
 
     // Getters for shape, data, and gradient
     const std::vector<int> &get_shape() const { return shape_; };
@@ -94,8 +108,6 @@ private:
     bool is_optimizable_ = false;
 
     OperationType creator_op_ = OperationType::None;
-    std::vector<int> forward_permutation_;
-    std::vector<int> original_shape_before_reshape_;
 
     size_t get_linear_index(const std::vector<int> &indices) const;
     std::vector<size_t> calculate_strides(const std::vector<int> &shape) const;
@@ -123,6 +135,7 @@ private:
     void backward_tanh(const std::shared_ptr<Tensor> &grad_output);
     void backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output);
     void backward_nllloss(const std::shared_ptr<Tensor> &grad_output);
+    void backward_layernorm(const std::shared_ptr<Tensor> &grad_output);
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H
