@@ -11,6 +11,7 @@ add_executable(neural_network
     src/utils/Tensor.cpp
     src/layers/Linear.cpp
     src/layers/Activations.cpp
+    src/utils/Optimizer.cpp
 )
 
 # Define the source files for the test executable
