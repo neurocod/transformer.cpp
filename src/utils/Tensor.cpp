@@ -1649,3 +1649,39 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output)
         std::cerr << "Error: Softmax operation expected 1 parent, but found " << parents_.size() << std::endl;
     }
 }
+
+void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(this->get_shape());
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_intermediate_data = const_cast<std::vector<float>&>(grad_input_intermediate->get_data());
+
+        // Retrieve the mask and scale factor stored during the forward pass
+        std::shared_ptr<Tensor> mask = this->dropout_mask_;
+        float scale = this->dropout_scale_;
+
+        if (!mask || mask->get_shape() != this->get_shape()) {
+             throw std::runtime_error("Dropout mask is missing or shape mismatch in backward.");
+        }
+
+        const std::vector<float>& mask_data = mask->get_data();
+
+        // The gradient is passed through only for the elements that were kept in the forward pass.
+        for (size_t i = 0; i < grad_output_data.size(); ++i) {
+            grad_input_intermediate_data[i] = grad_output_data[i] * mask_data[i] * scale;
+        }
+
+        // Propagate gradient to the parent
+        std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+        reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
+        parent->backward(grad_input_propagated);
+
+    }
+    else
+    {
+        std::cerr << "Error: Dropout operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}

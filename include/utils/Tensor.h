@@ -24,7 +24,8 @@ enum class OperationType
     LogSoftmax,
     NegativeLogLikelihood,
     LayerNorm,
-    Softmax
+    Softmax,
+    Dropout
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor>
@@ -52,7 +53,10 @@ public:
     std::shared_ptr<Tensor> layernorm_inv_stddev_;
     std::shared_ptr<Tensor> layernorm_centered_input_;
     float layernorm_epsilon_;
-    // Softmax
+    // Dropout
+    std::shared_ptr<Tensor> dropout_mask_;
+    float dropout_scale_;
+
 
     // Getters for shape, data, and gradient
     const std::vector<int> &get_shape() const { return shape_; };
@@ -141,6 +145,7 @@ private:
     void backward_nllloss(const std::shared_ptr<Tensor> &grad_output);
     void backward_layernorm(const std::shared_ptr<Tensor> &grad_output);
     void backward_softmax(const std::shared_ptr<Tensor> &grad_output);
+    void backward_dropout(const std::shared_ptr<Tensor> &grad_output);
 
 };
 
