@@ -23,7 +23,8 @@ enum class OperationType
     Tanh,
     LogSoftmax,
     NegativeLogLikelihood,
-    LayerNorm
+    LayerNorm,
+    Softmax
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor>
@@ -51,6 +52,7 @@ public:
     std::shared_ptr<Tensor> layernorm_inv_stddev_;
     std::shared_ptr<Tensor> layernorm_centered_input_;
     float layernorm_epsilon_;
+    // Softmax
 
     // Getters for shape, data, and gradient
     const std::vector<int> &get_shape() const { return shape_; };
@@ -84,6 +86,8 @@ public:
 
     std::shared_ptr<Tensor> transpose(const std::vector<int> &permutation) const;
     std::shared_ptr<Tensor> reshape(const std::vector<int> &new_shape) const;
+
+    std::shared_ptr<Tensor> softmax(int dim = -1) const;
 
     // Gradient handling
     void zero_grad();
@@ -136,6 +140,8 @@ private:
     void backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output);
     void backward_nllloss(const std::shared_ptr<Tensor> &grad_output);
     void backward_layernorm(const std::shared_ptr<Tensor> &grad_output);
+    void backward_softmax(const std::shared_ptr<Tensor> &grad_output);
+
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H

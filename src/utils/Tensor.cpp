@@ -641,6 +641,69 @@ std::shared_ptr<Tensor> Tensor::sum() const
     return result;
 }
 
+std::shared_ptr<Tensor> Tensor::softmax(int dim) const
+{
+    int actual_dim = (dim == -1) ? shape_.size() - 1 : dim;
+
+    if (actual_dim < 0 || actual_dim >= static_cast<int>(shape_.size()))
+    {
+        throw std::runtime_error("Softmax dimension out of bounds.");
+    }
+
+    std::shared_ptr<Tensor> output = Tensor::create(shape_);
+    const std::vector<float> &input_data = *data_;
+    std::vector<float> &output_data = const_cast<std::vector<float> &>(output->get_data());
+
+    size_t num_elements = shared_from_this()->num_elements();
+    if (num_elements == 0)
+        return output;
+
+    size_t outer_size = 1;
+    for (int i = 0; i < actual_dim; ++i)
+    {
+        outer_size *= shape_[i];
+    }
+    size_t inner_size = 1;
+    for (size_t i = actual_dim + 1; i < shape_.size(); ++i)
+    {
+        inner_size *= shape_[i];
+    }
+    size_t dim_size = shape_[actual_dim];
+
+    for (size_t i = 0; i < outer_size; ++i)
+    {
+        for (size_t k = 0; k < inner_size; ++k)
+        {
+            size_t start_idx = i * dim_size * inner_size + k;
+
+            // Find maximum for numerical stability
+            float max_val = -std::numeric_limits<float>::infinity();
+            for (size_t j = 0; j < dim_size; ++j)
+            {
+                max_val = std::max(max_val, input_data[start_idx + j * inner_size]);
+            }
+
+            // Compute exponentials and sum_exp
+            float sum_exp = 0.0f;
+            for (size_t j = 0; j < dim_size; ++j)
+            {
+                sum_exp += std::exp(input_data[start_idx + j * inner_size] - max_val);
+            }
+
+            // Compute softmax
+            for (size_t j = 0; j < dim_size; ++j)
+            {
+                output_data[start_idx + j * inner_size] = std::exp(input_data[start_idx + j * inner_size] - max_val) / sum_exp;
+            }
+        }
+    }
+
+    output->creator_op_ = OperationType::Softmax;
+    output->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+
+    return output;
+}
+
 // Gradient handling
 void Tensor::zero_grad()
 {
@@ -715,6 +778,9 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
             break;
         case OperationType::LayerNorm:
             backward_layernorm(grad_output);
+            break;
+        case OperationType::Softmax:
+            backward_softmax(grad_output);
             break;
         }
     }
@@ -1511,5 +1577,75 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output)
     else
     {
         std::cerr << "Error: LayerNorm operation expected 1 input parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(this->get_shape());
+        const std::vector<float> &output_data = this->get_data(); // Output of softmax
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        std::vector<float> &grad_input_intermediate_data = const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
+
+        const std::vector<int> &shape = this->get_shape();
+        int dim = -1; // Need to figure out the dimension softmax was applied on. Assuming last dimension for now.
+        if (!shape.empty())
+        {
+            dim = shape.size() - 1;
+        }
+        else
+        {
+            // Handle scalar or empty tensor case if necessary.
+            std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+            reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
+            parent->backward(grad_input_propagated);
+            return;
+        }
+
+        size_t outer_size = 1;
+        for (int i = 0; i < dim; ++i)
+        {
+            outer_size *= shape[i];
+        }
+        size_t inner_size = 1;
+        for (size_t i = dim + 1; i < shape.size(); ++i)
+        {
+            inner_size *= shape[i];
+        }
+        size_t dim_size = shape[dim];
+
+        for (size_t i = 0; i < outer_size; ++i)
+        {
+            for (size_t k = 0; k < inner_size; ++k)
+            {
+                size_t start_idx = i * dim_size * inner_size + k;
+
+                // Compute the Jacobian product for this slice along the softmax dimension
+                for (size_t j = 0; j < dim_size; ++j)
+                {
+                    size_t current_idx = start_idx + j * inner_size;
+                    float grad_out_val = grad_output_data[current_idx];
+                    float softmax_out_val = output_data[current_idx];
+
+                    float sum_term = 0.0f;
+                    for (size_t l = 0; l < dim_size; ++l)
+                    {
+                        sum_term += grad_output_data[start_idx + l * inner_size] * output_data[start_idx + l * inner_size];
+                    }
+                    grad_input_intermediate_data[current_idx] = softmax_out_val * (grad_out_val - sum_term);
+                }
+            }
+        }
+
+        std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+        reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
+        parent->backward(grad_input_propagated);
+    }
+    else
+    {
+        std::cerr << "Error: Softmax operation expected 1 parent, but found " << parents_.size() << std::endl;
     }
 }

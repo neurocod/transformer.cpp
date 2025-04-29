@@ -14,6 +14,8 @@ add_executable(neural_network
     src/utils/Optimizer.cpp
     src/utils/LossFunction.cpp
     src/layers/LayerNorm.cpp
+    src/layers/PositionwiseFeedForward.cpp
+    src/layers/MultiHeadAttention.cpp
 )
 
 # Define the source files for the test executable
@@ -22,6 +24,3 @@ add_executable(test_tensor
     src/utils/Tensor.cpp
     src/layers/Linear.cpp
 )
-
-# If you later add a test framework like GoogleTest, you can link it like this:
-# target_link_libraries(test_tensor gtest pthread)
