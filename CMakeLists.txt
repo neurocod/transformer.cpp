@@ -12,6 +12,7 @@ add_executable(neural_network
     src/layers/Linear.cpp
     src/layers/Activations.cpp
     src/utils/Optimizer.cpp
+    src/utils/LossFunction.cpp
 )
 
 # Define the source files for the test executable

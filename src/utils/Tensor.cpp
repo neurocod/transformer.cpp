@@ -707,6 +707,12 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
         case OperationType::Tanh:
             backward_tanh(grad_output);
             break;
+        case OperationType::LogSoftmax:
+            backward_logsoftmax(grad_output);
+            break;
+        case OperationType::NegativeLogLikelihood:
+            backward_nllloss(grad_output);
+            break;
         }
     }
 }
@@ -1179,9 +1185,9 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
         std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-        const std::vector<float>& parent_data = parent->get_data();
-        const std::vector<float>& grad_output_data = grad_output->get_data();
-        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+        const std::vector<float> &parent_data = parent->get_data();
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
         for (size_t i = 0; i < parent_data.size(); ++i)
         {
@@ -1204,13 +1210,13 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output)
 
 void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output)
 {
-     if (parents_.size() == 1)
+    if (parents_.size() == 1)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
         std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-        const std::vector<float>& parent_data = parent->get_data();
-        const std::vector<float>& grad_output_data = grad_output->get_data();
-        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+        const std::vector<float> &parent_data = parent->get_data();
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
         // Gradient of GELU approximation:
         // 0.5 * (1 + tanh(sqrt(2/PI) * (x + 0.044715 * x^3))) + 0.5 * x * sech^2(sqrt(2/PI) * (x + 0.044715 * x^3)) * sqrt(2/PI) * (1 + 3 * 0.044715 * x^2)
@@ -1241,9 +1247,9 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
         std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-        const std::vector<float>& parent_data = parent->get_data();
-        const std::vector<float>& grad_output_data = grad_output->get_data();
-        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+        const std::vector<float> &parent_data = parent->get_data();
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
         // Gradient of sigmoid: sigmoid(x) * (1 - sigmoid(x))
         for (size_t i = 0; i < parent_data.size(); ++i)
@@ -1265,9 +1271,9 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
         std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-        const std::vector<float>& parent_data = parent->get_data();
-        const std::vector<float>& grad_output_data = grad_output->get_data();
-        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+        const std::vector<float> &parent_data = parent->get_data();
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
         // Gradient of tanh: 1 - tanh^2(x)
         for (size_t i = 0; i < parent_data.size(); ++i)
@@ -1280,5 +1286,116 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output)
     else
     {
         std::cerr << "Error: Tanh operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(this->get_shape());
+        const std::vector<float>& output_data = this->get_data();
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_intermediate_data = const_cast<std::vector<float>&>(grad_input_intermediate->get_data());
+
+        const std::vector<int>& shape = this->get_shape();
+        size_t last_dim_size = shape.empty() ? 0 : shape.back();
+        size_t num_elements = this->num_elements();
+
+        if (last_dim_size == 0 || num_elements == 0) {
+             std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+             reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
+             parent->backward(grad_input_propagated);
+            return;
+        }
+
+        size_t outer_dims_elements = num_elements / last_dim_size;
+
+        for (size_t i = 0; i < outer_dims_elements; ++i) {
+            size_t start_idx = i * last_dim_size;
+            float sum_of_grads = 0.0f;
+
+            // Calculate sum of gradients for this instance
+            for (size_t j = 0; j < last_dim_size; ++j) {
+                sum_of_grads += grad_output_data[start_idx + j];
+            }
+
+            // Calculate gradient for each element in the original input
+            for (size_t j = 0; j < last_dim_size; ++j) {
+                 grad_input_intermediate_data[start_idx + j] = grad_output_data[start_idx + j] - std::exp(output_data[start_idx + j]) * sum_of_grads;
+            }
+        }
+        std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+        reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
+        parent->backward(grad_input_propagated);
+
+    }
+    else
+    {
+        std::cerr << "Error: LogSoftmax operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output)
+{
+     if (parents_.size() == 2)
+    {
+        std::shared_ptr<Tensor> log_probs = parents_[0]; // Input to NLLLoss (log probabilities)
+        std::shared_ptr<Tensor> targets = parents_[1]; // Targets (used for indexing in forward, not for gradient)
+
+        std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(log_probs->get_shape());
+        const std::vector<float>& target_data = parents_[1]->get_data();
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_intermediate_data = const_cast<std::vector<float>&>(grad_input_intermediate->get_data());
+
+        if (grad_output->num_elements() != 1) {
+             throw std::runtime_error("Gradient for NLLLoss must be a scalar.");
+        }
+        float loss_grad_value = grad_output_data[0];
+
+        const std::vector<int>& log_prob_shape = log_probs->get_shape();
+        size_t last_dim_size = log_prob_shape.empty() ? 0 : log_prob_shape.back();
+        size_t num_elements = log_probs->num_elements();
+
+        if (last_dim_size == 0 || num_elements == 0) {
+             std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+             reduce_gradient(grad_input_intermediate, grad_input_propagated, log_probs->get_shape());
+             log_probs->backward(grad_input_propagated);
+            return;
+        }
+
+        size_t outer_dims_elements = num_elements / last_dim_size;
+
+        if (target_data.size() != outer_dims_elements) {
+             throw std::runtime_error("Target data size mismatch with log probabilities outer dimensions in NLLLoss backward.");
+        }
+
+
+        for (size_t i = 0; i < outer_dims_elements; ++i) {
+             size_t log_prob_start_idx = i * last_dim_size;
+             int target_class = static_cast<int>(target_data[i]);
+
+             if (target_class < 0 || target_class >= static_cast<int>(last_dim_size)) {
+                  throw std::runtime_error("Target class index out of bounds in NLLLoss backward.");
+             }
+
+             // The gradient is -1 at the target class index and 0 otherwise, scaled by the loss gradient and divided by the number of instances (for the mean loss)
+             for (size_t j = 0; j < last_dim_size; ++j) {
+                 if (static_cast<int>(j) == target_class) {
+                     grad_input_intermediate_data[log_prob_start_idx + j] = -loss_grad_value / outer_dims_elements;
+                 } else {
+                     grad_input_intermediate_data[log_prob_start_idx + j] = 0.0f;
+                 }
+             }
+        }
+        std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+        reduce_gradient(grad_input_intermediate, grad_input_propagated, log_probs->get_shape());
+        log_probs->backward(grad_input_propagated);
+
+    }
+    else
+    {
+        std::cerr << "Error: NegativeLogLikelihood operation expected 2 parents, but found " << parents_.size() << std::endl;
     }
 }

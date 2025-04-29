@@ -65,7 +65,7 @@ int main()
 
     SimpleModel model(input_dim, output_dim);
 
-    MeanSquaredErrorLoss criterion;
+    CrossEntropyLoss criterion;
 
     float learning_rate = 0.01f;
     SGD optimizer(learning_rate);
@@ -75,7 +75,7 @@ int main()
 
     // Example input and target data
     std::shared_ptr<Tensor> input_data = Tensor::create(std::vector<int>{1, input_dim}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f, 5.0f}));
-    std::shared_ptr<Tensor> target_data = Tensor::create(std::vector<int>{1, output_dim}, std::make_shared<std::vector<float>>(std::vector<float>{0.0f, 1.0f}));
+    std::shared_ptr<Tensor> target_data = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f}));
 
     for (int epoch = 0; epoch < num_epochs; ++epoch)
     {

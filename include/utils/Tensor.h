@@ -20,7 +20,9 @@ enum class OperationType
     ReLU,
     GELU,
     Sigmoid,
-    Tanh
+    Tanh,
+    LogSoftmax,
+    NegativeLogLikelihood
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor>
@@ -119,6 +121,8 @@ private:
     void backward_gelu(const std::shared_ptr<Tensor> &grad_output);
     void backward_sigmoid(const std::shared_ptr<Tensor> &grad_output);
     void backward_tanh(const std::shared_ptr<Tensor> &grad_output);
+    void backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output);
+    void backward_nllloss(const std::shared_ptr<Tensor> &grad_output);
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H
