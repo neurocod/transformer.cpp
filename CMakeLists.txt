@@ -19,6 +19,7 @@ add_executable(neural_network
     src/models/EncoderLayer.cpp
     src/layers/Embedding.cpp
     src/layers/PositionalEncoding.cpp
+    src/utils/Masking.cpp
 )
 
 add_executable(test_tensor
