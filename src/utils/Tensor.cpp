@@ -4,83 +4,106 @@
 #include <iostream>
 #include <numeric>
 #include <algorithm>
+#include <memory>
 
-std::vector<Tensor *> Tensor::optimizable_tensors_;
+std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
 // Default constructor
-Tensor::Tensor() : shape_{{}}, data_{{}}, grad_{{}}, creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
+Tensor::Tensor() : shape_{{}}, data_(std::make_shared<std::vector<float>>()), grad_(std::make_shared<std::vector<float>>()), creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
 
 // Constructor with shape
-Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable) : shape_{shape}, creator_op_(OperationType::None), parents_{}
+Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable) : shape_{shape}, creator_op_(OperationType::None), parents_{}, is_optimizable_{is_optimizable}
 {
     size_t total_elements = num_elements();
-    data_.resize(total_elements, 0.0f);
-    grad_.resize(total_elements, 0.0f);
-    if (is_optimizable_)
-    {
-        optimizable_tensors_.push_back(this);
-    }
+    data_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+    grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
 // Constructor with shape and data
-Tensor::Tensor(const std::vector<int> &shape, const std::vector<float> &data, bool is_optimizable) : shape_{shape}, data_{data}, creator_op_(OperationType::None), parents_{}
+Tensor::Tensor(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data, bool is_optimizable) : shape_{shape}, creator_op_(OperationType::None), parents_{}, is_optimizable_{is_optimizable}
 {
     size_t total_elements = num_elements();
-    if (data_.size() != total_elements)
+    if (data->size() != total_elements)
     {
         throw std::runtime_error("Data size does not match the specified shape in constructor.");
     }
-    grad_.resize(total_elements, 0.0f);
-    if (is_optimizable_)
-    {
-        optimizable_tensors_.push_back(this);
-    }
+    data_ = data;
+    grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
 // Destructor
 Tensor::~Tensor()
 {
-    if (is_optimizable_)
+    // With shared_ptr, removal from optimizable_tensors_ needs to be done carefully,
+    // perhaps when a tensor is explicitly 'freed' or a weak_ptr mechanism is used.
+    // For now, we'll leave this simplified or remove it if shared_ptr lifecycle is sufficient.
+    // If a factory is used, cleanup logic might go there.
+}
+
+// Default factory
+std::shared_ptr<Tensor> Tensor::create()
+{
+    return std::make_shared<Tensor>();
+}
+
+// Factory method with shape
+std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape, bool is_optimizable)
+{
+    std::shared_ptr<Tensor> tensor = std::make_shared<Tensor>(shape, is_optimizable);
+    if (is_optimizable)
     {
-        optimizable_tensors_.erase(
-            std::remove(optimizable_tensors_.begin(), optimizable_tensors_.end(), this),
-            optimizable_tensors_.end());
+        optimizable_tensors_.push_back(tensor);
     }
+    return tensor;
 }
 
-// Getters
-const std::vector<int> &Tensor::get_shape() const
+// Factory method with shape and data
+std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data, bool is_optimizable)
 {
-    return shape_;
-}
-
-const std::vector<float> &Tensor::get_data() const
-{
-    return data_;
-}
-
-const std::vector<float> &Tensor::get_grad() const
-{
-    return grad_;
-}
-
-std::vector<Tensor *> &Tensor::get_optimizable_tensors()
-{
-    return optimizable_tensors_;
+    std::shared_ptr<Tensor> tensor = std::make_shared<Tensor>(shape, data, is_optimizable);
+    if (is_optimizable)
+    {
+        optimizable_tensors_.push_back(tensor);
+    }
+    return tensor;
 }
 
 // Setter for data
-void Tensor::set_data(const std::vector<float> &data)
+void Tensor::set_data(const std::shared_ptr<std::vector<float>> &data)
 {
-    if (data.size() != num_elements())
+    size_t total_elements = num_elements();
+    if (data->size() != total_elements)
     {
         throw std::runtime_error("Data size mismatch in set_data.");
     }
     data_ = data;
-    grad_.assign(num_elements(), 0.0f);
+    grad_->assign(total_elements, 0.0f);
     // When data is explicitly set, this tensor is a leaf node, not derived from an operation.
     creator_op_ = OperationType::None;
     parents_.clear();
+}
+
+// Get element by multi-dimensional index
+float Tensor::get(const std::vector<int> &indices) const
+{
+    if (!data_)
+        throw std::runtime_error("Accessing data on a null shared_ptr.");
+    return (*data_)[get_linear_index(indices)];
+}
+
+// Set element by multi-dimensional index
+void Tensor::set(const std::vector<int> &indices, float value)
+{
+    if (!data_)
+        throw std::runtime_error("Accessing data on a null shared_ptr.");
+    (*data_)[get_linear_index(indices)] = value;
+}
+
+size_t Tensor::num_elements() const
+{
+    if (shape_.empty())
+        return 0;
+    return std::accumulate(shape_.begin(), shape_.end(), 1, std::multiplies<size_t>());
 }
 
 // Helper to calculate the linear index from multi-dimensional indices
@@ -104,19 +127,19 @@ size_t Tensor::get_linear_index(const std::vector<int> &indices) const
     return linear_index;
 }
 
-// Get element by multi-dimensional index
-float Tensor::get(const std::vector<int> &indices) const
+std::vector<size_t> Tensor::calculate_strides(const std::vector<int> &shape) const
 {
-    return data_[get_linear_index(indices)];
+    std::vector<size_t> strides(shape.size());
+    if (!shape.empty())
+    {
+        strides.back() = 1;
+        for (int i = shape.size() - 2; i >= 0; --i)
+        {
+            strides[i] = strides[i + 1] * shape[i + 1];
+        }
+    }
+    return strides;
 }
-
-// Set element by multi-dimensional index
-void Tensor::set(const std::vector<int> &indices, float value)
-{
-    data_[get_linear_index(indices)] = value;
-}
-
-// Basic tensor operations
 
 bool Tensor::is_broadcastable(const std::vector<int> &shape1, const std::vector<int> &shape2)
 {
@@ -160,19 +183,19 @@ std::vector<int> Tensor::calculate_broadcast_shape(const std::vector<int> &shape
     return result_shape;
 }
 
-Tensor Tensor::broadcast_to(const std::vector<int> &new_shape) const
+std::shared_ptr<Tensor> Tensor::broadcast_to(const std::vector<int> &new_shape) const
 {
     if (!is_broadcastable(shape_, new_shape))
     {
         throw std::runtime_error("Cannot broadcast to target shape");
     }
 
-    Tensor result(new_shape);
+    std::shared_ptr<Tensor> result = Tensor::create(new_shape);
     std::vector<int> input_idx(shape_.size());
     std::vector<int> output_idx(new_shape.size());
 
     // Iterate through all elements in the result tensor
-    size_t total_elements = result.num_elements();
+    size_t total_elements = result->num_elements();
     for (size_t i = 0; i < total_elements; ++i)
     {
         // Calculate output indices
@@ -190,119 +213,121 @@ Tensor Tensor::broadcast_to(const std::vector<int> &new_shape) const
             input_idx[d] = shape_[d] == 1 ? 0 : output_idx[d + offset];
         }
 
-        result.set(output_idx, get(input_idx));
+        result->set(output_idx, get(input_idx));
     }
 
     return result;
 }
 
-Tensor Tensor::operator+(const Tensor &other) const
+// Basic tensor operations
+std::shared_ptr<Tensor> Tensor::operator+(const std::shared_ptr<Tensor> &other) const
 {
     // Broadcasting logic for forward pass
-    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
-    Tensor broadcasted_a = broadcast_to(result_shape);
-    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other->shape_);
+    std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
+    std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
-    Tensor result(result_shape);
+    std::shared_ptr<Tensor> result = Tensor::create(result_shape);
     // Record operation and parents for backward pass
-    result.creator_op_ = OperationType::Add;
-    result.parents_.push_back(const_cast<Tensor *>(this));
-    result.parents_.push_back(const_cast<Tensor *>(&other));
+    result->creator_op_ = OperationType::Add;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+    result->parents_.push_back(other);
 
-    for (size_t i = 0; i < result.data_.size(); ++i)
+    for (size_t i = 0; i < result->data_->size(); ++i)
     {
-        result.data_[i] = broadcasted_a.data_[i] + broadcasted_b.data_[i];
+        (*result->data_)[i] = (*broadcasted_a->data_)[i] + (*broadcasted_b->data_)[i];
     }
     return result;
 }
 
-Tensor Tensor::operator-(const Tensor &other) const
+std::shared_ptr<Tensor> Tensor::operator-(const std::shared_ptr<Tensor> &other) const
 {
-    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
-    Tensor broadcasted_a = broadcast_to(result_shape);
-    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other->shape_);
+    std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
+    std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
-    Tensor result(result_shape);
-    result.creator_op_ = OperationType::Sub;
-    result.parents_.push_back(const_cast<Tensor *>(this));
-    result.parents_.push_back(const_cast<Tensor *>(&other));
+    std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+    result->creator_op_ = OperationType::Sub;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+    result->parents_.push_back(other);
 
-    for (size_t i = 0; i < result.data_.size(); ++i)
+    for (size_t i = 0; i < result->data_->size(); ++i)
     {
-        result.data_[i] = broadcasted_a.data_[i] - broadcasted_b.data_[i];
+        (*result->data_)[i] = (*broadcasted_a->data_)[i] - (*broadcasted_b->data_)[i];
     }
     return result;
 }
 
-Tensor Tensor::operator*(const Tensor &other) const
+std::shared_ptr<Tensor> Tensor::operator*(const std::shared_ptr<Tensor> &other) const
 {
-    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
-    Tensor broadcasted_a = broadcast_to(result_shape);
-    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other->shape_);
+    std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
+    std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
-    Tensor result(result_shape);
-    result.creator_op_ = OperationType::Mul;
-    result.parents_.push_back(const_cast<Tensor *>(this));
-    result.parents_.push_back(const_cast<Tensor *>(&other));
+    std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+    result->creator_op_ = OperationType::Mul;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+    result->parents_.push_back(other);
 
-    for (size_t i = 0; i < result.data_.size(); ++i)
+    for (size_t i = 0; i < result->data_->size(); ++i)
     {
-        result.data_[i] = broadcasted_a.data_[i] * broadcasted_b.data_[i];
+        (*result->data_)[i] = (*broadcasted_a->data_)[i] * (*broadcasted_b->data_)[i];
     }
     return result;
 }
 
-Tensor Tensor::operator/(const Tensor &other) const
+std::shared_ptr<Tensor> Tensor::operator/(const std::shared_ptr<Tensor> &other) const
 {
-    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other.shape_);
-    Tensor broadcasted_a = broadcast_to(result_shape);
-    Tensor broadcasted_b = other.broadcast_to(result_shape);
+    std::vector<int> result_shape = calculate_broadcast_shape(shape_, other->shape_);
+    std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
+    std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
-    Tensor result(result_shape);
-    result.creator_op_ = OperationType::Div;
-    result.parents_.push_back(const_cast<Tensor *>(this));   // numerator
-    result.parents_.push_back(const_cast<Tensor *>(&other)); // denominator
+    std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+    result->creator_op_ = OperationType::Div;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this())); // numerator
+    result->parents_.push_back(other);                                               // denominator
 
-    for (size_t i = 0; i < result.data_.size(); ++i)
+    for (size_t i = 0; i < result->data_->size(); ++i)
     {
-        if (broadcasted_b.data_[i] == 0.0f)
+        if ((*broadcasted_b->data_)[i] == 0.0f)
         {
             throw std::runtime_error("Division by zero encountered in Tensor division.");
         }
-        result.data_[i] = broadcasted_a.data_[i] / broadcasted_b.data_[i];
+        (*result->data_)[i] = (*broadcasted_a->data_)[i] / (*broadcasted_b->data_)[i];
     }
     return result;
 }
 
-Tensor Tensor::dot(const Tensor &other) const
+std::shared_ptr<Tensor> Tensor::dot(const std::shared_ptr<Tensor> &other) const
 {
-    if (shape_.size() < 1 || other.shape_.size() < 1)
+    if (shape_.size() < 1 || other->shape_.size() < 1)
     {
         throw std::runtime_error("Dot product requires tensors with at least 1 dimension.");
     }
     // Vector dot product
-    if (shape_.size() == 1 && other.shape_.size() == 1)
+    if (shape_.size() == 1 && other->shape_.size() == 1)
     {
-        if (shape_[0] != other.shape_[0])
+        if (shape_[0] != other->shape_[0])
         {
             throw std::runtime_error("Vector dot product requires vectors of the same size.");
         }
         // Result is a scalar (1D tensor with size 1)
-        Tensor result({1}, {0.0f}, false);
-        result.creator_op_ = OperationType::Dot;
-        result.parents_.push_back(const_cast<Tensor *>(this));
-        result.parents_.push_back(const_cast<Tensor *>(&other));
+        std::shared_ptr<Tensor> result = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{0.0f}), false);
+        result->creator_op_ = OperationType::Dot;
+        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+        result->parents_.push_back(other);
+
         for (size_t i = 0; i < shape_[0]; ++i)
         {
-            result.data_[0] += data_[i] * other.data_[i];
+            (*result->data_)[0] += (*data_)[i] * (*other->data_)[i];
         }
         return result;
     }
     // Matrix-vector product
-    else if (shape_.size() >= 2 && other.shape_.size() == 1)
+    else if (shape_.size() >= 2 && other->shape_.size() == 1)
     {
         int cols_a = shape_.back();
-        int vec_size = other.shape_[0];
+        int vec_size = other->shape_[0];
         if (cols_a != vec_size)
         {
             throw std::runtime_error("Matrix-vector product: Inner dimensions must match (" +
@@ -310,12 +335,12 @@ Tensor Tensor::dot(const Tensor &other) const
         }
         // Result shape is the matrix shape excluding the last dimension
         std::vector<int> result_shape(shape_.begin(), shape_.end() - 1);
-        Tensor result(result_shape);
-        result.creator_op_ = OperationType::Dot;
-        result.parents_.push_back(const_cast<Tensor *>(this));
-        result.parents_.push_back(const_cast<Tensor *>(&other));
+        std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+        result->creator_op_ = OperationType::Dot;
+        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+        result->parents_.push_back(other);
 
-        size_t outer_elements = result.num_elements();
+        size_t outer_elements = result->num_elements();
         size_t matrix_stride = cols_a;
 
         for (size_t i = 0; i < outer_elements; ++i)
@@ -324,19 +349,19 @@ Tensor Tensor::dot(const Tensor &other) const
             size_t matrix_row_start_idx = i * matrix_stride;
             for (int k = 0; k < cols_a; ++k)
             {
-                sum += data_[matrix_row_start_idx + k] * other.data_[k];
+                sum += (*data_)[matrix_row_start_idx + k] * (*other->data_)[k];
             }
-            result.data_[i] = sum;
+            (*result->data_)[i] = sum;
         }
         return result;
     }
     // Matrix-matrix product (batched)
-    else if (shape_.size() >= 2 && other.shape_.size() >= 2)
+    else if (shape_.size() >= 2 && other->shape_.size() >= 2)
     {
         int rows_a = shape_[shape_.size() - 2];
         int cols_a = shape_[shape_.size() - 1];
-        int rows_b = other.shape_[other.shape_.size() - 2];
-        int cols_b = other.shape_[other.shape_.size() - 1];
+        int rows_b = other->shape_[other->shape_.size() - 2];
+        int cols_b = other->shape_[other->shape_.size() - 1];
 
         if (cols_a != rows_b)
         {
@@ -346,20 +371,20 @@ Tensor Tensor::dot(const Tensor &other) const
 
         // Batch Dimension Handling
         std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
-        std::vector<int> batch_dims_b(other.shape_.begin(), other.shape_.end() - 2);
+        std::vector<int> batch_dims_b(other->shape_.begin(), other->shape_.end() - 2);
         std::vector<int> batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
 
         std::vector<int> result_shape = batch_shape;
         result_shape.push_back(rows_a);
         result_shape.push_back(cols_b);
 
-        Tensor result(result_shape);
-        result.creator_op_ = OperationType::Dot;
-        result.parents_.push_back(const_cast<Tensor *>(this));
-        result.parents_.push_back(const_cast<Tensor *>(&other));
+        std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+        result->creator_op_ = OperationType::Dot;
+        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+        result->parents_.push_back(other);
 
         std::vector<size_t> stride_a = calculate_strides(shape_);
-        std::vector<size_t> stride_b = calculate_strides(other.shape_);
+        std::vector<size_t> stride_b = calculate_strides(other->shape_);
         std::vector<size_t> stride_result = calculate_strides(result_shape);
 
         // Batch Iteration
@@ -408,22 +433,22 @@ Tensor Tensor::dot(const Tensor &other) const
                     {
                         // Calculate linear indices within the current batch
                         size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
-                        size_t idx_b = offset_b + k * stride_b[other.shape_.size() - 2] + j * stride_b[other.shape_.size() - 1];
+                        size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] + j * stride_b[other->shape_.size() - 1];
 
                         // Bounds checking
-                        if (idx_a >= data_.size() || idx_b >= other.data_.size())
+                        if (idx_a >= data_->size() || idx_b >= other->data_->size())
                         {
                             throw std::runtime_error("Index out of bounds during dot product calculation.");
                         }
-                        sum += data_[idx_a] * other.data_[idx_b];
+                        sum += (*data_)[idx_a] * (*other->data_)[idx_b];
                     }
                     // Calculate result linear index within the current batch
                     size_t idx_result = offset_result + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
-                    if (idx_result >= result.data_.size())
+                    if (idx_result >= result->data_->size())
                     {
                         throw std::runtime_error("Result index out of bounds during dot product calculation.");
                     }
-                    result.data_[idx_result] = sum;
+                    (*result->data_)[idx_result] = sum;
                 }
             }
         }
@@ -435,7 +460,7 @@ Tensor Tensor::dot(const Tensor &other) const
     }
 }
 
-Tensor Tensor::transpose(const std::vector<int> &permutation) const
+std::shared_ptr<Tensor> Tensor::transpose(const std::vector<int> &permutation) const
 {
     if (permutation.size() != shape_.size())
     {
@@ -477,10 +502,10 @@ Tensor Tensor::transpose(const std::vector<int> &permutation) const
         new_shape[i] = shape_[permutation[i]];
     }
 
-    Tensor result(new_shape);
-    result.creator_op_ = OperationType::Transpose;
-    result.parents_.push_back(const_cast<Tensor *>(this));
-    result.forward_permutation_ = permutation;
+    std::shared_ptr<Tensor> result = Tensor::create(new_shape);
+    result->creator_op_ = OperationType::Transpose;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+    result->forward_permutation_ = permutation;
 
     // Efficient Transposition
     if (num_elements() == 0)
@@ -518,17 +543,17 @@ Tensor Tensor::transpose(const std::vector<int> &permutation) const
         }
 
         // Bounds checks
-        if (i >= data_.size() || new_linear_idx >= result.data_.size())
+        if (i >= data_->size() || new_linear_idx >= result->data_->size())
         {
             throw std::runtime_error("Index out of bounds during transpose calculation.");
         }
-        result.data_[new_linear_idx] = data_[i];
+        (*result->data_)[new_linear_idx] = (*data_)[i];
     }
 
     return result;
 }
 
-Tensor Tensor::reshape(const std::vector<int> &new_shape) const
+std::shared_ptr<Tensor> Tensor::reshape(const std::vector<int> &new_shape) const
 {
     size_t current_elements = num_elements();
     size_t new_num_elements = 1;
@@ -587,26 +612,36 @@ Tensor Tensor::reshape(const std::vector<int> &new_shape) const
                                  new_shape_str + " (" + std::to_string(new_num_elements) + " elements).");
     }
 
-    Tensor result(actual_new_shape, data_);
-    result.creator_op_ = OperationType::Reshape;
-    result.parents_.push_back(const_cast<Tensor *>(this));
-    result.original_shape_before_reshape_ = this->shape_;
+    // For reshape, share the underlying data_ with the original tensor
+    std::shared_ptr<Tensor> result = Tensor::create(actual_new_shape);
+    result->data_ = shared_from_this()->data_;
+    result->grad_ = std::make_shared<std::vector<float>>(new_num_elements, 0.0f);
+
+    result->creator_op_ = OperationType::Reshape;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+    result->original_shape_before_reshape_ = shared_from_this()->shape_;
 
     return result;
 }
 
-Tensor Tensor::sum() const
+std::shared_ptr<Tensor> Tensor::sum() const
 {
-    Tensor result({1});
-    result.creator_op_ = OperationType::Sum;
-    result.parents_.push_back(const_cast<Tensor *>(this));
+    std::shared_ptr<Tensor> result = Tensor::create(std::vector<int>{1});
+    result->creator_op_ = OperationType::Sum;
+    result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
 
     float total_sum = 0.0f;
-    for (float val : data_)
+    if (data_)
     {
-        total_sum += val;
+        for (float val : *data_)
+        {
+            total_sum += val;
+        }
     }
-    result.data_[0] = total_sum;
+    if (result->data_)
+    {
+        (*result->data_)[0] = total_sum;
+    }
 
     return result;
 }
@@ -614,20 +649,26 @@ Tensor Tensor::sum() const
 // Gradient handling
 void Tensor::zero_grad()
 {
-    grad_.assign(num_elements(), 0.0f);
+    if (grad_)
+    {
+        grad_->assign(num_elements(), 0.0f);
+    }
 }
 
-void Tensor::backward(const Tensor &grad_output)
+void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
 {
-    if (shape_ != grad_output.get_shape())
+    if (shape_ != grad_output->get_shape())
     {
         throw std::runtime_error("Gradient shape mismatch in backward.");
     }
 
     // Accumulate the incoming gradient
-    for (size_t i = 0; i < grad_.size(); ++i)
+    if (grad_ && grad_output->data_)
     {
-        grad_[i] += grad_output.data_[i];
+        for (size_t i = 0; i < grad_->size(); ++i)
+        {
+            (*grad_)[i] += (*grad_output->data_)[i];
+        }
     }
 
     // If this tensor was the result of an operation, propagate the gradient to its parents
@@ -636,35 +677,27 @@ void Tensor::backward(const Tensor &grad_output)
         switch (creator_op_)
         {
         case OperationType::Add:
-            std::cout << "Backward Add" << std::endl;
             backward_add(grad_output);
             break;
         case OperationType::Sub:
-            std::cout << "Backward Sub" << std::endl;
             backward_sub(grad_output);
             break;
         case OperationType::Mul:
-            std::cout << "Backward Mul" << std::endl;
             backward_mul(grad_output);
             break;
         case OperationType::Dot:
-            std::cout << "Backward Dot" << std::endl;
             backward_dot(grad_output);
             break;
         case OperationType::Transpose:
-            std::cout << "Backward Transpose" << std::endl;
             backward_transpose(grad_output);
             break;
         case OperationType::Reshape:
-            std::cout << "Backward Reshape" << std::endl;
             backward_reshape(grad_output);
             break;
         case OperationType::Sum:
-            std::cout << "Backward Sum" << std::endl;
             backward_sum(grad_output);
             break;
         case OperationType::Div:
-            std::cout << "Backward Div" << std::endl;
             backward_div(grad_output);
             break;
         }
@@ -672,29 +705,31 @@ void Tensor::backward(const Tensor &grad_output)
 }
 
 // Helper to reduce gradient for broadcasting
-void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, const std::vector<int> &parent_shape)
+void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output, std::shared_ptr<Tensor> &parent_grad, const std::vector<int> &parent_shape)
 {
-    const std::vector<int> &grad_shape = grad_output.get_shape();
+    const std::vector<int> &grad_shape = grad_output->get_shape();
 
     // If shapes are identical, no reduction needed
     if (grad_shape == parent_shape)
     {
-        parent_grad = Tensor(parent_shape);
-        parent_grad.data_ = grad_output.get_data();
+        parent_grad = Tensor::create(parent_shape);
+        parent_grad->set_data(grad_output->data_);
         return;
     }
 
     std::cout << "Parent shape: [";
-    for (size_t i = 0; i < parent_shape.size(); ++i) {
+    for (size_t i = 0; i < parent_shape.size(); ++i)
+    {
         std::cout << parent_shape[i];
-        if (i < parent_shape.size() - 1) {
+        if (i < parent_shape.size() - 1)
+        {
             std::cout << ", ";
         }
     }
     std::cout << "]" << std::endl;
 
     // Initialize parent_grad with zeros and the correct shape
-    parent_grad = Tensor(parent_shape);
+    parent_grad = Tensor::create(parent_shape);
 
     // Identify dimensions to sum over
     std::vector<int> dims_to_sum;
@@ -719,7 +754,7 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
     }
 
     // Perform Reduction
-    size_t parent_total_elements = parent_grad.num_elements();
+    size_t parent_total_elements = parent_grad->num_elements();
     if (parent_total_elements == 0)
         return;
 
@@ -741,45 +776,51 @@ void Tensor::reduce_gradient(const Tensor &grad_output, Tensor &parent_grad, con
 
         // Determine the corresponding range/indices in grad_output to sum
         float sum_val = 0.0f;
-        size_t grad_total_elements = grad_output.num_elements();
+        size_t grad_total_elements = grad_output->num_elements();
         std::vector<int> current_grad_indices(grad_shape.size());
 
         // Iterate through all grad_output elements and check if they map to the current parent element
-        for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx)
+        if (grad_output->data_)
         {
-            // Get multi-dim indices for grad_output[g_idx]
-            size_t temp_g_idx = g_idx;
-            for (int d = grad_shape.size() - 1; d >= 0; --d)
+            for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx)
             {
-                current_grad_indices[d] = temp_g_idx % grad_shape[d];
-                temp_g_idx /= grad_shape[d];
-            }
-
-            // Check if this grad element corresponds to the current parent element
-            bool corresponds = true;
-            int p_offset = grad_shape.size() - parent_shape.size();
-            for (size_t d = 0; d < parent_shape.size(); ++d)
-            {
-                if (parent_shape[d] != 1 && parent_indices[d] != current_grad_indices[d + p_offset])
+                // Get multi-dim indices for grad_output[g_idx]
+                size_t temp_g_idx = g_idx;
+                for (int d = grad_shape.size() - 1; d >= 0; --d)
                 {
-                    corresponds = false;
-                    break;
+                    current_grad_indices[d] = temp_g_idx % grad_shape[d];
+                    temp_g_idx /= grad_shape[d];
                 }
-            }
 
-            if (corresponds)
-            {
-                sum_val += grad_output.data_[g_idx];
+                // Check if this grad element corresponds to the current parent element
+                bool corresponds = true;
+                int p_offset = grad_shape.size() - parent_shape.size();
+                for (size_t d = 0; d < parent_shape.size(); ++d)
+                {
+                    if (parent_shape[d] != 1 && parent_indices[d] != current_grad_indices[d + p_offset])
+                    {
+                        corresponds = false;
+                        break;
+                    }
+                }
+
+                if (corresponds)
+                {
+                    sum_val += (*grad_output->data_)[g_idx];
+                }
             }
         }
 
         // Assign the sum to parent_grad.data_
-        parent_grad.data_[p_idx] = sum_val;
+        if (parent_grad->data_)
+        {
+            (*parent_grad->data_)[p_idx] = sum_val;
+        }
     }
 }
 
 // Backward methods for specific operations
-void Tensor::backward_add(const Tensor &grad_output)
+void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Gradient of Z = A + B with respect to A is dZ/dA = 1.
@@ -790,14 +831,14 @@ void Tensor::backward_add(const Tensor &grad_output)
 
     if (parents_.size() == 2)
     {
-        Tensor *parent_a = parents_[0];
-        Tensor *parent_b = parents_[1];
+        std::shared_ptr<Tensor> parent_a = parents_[0];
+        std::shared_ptr<Tensor> parent_b = parents_[1];
 
-        Tensor grad_a_propagated;
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
         reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
         parent_a->backward(grad_a_propagated);
 
-        Tensor grad_b_propagated;
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
         reduce_gradient(grad_output, grad_b_propagated, parent_b->get_shape());
         parent_b->backward(grad_b_propagated);
     }
@@ -807,7 +848,7 @@ void Tensor::backward_add(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_sub(const Tensor &grad_output)
+void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Gradient of Z = A - B with respect to A is dZ/dA = 1.
@@ -818,24 +859,25 @@ void Tensor::backward_sub(const Tensor &grad_output)
 
     if (parents_.size() == 2)
     {
-        Tensor *parent_a = parents_[0];
-        Tensor *parent_b = parents_[1];
+        std::shared_ptr<Tensor> parent_a = parents_[0];
+        std::shared_ptr<Tensor> parent_b = parents_[1];
 
         // Propagate gradient to parent A (dL/dA = grad_output)
-        Tensor grad_a_propagated;
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
         reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
         parent_a->backward(grad_a_propagated);
 
         // Propagate gradient to parent B (dL/dB = -grad_output)
-        Tensor neg_grad_output(grad_output.get_shape());
-        std::vector<float> neg_data(grad_output.num_elements());
-        for (size_t i = 0; i < neg_data.size(); ++i)
+        std::shared_ptr<Tensor> neg_grad_output = Tensor::create(grad_output->get_shape());
+        std::shared_ptr<std::vector<float>> neg_data = std::make_shared<std::vector<float>>(std::vector<float>(grad_output->num_elements()));
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        for (size_t i = 0; i < neg_data->size(); ++i)
         {
-            neg_data[i] = -grad_output.get_data()[i];
+            (*neg_data)[i] = -grad_output_data[i];
         }
-        neg_grad_output.set_data(neg_data);
+        neg_grad_output->set_data(neg_data);
 
-        Tensor grad_b_propagated;
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
         reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
         parent_b->backward(grad_b_propagated);
     }
@@ -845,7 +887,7 @@ void Tensor::backward_sub(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_mul(const Tensor &grad_output)
+void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Gradient of Z = A * B (element-wise) with respect to A is dZ/dA = B.
@@ -855,23 +897,46 @@ void Tensor::backward_mul(const Tensor &grad_output)
     */
     if (parents_.size() == 2)
     {
-        Tensor *parent_a = parents_[0];
-        Tensor *parent_b = parents_[1];
+        std::shared_ptr<Tensor> parent_a = parents_[0];
+        std::shared_ptr<Tensor> parent_b = parents_[1];
 
         // Calculate gradient for parent A: grad_output * parent_b
-        Tensor grad_a_intermediate = grad_output * (*parent_b);
+        // We need a temporary Tensor for intermediate calculation, then reduce its gradient.
+        std::vector<int> intermediate_shape = calculate_broadcast_shape(grad_output->get_shape(), parent_b->get_shape());
+        std::shared_ptr<Tensor> grad_a_intermediate_tensor = Tensor::create(intermediate_shape);
+        std::shared_ptr<Tensor> broadcasted_grad_a = grad_output->broadcast_to(intermediate_shape);
+        std::shared_ptr<Tensor> broadcasted_parent_b = parent_b->broadcast_to(intermediate_shape);
+
+        if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ && broadcasted_parent_b->data_)
+        {
+            for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i)
+            {
+                (*grad_a_intermediate_tensor->data_)[i] = (*broadcasted_grad_a->data_)[i] * (*broadcasted_parent_b->data_)[i];
+            }
+        }
 
         // Reduce gradient for parent A
-        Tensor grad_a_propagated;
-        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
+        reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated, parent_a->get_shape());
         parent_a->backward(grad_a_propagated);
 
         // Calculate gradient for parent B: grad_output * parent_a
-        Tensor grad_b_intermediate = grad_output * (*parent_a);
+        std::vector<int> intermediate_shape_b = calculate_broadcast_shape(grad_output->get_shape(), parent_a->get_shape());
+        std::shared_ptr<Tensor> grad_b_intermediate_tensor = Tensor::create(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_grad_b = grad_output->broadcast_to(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_parent_a = parent_a->broadcast_to(intermediate_shape_b);
+
+        if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ && broadcasted_parent_a->data_)
+        {
+            for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i)
+            {
+                (*grad_b_intermediate_tensor->data_)[i] = (*broadcasted_grad_b->data_)[i] * (*broadcasted_parent_a->data_)[i];
+            }
+        }
 
         // Reduce gradient for parent B
-        Tensor grad_b_propagated;
-        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
+        reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated, parent_b->get_shape());
         parent_b->backward(grad_b_propagated);
     }
     else
@@ -880,7 +945,7 @@ void Tensor::backward_mul(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_dot(const Tensor &grad_output)
+void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Backward pass for Z = A.dot(B):
@@ -891,20 +956,23 @@ void Tensor::backward_dot(const Tensor &grad_output)
 
     if (parents_.size() == 2)
     {
-        Tensor *parent_a = parents_[0];
-        Tensor *parent_b = parents_[1];
+        std::shared_ptr<Tensor> parent_a = parents_[0];
+        std::shared_ptr<Tensor> parent_b = parents_[1];
 
         // Calculate dL/dA = dL/dZ . B^T
         // Need to transpose the last two dimensions of parent_b
         std::vector<int> b_transpose_perm(parent_b->get_shape().size());
         std::iota(b_transpose_perm.begin(), b_transpose_perm.end(), 0);
-        std::swap(b_transpose_perm[b_transpose_perm.size() - 1], b_transpose_perm[b_transpose_perm.size() - 2]);
-        Tensor parent_b_transposed = parent_b->transpose(b_transpose_perm);
+        if (b_transpose_perm.size() >= 2)
+        {
+            std::swap(b_transpose_perm[b_transpose_perm.size() - 1], b_transpose_perm[b_transpose_perm.size() - 2]);
+        }
+        std::shared_ptr<Tensor> parent_b_transposed = parent_b->transpose(b_transpose_perm);
 
-        Tensor grad_a_intermediate = grad_output.dot(parent_b_transposed);
+        std::shared_ptr<Tensor> grad_a_intermediate = grad_output->dot(parent_b_transposed);
 
         // Reduce gradient for parent A
-        Tensor grad_a_propagated;
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
         reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
         parent_a->backward(grad_a_propagated);
 
@@ -912,13 +980,16 @@ void Tensor::backward_dot(const Tensor &grad_output)
         // Need to transpose the last two dimensions of parent_a
         std::vector<int> a_transpose_perm(parent_a->get_shape().size());
         std::iota(a_transpose_perm.begin(), a_transpose_perm.end(), 0);
-        std::swap(a_transpose_perm[a_transpose_perm.size() - 1], a_transpose_perm[a_transpose_perm.size() - 2]);
-        Tensor parent_a_transposed = parent_a->transpose(a_transpose_perm);
+        if (a_transpose_perm.size() >= 2)
+        {
+            std::swap(a_transpose_perm[a_transpose_perm.size() - 1], a_transpose_perm[a_transpose_perm.size() - 2]);
+        }
+        std::shared_ptr<Tensor> parent_a_transposed = parent_a->transpose(a_transpose_perm);
 
-        Tensor grad_b_intermediate = parent_a_transposed.dot(grad_output);
+        std::shared_ptr<Tensor> grad_b_intermediate = parent_a_transposed->dot(grad_output);
 
         // Reduce gradient for parent B
-        Tensor grad_b_propagated;
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
         reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
         parent_b->backward(grad_b_propagated);
     }
@@ -928,7 +999,7 @@ void Tensor::backward_dot(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_transpose(const Tensor &grad_output)
+void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Backward pass for Y = X.transpose(p):
@@ -938,7 +1009,7 @@ void Tensor::backward_transpose(const Tensor &grad_output)
 
     if (parents_.size() == 1)
     {
-        Tensor *parent = parents_[0];
+        std::shared_ptr<Tensor> parent = parents_[0];
 
         // Calculate the inverse permutation from the stored forward permutation.
         std::vector<int> inverse_permutation(forward_permutation_.size());
@@ -948,10 +1019,10 @@ void Tensor::backward_transpose(const Tensor &grad_output)
         }
 
         // Transpose the incoming gradient using the inverse permutation.
-        Tensor grad_input = grad_output.transpose(inverse_permutation);
+        std::shared_ptr<Tensor> grad_input = grad_output->transpose(inverse_permutation);
 
-        // Propagate the gradient to the parent.
-        parent->backward(Tensor(parent->get_shape(), grad_input.get_data()));
+        std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape(), std::make_shared<std::vector<float>>(grad_input->get_data()));
+        parent->backward(grad_input_tensor);
     }
     else
     {
@@ -959,7 +1030,7 @@ void Tensor::backward_transpose(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_reshape(const Tensor &grad_output)
+void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Backward pass for Y = X.reshape(new_shape):
@@ -969,20 +1040,20 @@ void Tensor::backward_reshape(const Tensor &grad_output)
 
     if (parents_.size() == 1)
     {
-        Tensor *parent = parents_[0];
+        std::shared_ptr<Tensor> parent = parents_[0];
 
         // Ensure the incoming gradient has the same number of elements as the parent's original shape
         size_t expected_elements = std::accumulate(original_shape_before_reshape_.begin(),
                                                    original_shape_before_reshape_.end(),
                                                    1, std::multiplies<size_t>());
-        if (grad_output.num_elements() != expected_elements)
+        if (grad_output->num_elements() != expected_elements)
         {
             throw std::runtime_error("Gradient element count mismatch during reshape backward pass.");
         }
-        // Reshape the incoming gradient to match the original shape of the parent
-        Tensor grad_input_reshaped(original_shape_before_reshape_, grad_output.get_data());
 
-        parent->backward(grad_input_reshaped);
+        std::shared_ptr<Tensor> grad_input_reshaped_tensor = Tensor::create(original_shape_before_reshape_, std::make_shared<std::vector<float>>(grad_output->get_data()));
+
+        parent->backward(grad_input_reshaped_tensor);
     }
     else
     {
@@ -990,7 +1061,7 @@ void Tensor::backward_reshape(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_sum(const Tensor &grad_output)
+void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Backward pass for Y = sum(X):
@@ -1002,19 +1073,19 @@ void Tensor::backward_sum(const Tensor &grad_output)
 
     if (parents_.size() == 1)
     {
-        Tensor *parent = parents_[0];
+        std::shared_ptr<Tensor> parent = parents_[0];
 
         // The incoming gradient should be a scalar (shape {1})
-        if (grad_output.get_shape().size() != 1 || grad_output.get_shape()[0] != 1)
+        if (grad_output->get_shape().size() != 1 || grad_output->get_shape()[0] != 1)
         {
             throw std::runtime_error("Gradient for sum operation must be a scalar.");
         }
-        float grad_value = grad_output.get_data()[0];
+        float grad_value = grad_output->get_data()[0];
 
-        Tensor grad_input(parent->get_shape());
-        std::fill(grad_input.data_.begin(), grad_input.data_.end(), grad_value);
+        std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape());
+        std::fill(grad_input_tensor->data_->begin(), grad_input_tensor->data_->end(), grad_value);
 
-        parent->backward(grad_input);
+        parent->backward(grad_input_tensor);
     }
     else
     {
@@ -1022,7 +1093,7 @@ void Tensor::backward_sum(const Tensor &grad_output)
     }
 }
 
-void Tensor::backward_div(const Tensor &grad_output)
+void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
     Backward pass for Z = A / B (element-wise):
@@ -1031,56 +1102,62 @@ void Tensor::backward_div(const Tensor &grad_output)
     */
     if (parents_.size() == 2)
     {
-        Tensor *parent_a = parents_[0]; // Numerator
-        Tensor *parent_b = parents_[1]; // Denominator
+        std::shared_ptr<Tensor> parent_a = parents_[0]; // Numerator
+        std::shared_ptr<Tensor> parent_b = parents_[1]; // Denominator
 
         const std::vector<float> &parent_b_data = parent_b->get_data();
 
         // Gradient for parent A: grad_output * (1 / parent_b)
-        std::vector<int> result_shape_a = calculate_broadcast_shape(grad_output.get_shape(), parent_b->get_shape());
-        Tensor broadcasted_grad_a = grad_output.broadcast_to(result_shape_a);
-        Tensor broadcasted_parent_b = parent_b->broadcast_to(result_shape_a);
+        std::vector<int> result_shape_a = calculate_broadcast_shape(grad_output->get_shape(), parent_b->get_shape());
+        std::shared_ptr<Tensor> broadcasted_grad_a = grad_output->broadcast_to(result_shape_a);
+        std::shared_ptr<Tensor> broadcasted_parent_b = parent_b->broadcast_to(result_shape_a);
 
-        Tensor grad_a_intermediate(result_shape_a);
-        for (size_t i = 0; i < grad_a_intermediate.data_.size(); ++i)
+        std::shared_ptr<Tensor> grad_a_intermediate_tensor = Tensor::create(result_shape_a);
+        if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ && broadcasted_parent_b->data_)
         {
-            if (broadcasted_parent_b.data_[i] == 0.0f)
+            for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i)
             {
-                grad_a_intermediate.data_[i] = 0.0f;
-            }
-            else
-            {
-                grad_a_intermediate.data_[i] = broadcasted_grad_a.data_[i] / broadcasted_parent_b.data_[i];
+                if ((*broadcasted_parent_b->data_)[i] == 0.0f)
+                {
+                    (*grad_a_intermediate_tensor->data_)[i] = 0.0f;
+                }
+                else
+                {
+                    (*grad_a_intermediate_tensor->data_)[i] = (*broadcasted_grad_a->data_)[i] / (*broadcasted_parent_b->data_)[i];
+                }
             }
         }
 
         // Reduce gradient for parent A
-        Tensor grad_a_propagated;
-        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
+        reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated, parent_a->get_shape());
         parent_a->backward(grad_a_propagated);
 
         // Fradient for parent B: grad_output * (-parent_a / (parent_b * parent_b))
-        std::vector<int> result_shape_b = calculate_broadcast_shape(calculate_broadcast_shape(grad_output.get_shape(), parent_a->get_shape()), parent_b->get_shape());
-        Tensor broadcasted_grad_b = grad_output.broadcast_to(result_shape_b);
-        Tensor broadcasted_parent_a = parent_a->broadcast_to(result_shape_b);
-        Tensor broadcasted_parent_b_b = parent_b->broadcast_to(result_shape_b);
+        std::vector<int> result_shape_b = calculate_broadcast_shape(calculate_broadcast_shape(grad_output->get_shape(), parent_a->get_shape()), parent_b->get_shape());
+        std::shared_ptr<Tensor> broadcasted_grad_b = grad_output->broadcast_to(result_shape_b);
+        std::shared_ptr<Tensor> broadcasted_parent_a = parent_a->broadcast_to(result_shape_b);
+        std::shared_ptr<Tensor> broadcasted_parent_b_b = parent_b->broadcast_to(result_shape_b);
 
-        Tensor grad_b_intermediate(result_shape_b);
-        for (size_t i = 0; i < grad_b_intermediate.data_.size(); ++i)
+        std::shared_ptr<Tensor> grad_b_intermediate_tensor = Tensor::create(result_shape_b);
+        if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ && broadcasted_parent_a->data_ && broadcasted_parent_b_b->data_)
         {
-            if (broadcasted_parent_b_b.data_[i] == 0.0f)
+            for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i)
             {
-                grad_b_intermediate.data_[i] = 0.0f;
-            }
-            else
-            {
-                grad_b_intermediate.data_[i] = broadcasted_grad_b.data_[i] * (-broadcasted_parent_a.data_[i] / (broadcasted_parent_b_b.data_[i] * broadcasted_parent_b_b.data_[i]));
+                if ((*broadcasted_parent_b_b->data_)[i] == 0.0f)
+                {
+                    (*grad_b_intermediate_tensor->data_)[i] = 0.0f;
+                }
+                else
+                {
+                    (*grad_b_intermediate_tensor->data_)[i] = (*broadcasted_grad_b->data_)[i] * (-(*broadcasted_parent_a->data_)[i] / ((*broadcasted_parent_b_b->data_)[i] * (*broadcasted_parent_b_b->data_)[i]));
+                }
             }
         }
 
         // Reduce gradient for parent B
-        Tensor grad_b_propagated;
-        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
+        reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated, parent_b->get_shape());
         parent_b->backward(grad_b_propagated);
     }
     else

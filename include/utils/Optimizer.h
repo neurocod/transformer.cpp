@@ -4,6 +4,7 @@
 #include "utils/Tensor.h"
 #include <vector>
 #include <numeric>
+#include <memory>
 
 class Tensor;
 
@@ -22,7 +23,7 @@ public:
     // Zeros the gradients of all parameters managed by this optimizer
     void zero_grad()
     {
-        for (Tensor *param : parameters_)
+        for (std::shared_ptr<Tensor> &param : parameters_)
         {
             if (param)
             {
@@ -32,8 +33,8 @@ public:
     }
 
 protected:
-    // List of pointers to the parameters to update
-    std::vector<Tensor *> &parameters_ = Tensor::get_optimizable_tensors();
+    // List of shared pointers to the parameters to update
+    std::vector<std::shared_ptr<Tensor>> &parameters_ = Tensor::get_optimizable_tensors();
 };
 
 class SGD : public Optimizer
@@ -50,7 +51,7 @@ public:
     void step() override
     {
         // Iterate through all parameters
-        for (Tensor *param : parameters_)
+        for (const std::shared_ptr<Tensor> &param : parameters_)
         {
             if (param)
             {

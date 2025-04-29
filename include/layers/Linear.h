@@ -3,23 +3,26 @@
 
 #include "utils/Tensor.h"
 #include <vector>
+#include <memory>
+
+class Tensor;
 
 class Linear
 {
 public:
     Linear(int input_dim, int output_dim);
 
-    Tensor forward(const Tensor &input);
+    std::shared_ptr<Tensor> forward(const Tensor &input);
 
     // Destructor
     ~Linear();
 
-    Tensor &get_weights();
-    Tensor &get_biases();
+    std::shared_ptr<Tensor> get_weights();
+    std::shared_ptr<Tensor> get_biases();
 
 private:
-    Tensor weights_; // Weight matrix (output_dim, input_dim)
-    Tensor biases_;  // Bias vector (1, output_dim)
+    std::shared_ptr<Tensor> weights_; // Weight matrix (input_dim, output_dim)
+    std::shared_ptr<Tensor> biases_;  // Bias vector (1, output_dim)
 
     int input_dim_;
     int output_dim_;
