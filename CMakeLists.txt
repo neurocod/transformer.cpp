@@ -17,6 +17,8 @@ add_executable(neural_network
     src/layers/Dropout.cpp
     src/models/DecoderLayer.cpp
     src/models/EncoderLayer.cpp
+    src/layers/Embedding.cpp
+    src/layers/PositionalEncoding.cpp
 )
 
 add_executable(test_tensor

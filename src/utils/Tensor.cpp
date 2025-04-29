@@ -782,6 +782,9 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
         case OperationType::Softmax:
             backward_softmax(grad_output);
             break;
+        case OperationType::EmbeddingLookup:
+            backward_embedding_lookup(grad_output);
+            break;
         }
     }
 }
@@ -1656,21 +1659,23 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
         std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(this->get_shape());
-        const std::vector<float>& grad_output_data = grad_output->get_data();
-        std::vector<float>& grad_input_intermediate_data = const_cast<std::vector<float>&>(grad_input_intermediate->get_data());
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+        std::vector<float> &grad_input_intermediate_data = const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
 
         // Retrieve the mask and scale factor stored during the forward pass
         std::shared_ptr<Tensor> mask = this->dropout_mask_;
         float scale = this->dropout_scale_;
 
-        if (!mask || mask->get_shape() != this->get_shape()) {
-             throw std::runtime_error("Dropout mask is missing or shape mismatch in backward.");
+        if (!mask || mask->get_shape() != this->get_shape())
+        {
+            throw std::runtime_error("Dropout mask is missing or shape mismatch in backward.");
         }
 
-        const std::vector<float>& mask_data = mask->get_data();
+        const std::vector<float> &mask_data = mask->get_data();
 
         // The gradient is passed through only for the elements that were kept in the forward pass.
-        for (size_t i = 0; i < grad_output_data.size(); ++i) {
+        for (size_t i = 0; i < grad_output_data.size(); ++i)
+        {
             grad_input_intermediate_data[i] = grad_output_data[i] * mask_data[i] * scale;
         }
 
@@ -1678,10 +1683,66 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output)
         std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
         reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
         parent->backward(grad_input_propagated);
-
     }
     else
     {
         std::cerr << "Error: Dropout operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> weights_parent = parents_[0];
+        const std::vector<float> &grad_output_data = grad_output->get_data();
+
+        std::shared_ptr<Tensor> input_ids = this->embedding_indices_;
+
+        if (!input_ids || input_ids->get_shape().size() != 2)
+        {
+            throw std::runtime_error("Embedding indices tensor is missing or has incorrect shape in backward.");
+        }
+
+        const std::vector<float> &input_ids_data = input_ids->get_data();
+        const std::vector<int> &input_ids_shape = input_ids->get_shape();
+
+        size_t batch_size = input_ids_shape[0];
+        size_t sequence_length = input_ids_shape[1];
+        size_t embed_dim = grad_output->get_shape().back();
+
+        if (grad_output->get_shape() != std::vector<int>{(int)batch_size, (int)sequence_length, (int)embed_dim})
+        {
+            throw std::runtime_error("Gradient output shape mismatch in EmbeddingLookup backward.");
+        }
+
+        // The gradient for a specific embedding vector is the sum of the gradients from all times that token appeared in the batch and sequence.
+        if (weights_parent->grad_)
+        {
+            std::vector<float> &weights_grad_data = const_cast<std::vector<float> &>(weights_parent->get_grad());
+            size_t vocab_size = weights_parent->get_shape()[0];
+
+            for (size_t i = 0; i < batch_size * sequence_length; ++i)
+            {
+                float token_id_float = input_ids_data[i];
+                if (token_id_float < 0 || token_id_float >= vocab_size || std::fmod(token_id_float, 1.0f) != 0.0f)
+                {
+                    throw std::runtime_error("Input token ID out of vocabulary bounds or not an integer in Embedding backward.");
+                }
+                int token_id = static_cast<int>(token_id_float);
+
+                size_t grad_output_start_idx = i * embed_dim;
+                size_t weights_grad_start_idx = token_id * embed_dim;
+
+                for (size_t j = 0; j < embed_dim; ++j)
+                {
+                    weights_grad_data[weights_grad_start_idx + j] += grad_output_data[grad_output_start_idx + j];
+                }
+            }
+        }
+    }
+    else
+    {
+        std::cerr << "Error: EmbeddingLookup operation expected 1 parent (weights), but found " << parents_.size() << std::endl;
     }
 }

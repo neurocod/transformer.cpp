@@ -25,7 +25,8 @@ enum class OperationType
     NegativeLogLikelihood,
     LayerNorm,
     Softmax,
-    Dropout
+    Dropout,
+    EmbeddingLookup
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor>
@@ -56,6 +57,8 @@ public:
     // Dropout
     std::shared_ptr<Tensor> dropout_mask_;
     float dropout_scale_;
+    // Embedding
+    std::shared_ptr<Tensor> embedding_indices_;
 
 
     // Getters for shape, data, and gradient
@@ -146,6 +149,7 @@ private:
     void backward_layernorm(const std::shared_ptr<Tensor> &grad_output);
     void backward_softmax(const std::shared_ptr<Tensor> &grad_output);
     void backward_dropout(const std::shared_ptr<Tensor> &grad_output);
+    void backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output);
 
 };
 
