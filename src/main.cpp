@@ -47,10 +47,10 @@ class SimpleModel
 public:
     SimpleModel(int input_dim, int output_dim) : linear_layer_(input_dim, output_dim) {}
 
-    std::shared_ptr<Tensor> forward(const Tensor &input)
+    std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input)
     {
-        std::shared_ptr<Tensor> output = linear_layer_.forward(input);
-        std::shared_ptr<Tensor> activation = ReLU().forward(output);
+        std::shared_ptr<Tensor> L1 = linear_layer_.forward(input);
+        std::shared_ptr<Tensor> activation = ReLU().forward(L1);
         return activation;
     }
 
@@ -81,7 +81,7 @@ int main()
     {
         optimizer.zero_grad();
 
-        std::shared_ptr<Tensor> predictions = model.forward(*input_data);
+        std::shared_ptr<Tensor> predictions = model.forward(input_data);
 
         std::shared_ptr<Tensor> loss = criterion.compute_loss(predictions, target_data);
 

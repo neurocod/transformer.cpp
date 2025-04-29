@@ -12,7 +12,7 @@ class Linear
 public:
     Linear(int input_dim, int output_dim);
 
-    std::shared_ptr<Tensor> forward(const Tensor &input);
+    std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
 
     // Destructor
     ~Linear();

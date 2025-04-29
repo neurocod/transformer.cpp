@@ -37,18 +37,18 @@ Linear::Linear(int input_dim, int output_dim)
     biases_->set_data(biases_data);
 }
 
-std::shared_ptr<Tensor> Linear::forward(const Tensor &input)
+std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> &input)
 {
     // Input shape is (..., input_dim)
     // Weights shape is (input_dim, output_dim)
     // output = input * weights + biases
 
-    if (input.get_shape().empty() || input.get_shape().back() != input_dim_)
+    if (input->get_shape().empty() || input->get_shape().back() != input_dim_)
     {
         throw std::runtime_error("Input tensor's last dimension is incompatible with Linear layer input dimension.");
     }
 
-    std::shared_ptr<Tensor> product = input.dot(weights_);
+    std::shared_ptr<Tensor> product = input->dot(weights_);
     std::shared_ptr<Tensor> output = *product + biases_;
 
     return output;
