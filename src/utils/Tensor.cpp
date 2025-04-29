@@ -5,6 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <memory>
+#include <cmath>
 
 std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
@@ -292,168 +293,6 @@ std::shared_ptr<Tensor> Tensor::operator/(const std::shared_ptr<Tensor> &other) 
     return result;
 }
 
-std::shared_ptr<Tensor> Tensor::dot(const std::shared_ptr<Tensor> &other) const
-{
-    if (shape_.size() < 1 || other->shape_.size() < 1)
-    {
-        throw std::runtime_error("Dot product requires tensors with at least 1 dimension.");
-    }
-    // Vector dot product
-    if (shape_.size() == 1 && other->shape_.size() == 1)
-    {
-        if (shape_[0] != other->shape_[0])
-        {
-            throw std::runtime_error("Vector dot product requires vectors of the same size.");
-        }
-        // Result is a scalar (1D tensor with size 1)
-        std::shared_ptr<Tensor> result = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{0.0f}), false);
-        result->creator_op_ = OperationType::Dot;
-        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
-        result->parents_.push_back(other);
-
-        for (size_t i = 0; i < shape_[0]; ++i)
-        {
-            (*result->data_)[0] += (*data_)[i] * (*other->data_)[i];
-        }
-        return result;
-    }
-    // Matrix-vector product
-    else if (shape_.size() >= 2 && other->shape_.size() == 1)
-    {
-        int cols_a = shape_.back();
-        int vec_size = other->shape_[0];
-        if (cols_a != vec_size)
-        {
-            throw std::runtime_error("Matrix-vector product: Inner dimensions must match (" +
-                                     std::to_string(cols_a) + " vs " + std::to_string(vec_size) + ").");
-        }
-        // Result shape is the matrix shape excluding the last dimension
-        std::vector<int> result_shape(shape_.begin(), shape_.end() - 1);
-        std::shared_ptr<Tensor> result = Tensor::create(result_shape);
-        result->creator_op_ = OperationType::Dot;
-        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
-        result->parents_.push_back(other);
-
-        size_t outer_elements = result->num_elements();
-        size_t matrix_stride = cols_a;
-
-        for (size_t i = 0; i < outer_elements; ++i)
-        {
-            float sum = 0.0f;
-            size_t matrix_row_start_idx = i * matrix_stride;
-            for (int k = 0; k < cols_a; ++k)
-            {
-                sum += (*data_)[matrix_row_start_idx + k] * (*other->data_)[k];
-            }
-            (*result->data_)[i] = sum;
-        }
-        return result;
-    }
-    // Matrix-matrix product (batched)
-    else if (shape_.size() >= 2 && other->shape_.size() >= 2)
-    {
-        int rows_a = shape_[shape_.size() - 2];
-        int cols_a = shape_[shape_.size() - 1];
-        int rows_b = other->shape_[other->shape_.size() - 2];
-        int cols_b = other->shape_[other->shape_.size() - 1];
-
-        if (cols_a != rows_b)
-        {
-            throw std::runtime_error("Matrix multiplication: Inner dimensions must match (" +
-                                     std::to_string(cols_a) + " vs " + std::to_string(rows_b) + ").");
-        }
-
-        // Batch Dimension Handling
-        std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
-        std::vector<int> batch_dims_b(other->shape_.begin(), other->shape_.end() - 2);
-        std::vector<int> batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
-
-        std::vector<int> result_shape = batch_shape;
-        result_shape.push_back(rows_a);
-        result_shape.push_back(cols_b);
-
-        std::shared_ptr<Tensor> result = Tensor::create(result_shape);
-        result->creator_op_ = OperationType::Dot;
-        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
-        result->parents_.push_back(other);
-
-        std::vector<size_t> stride_a = calculate_strides(shape_);
-        std::vector<size_t> stride_b = calculate_strides(other->shape_);
-        std::vector<size_t> stride_result = calculate_strides(result_shape);
-
-        // Batch Iteration
-        size_t total_batches = batch_shape.empty() ? 1 : std::accumulate(batch_shape.begin(), batch_shape.end(), size_t{1}, std::multiplies<size_t>());
-        std::vector<size_t> batch_strides_result = calculate_strides(batch_shape);
-
-        for (size_t batch_linear_idx = 0; batch_linear_idx < total_batches; ++batch_linear_idx)
-        {
-            // Calculate multi-dimensional batch index for current batch
-            std::vector<int> batch_idx(batch_shape.size());
-            size_t temp_batch_linear = batch_linear_idx;
-            for (size_t i = 0; i < batch_shape.size(); ++i)
-            {
-                if (batch_strides_result[i] == 0)
-                    continue;
-                batch_idx[i] = temp_batch_linear / batch_strides_result[i];
-                temp_batch_linear %= batch_strides_result[i];
-            }
-
-            // Calculate linear offset for the start of the current batch in each tensor
-            size_t offset_a = 0, offset_b = 0, offset_result = 0;
-            int batch_offset_a = batch_shape.size() - batch_dims_a.size();
-            int batch_offset_b = batch_shape.size() - batch_dims_b.size();
-
-            for (size_t i = 0; i < batch_shape.size(); ++i)
-            {
-                // Handle broadcasting: if original batch dim was 1, use index 0, else use current batch_idx
-                if (i >= batch_offset_a)
-                {
-                    offset_a += (batch_dims_a[i - batch_offset_a] == 1 ? 0 : batch_idx[i]) * stride_a[i - batch_offset_a];
-                }
-                if (i >= batch_offset_b)
-                {
-                    offset_b += (batch_dims_b[i - batch_offset_b] == 1 ? 0 : batch_idx[i]) * stride_b[i - batch_offset_b];
-                }
-                offset_result += batch_idx[i] * stride_result[i];
-            }
-
-            // Matrix Multiplication for the Current Batch
-            for (int i = 0; i < rows_a; ++i)
-            {
-                for (int j = 0; j < cols_b; ++j)
-                {
-                    float sum = 0.0f;
-                    for (int k = 0; k < cols_a; ++k)
-                    {
-                        // Calculate linear indices within the current batch
-                        size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
-                        size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] + j * stride_b[other->shape_.size() - 1];
-
-                        // Bounds checking
-                        if (idx_a >= data_->size() || idx_b >= other->data_->size())
-                        {
-                            throw std::runtime_error("Index out of bounds during dot product calculation.");
-                        }
-                        sum += (*data_)[idx_a] * (*other->data_)[idx_b];
-                    }
-                    // Calculate result linear index within the current batch
-                    size_t idx_result = offset_result + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
-                    if (idx_result >= result->data_->size())
-                    {
-                        throw std::runtime_error("Result index out of bounds during dot product calculation.");
-                    }
-                    (*result->data_)[idx_result] = sum;
-                }
-            }
-        }
-        return result;
-    }
-    else
-    {
-        throw std::runtime_error("Unsupported shapes for dot product.");
-    }
-}
-
 std::shared_ptr<Tensor> Tensor::transpose(const std::vector<int> &permutation) const
 {
     if (permutation.size() != shape_.size())
@@ -618,6 +457,168 @@ std::shared_ptr<Tensor> Tensor::reshape(const std::vector<int> &new_shape) const
     return result;
 }
 
+std::shared_ptr<Tensor> Tensor::dot(const std::shared_ptr<Tensor> &other) const
+{
+    if (shape_.size() < 1 || other->shape_.size() < 1)
+    {
+        throw std::runtime_error("Dot product requires tensors with at least 1 dimension.");
+    }
+    // Vector dot product
+    if (shape_.size() == 1 && other->shape_.size() == 1)
+    {
+        if (shape_[0] != other->shape_[0])
+        {
+            throw std::runtime_error("Vector dot product requires vectors of the same size.");
+        }
+        // Result is a scalar (1D tensor with size 1)
+        std::shared_ptr<Tensor> result = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{0.0f}), false);
+        result->creator_op_ = OperationType::Dot;
+        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+        result->parents_.push_back(other);
+
+        for (size_t i = 0; i < shape_[0]; ++i)
+        {
+            (*result->data_)[0] += (*data_)[i] * (*other->data_)[i];
+        }
+        return result;
+    }
+    // Matrix-vector product
+    else if (shape_.size() >= 2 && other->shape_.size() == 1)
+    {
+        int cols_a = shape_.back();
+        int vec_size = other->shape_[0];
+        if (cols_a != vec_size)
+        {
+            throw std::runtime_error("Matrix-vector product: Inner dimensions must match (" +
+                                     std::to_string(cols_a) + " vs " + std::to_string(vec_size) + ").");
+        }
+        // Result shape is the matrix shape excluding the last dimension
+        std::vector<int> result_shape(shape_.begin(), shape_.end() - 1);
+        std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+        result->creator_op_ = OperationType::Dot;
+        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+        result->parents_.push_back(other);
+
+        size_t outer_elements = result->num_elements();
+        size_t matrix_stride = cols_a;
+
+        for (size_t i = 0; i < outer_elements; ++i)
+        {
+            float sum = 0.0f;
+            size_t matrix_row_start_idx = i * matrix_stride;
+            for (int k = 0; k < cols_a; ++k)
+            {
+                sum += (*data_)[matrix_row_start_idx + k] * (*other->data_)[k];
+            }
+            (*result->data_)[i] = sum;
+        }
+        return result;
+    }
+    // Matrix-matrix product (batched)
+    else if (shape_.size() >= 2 && other->shape_.size() >= 2)
+    {
+        int rows_a = shape_[shape_.size() - 2];
+        int cols_a = shape_[shape_.size() - 1];
+        int rows_b = other->shape_[other->shape_.size() - 2];
+        int cols_b = other->shape_[other->shape_.size() - 1];
+
+        if (cols_a != rows_b)
+        {
+            throw std::runtime_error("Matrix multiplication: Inner dimensions must match (" +
+                                     std::to_string(cols_a) + " vs " + std::to_string(rows_b) + ").");
+        }
+
+        // Batch Dimension Handling
+        std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
+        std::vector<int> batch_dims_b(other->shape_.begin(), other->shape_.end() - 2);
+        std::vector<int> batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
+
+        std::vector<int> result_shape = batch_shape;
+        result_shape.push_back(rows_a);
+        result_shape.push_back(cols_b);
+
+        std::shared_ptr<Tensor> result = Tensor::create(result_shape);
+        result->creator_op_ = OperationType::Dot;
+        result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
+        result->parents_.push_back(other);
+
+        std::vector<size_t> stride_a = calculate_strides(shape_);
+        std::vector<size_t> stride_b = calculate_strides(other->shape_);
+        std::vector<size_t> stride_result = calculate_strides(result_shape);
+
+        // Batch Iteration
+        size_t total_batches = batch_shape.empty() ? 1 : std::accumulate(batch_shape.begin(), batch_shape.end(), size_t{1}, std::multiplies<size_t>());
+        std::vector<size_t> batch_strides_result = calculate_strides(batch_shape);
+
+        for (size_t batch_linear_idx = 0; batch_linear_idx < total_batches; ++batch_linear_idx)
+        {
+            // Calculate multi-dimensional batch index for current batch
+            std::vector<int> batch_idx(batch_shape.size());
+            size_t temp_batch_linear = batch_linear_idx;
+            for (size_t i = 0; i < batch_shape.size(); ++i)
+            {
+                if (batch_strides_result[i] == 0)
+                    continue;
+                batch_idx[i] = temp_batch_linear / batch_strides_result[i];
+                temp_batch_linear %= batch_strides_result[i];
+            }
+
+            // Calculate linear offset for the start of the current batch in each tensor
+            size_t offset_a = 0, offset_b = 0, offset_result = 0;
+            int batch_offset_a = batch_shape.size() - batch_dims_a.size();
+            int batch_offset_b = batch_shape.size() - batch_dims_b.size();
+
+            for (size_t i = 0; i < batch_shape.size(); ++i)
+            {
+                // Handle broadcasting: if original batch dim was 1, use index 0, else use current batch_idx
+                if (i >= batch_offset_a)
+                {
+                    offset_a += (batch_dims_a[i - batch_offset_a] == 1 ? 0 : batch_idx[i]) * stride_a[i - batch_offset_a];
+                }
+                if (i >= batch_offset_b)
+                {
+                    offset_b += (batch_dims_b[i - batch_offset_b] == 1 ? 0 : batch_idx[i]) * stride_b[i - batch_offset_b];
+                }
+                offset_result += batch_idx[i] * stride_result[i];
+            }
+
+            // Matrix Multiplication for the Current Batch
+            for (int i = 0; i < rows_a; ++i)
+            {
+                for (int j = 0; j < cols_b; ++j)
+                {
+                    float sum = 0.0f;
+                    for (int k = 0; k < cols_a; ++k)
+                    {
+                        // Calculate linear indices within the current batch
+                        size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
+                        size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] + j * stride_b[other->shape_.size() - 1];
+
+                        // Bounds checking
+                        if (idx_a >= data_->size() || idx_b >= other->data_->size())
+                        {
+                            throw std::runtime_error("Index out of bounds during dot product calculation.");
+                        }
+                        sum += (*data_)[idx_a] * (*other->data_)[idx_b];
+                    }
+                    // Calculate result linear index within the current batch
+                    size_t idx_result = offset_result + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
+                    if (idx_result >= result->data_->size())
+                    {
+                        throw std::runtime_error("Result index out of bounds during dot product calculation.");
+                    }
+                    (*result->data_)[idx_result] = sum;
+                }
+            }
+        }
+        return result;
+    }
+    else
+    {
+        throw std::runtime_error("Unsupported shapes for dot product.");
+    }
+}
+
 std::shared_ptr<Tensor> Tensor::sum() const
 {
     std::shared_ptr<Tensor> result = Tensor::create(std::vector<int>{1});
@@ -679,8 +680,8 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
         case OperationType::Mul:
             backward_mul(grad_output);
             break;
-        case OperationType::Dot:
-            backward_dot(grad_output);
+        case OperationType::Div:
+            backward_div(grad_output);
             break;
         case OperationType::Transpose:
             backward_transpose(grad_output);
@@ -688,11 +689,23 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
         case OperationType::Reshape:
             backward_reshape(grad_output);
             break;
+        case OperationType::Dot:
+            backward_dot(grad_output);
+            break;
         case OperationType::Sum:
             backward_sum(grad_output);
             break;
-        case OperationType::Div:
-            backward_div(grad_output);
+        case OperationType::ReLU:
+            backward_relu(grad_output);
+            break;
+        case OperationType::GELU:
+            backward_gelu(grad_output);
+            break;
+        case OperationType::Sigmoid:
+            backward_sigmoid(grad_output);
+            break;
+        case OperationType::Tanh:
+            backward_tanh(grad_output);
             break;
         }
     }
@@ -939,154 +952,6 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output)
     }
 }
 
-void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
-{
-    /*
-    Backward pass for Z = A.dot(B):
-    dL/dA = dL/dZ . B^T
-    dL/dB = A^T . dL/dZ
-    This requires implementing matrix multiplication for gradients and handling batch dimensions and broadcasting correctly.
-    */
-
-    if (parents_.size() == 2)
-    {
-        std::shared_ptr<Tensor> parent_a = parents_[0];
-        std::shared_ptr<Tensor> parent_b = parents_[1];
-
-        // Calculate dL/dA = dL/dZ . B^T
-        // Need to transpose the last two dimensions of parent_b
-        std::vector<int> b_transpose_perm(parent_b->get_shape().size());
-        std::iota(b_transpose_perm.begin(), b_transpose_perm.end(), 0);
-        if (b_transpose_perm.size() >= 2)
-        {
-            std::swap(b_transpose_perm[b_transpose_perm.size() - 1], b_transpose_perm[b_transpose_perm.size() - 2]);
-        }
-        std::shared_ptr<Tensor> parent_b_transposed = parent_b->transpose(b_transpose_perm);
-
-        std::shared_ptr<Tensor> grad_a_intermediate = grad_output->dot(parent_b_transposed);
-
-        // Reduce gradient for parent A
-        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
-        parent_a->backward(grad_a_propagated);
-
-        // Calculate dL/dB = A^T . dL/dZ
-        // Need to transpose the last two dimensions of parent_a
-        std::vector<int> a_transpose_perm(parent_a->get_shape().size());
-        std::iota(a_transpose_perm.begin(), a_transpose_perm.end(), 0);
-        if (a_transpose_perm.size() >= 2)
-        {
-            std::swap(a_transpose_perm[a_transpose_perm.size() - 1], a_transpose_perm[a_transpose_perm.size() - 2]);
-        }
-        std::shared_ptr<Tensor> parent_a_transposed = parent_a->transpose(a_transpose_perm);
-
-        std::shared_ptr<Tensor> grad_b_intermediate = parent_a_transposed->dot(grad_output);
-
-        // Reduce gradient for parent B
-        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
-        parent_b->backward(grad_b_propagated);
-    }
-    else
-    {
-        std::cerr << "Error: Dot operation expected 2 parents, but found " << parents_.size() << std::endl;
-    }
-}
-
-void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output)
-{
-    /*
-    Backward pass for Y = X.transpose(p):
-    dL/dX = dL/dY.transpose(p_inverse)
-    We use the stored forward permutation to calculate the inverse permutation.
-    */
-
-    if (parents_.size() == 1)
-    {
-        std::shared_ptr<Tensor> parent = parents_[0];
-
-        // Calculate the inverse permutation from the stored forward permutation.
-        std::vector<int> inverse_permutation(forward_permutation_.size());
-        for (size_t i = 0; i < forward_permutation_.size(); ++i)
-        {
-            inverse_permutation[forward_permutation_[i]] = i;
-        }
-
-        // Transpose the incoming gradient using the inverse permutation.
-        std::shared_ptr<Tensor> grad_input = grad_output->transpose(inverse_permutation);
-
-        std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape(), std::make_shared<std::vector<float>>(grad_input->get_data()));
-        parent->backward(grad_input_tensor);
-    }
-    else
-    {
-        std::cerr << "Error: Transpose operation expected 1 parent, but found " << parents_.size() << std::endl;
-    }
-}
-
-void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output)
-{
-    /*
-    Backward pass for Y = X.reshape(new_shape):
-    dL/dX = dL/dY.reshape(original_shape_of_X)
-    We use the stored original shape before reshape to reshape the gradient.
-    */
-
-    if (parents_.size() == 1)
-    {
-        std::shared_ptr<Tensor> parent = parents_[0];
-
-        // Ensure the incoming gradient has the same number of elements as the parent's original shape
-        size_t expected_elements = std::accumulate(original_shape_before_reshape_.begin(),
-                                                   original_shape_before_reshape_.end(),
-                                                   1, std::multiplies<size_t>());
-        if (grad_output->num_elements() != expected_elements)
-        {
-            throw std::runtime_error("Gradient element count mismatch during reshape backward pass.");
-        }
-
-        std::shared_ptr<Tensor> grad_input_reshaped_tensor = Tensor::create(original_shape_before_reshape_, std::make_shared<std::vector<float>>(grad_output->get_data()));
-
-        parent->backward(grad_input_reshaped_tensor);
-    }
-    else
-    {
-        std::cerr << "Error: Reshape operation expected 1 parent, but found " << parents_.size() << std::endl;
-    }
-}
-
-void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output)
-{
-    /*
-    Backward pass for Y = sum(X):
-    dL/dX = dL/dY * dY/dX
-    Since Y = sum(X_i), dY/dX_i = 1 for all i.
-    So, dL/dX_i = dL/dY * 1 = dL/dY.
-    The gradient dL/dY is the incoming grad_output (which should be a scalar).
-    */
-
-    if (parents_.size() == 1)
-    {
-        std::shared_ptr<Tensor> parent = parents_[0];
-
-        // The incoming gradient should be a scalar (shape {1})
-        if (grad_output->get_shape().size() != 1 || grad_output->get_shape()[0] != 1)
-        {
-            throw std::runtime_error("Gradient for sum operation must be a scalar.");
-        }
-        float grad_value = grad_output->get_data()[0];
-
-        std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape());
-        std::fill(grad_input_tensor->data_->begin(), grad_input_tensor->data_->end(), grad_value);
-
-        parent->backward(grad_input_tensor);
-    }
-    else
-    {
-        std::cerr << "Error: Sum operation expected 1 parent, but found " << parents_.size() << std::endl;
-    }
-}
-
 void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output)
 {
     /*
@@ -1157,5 +1022,263 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output)
     else
     {
         std::cerr << "Error: Division operation expected 2 parents, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output)
+{
+    /*
+    Backward pass for Y = X.transpose(p):
+    dL/dX = dL/dY.transpose(p_inverse)
+    We use the stored forward permutation to calculate the inverse permutation.
+    */
+
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+
+        // Calculate the inverse permutation from the stored forward permutation.
+        std::vector<int> inverse_permutation(forward_permutation_.size());
+        for (size_t i = 0; i < forward_permutation_.size(); ++i)
+        {
+            inverse_permutation[forward_permutation_[i]] = i;
+        }
+
+        // Transpose the incoming gradient using the inverse permutation.
+        std::shared_ptr<Tensor> grad_input = grad_output->transpose(inverse_permutation);
+
+        std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape(), std::make_shared<std::vector<float>>(grad_input->get_data()));
+        parent->backward(grad_input_tensor);
+    }
+    else
+    {
+        std::cerr << "Error: Transpose operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output)
+{
+    /*
+    Backward pass for Y = X.reshape(new_shape):
+    dL/dX = dL/dY.reshape(original_shape_of_X)
+    We use the stored original shape before reshape to reshape the gradient.
+    */
+
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+
+        // Ensure the incoming gradient has the same number of elements as the parent's original shape
+        size_t expected_elements = std::accumulate(original_shape_before_reshape_.begin(),
+                                                   original_shape_before_reshape_.end(),
+                                                   1, std::multiplies<size_t>());
+        if (grad_output->num_elements() != expected_elements)
+        {
+            throw std::runtime_error("Gradient element count mismatch during reshape backward pass.");
+        }
+
+        std::shared_ptr<Tensor> grad_input_reshaped_tensor = Tensor::create(original_shape_before_reshape_, std::make_shared<std::vector<float>>(grad_output->get_data()));
+
+        parent->backward(grad_input_reshaped_tensor);
+    }
+    else
+    {
+        std::cerr << "Error: Reshape operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
+{
+    /*
+    Backward pass for Z = A.dot(B):
+    dL/dA = dL/dZ . B^T
+    dL/dB = A^T . dL/dZ
+    This requires implementing matrix multiplication for gradients and handling batch dimensions and broadcasting correctly.
+    */
+
+    if (parents_.size() == 2)
+    {
+        std::shared_ptr<Tensor> parent_a = parents_[0];
+        std::shared_ptr<Tensor> parent_b = parents_[1];
+
+        // Calculate dL/dA = dL/dZ . B^T
+        // Need to transpose the last two dimensions of parent_b
+        std::vector<int> b_transpose_perm(parent_b->get_shape().size());
+        std::iota(b_transpose_perm.begin(), b_transpose_perm.end(), 0);
+        if (b_transpose_perm.size() >= 2)
+        {
+            std::swap(b_transpose_perm[b_transpose_perm.size() - 1], b_transpose_perm[b_transpose_perm.size() - 2]);
+        }
+        std::shared_ptr<Tensor> parent_b_transposed = parent_b->transpose(b_transpose_perm);
+
+        std::shared_ptr<Tensor> grad_a_intermediate = grad_output->dot(parent_b_transposed);
+
+        // Reduce gradient for parent A
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
+        reduce_gradient(grad_a_intermediate, grad_a_propagated, parent_a->get_shape());
+        parent_a->backward(grad_a_propagated);
+
+        // Calculate dL/dB = A^T . dL/dZ
+        // Need to transpose the last two dimensions of parent_a
+        std::vector<int> a_transpose_perm(parent_a->get_shape().size());
+        std::iota(a_transpose_perm.begin(), a_transpose_perm.end(), 0);
+        if (a_transpose_perm.size() >= 2)
+        {
+            std::swap(a_transpose_perm[a_transpose_perm.size() - 1], a_transpose_perm[a_transpose_perm.size() - 2]);
+        }
+        std::shared_ptr<Tensor> parent_a_transposed = parent_a->transpose(a_transpose_perm);
+
+        std::shared_ptr<Tensor> grad_b_intermediate = parent_a_transposed->dot(grad_output);
+
+        // Reduce gradient for parent B
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
+        reduce_gradient(grad_b_intermediate, grad_b_propagated, parent_b->get_shape());
+        parent_b->backward(grad_b_propagated);
+    }
+    else
+    {
+        std::cerr << "Error: Dot operation expected 2 parents, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output)
+{
+    /*
+    Backward pass for Y = sum(X):
+    dL/dX = dL/dY * dY/dX
+    Since Y = sum(X_i), dY/dX_i = 1 for all i.
+    So, dL/dX_i = dL/dY * 1 = dL/dY.
+    The gradient dL/dY is the incoming grad_output (which should be a scalar).
+    */
+
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+
+        // The incoming gradient should be a scalar (shape {1})
+        if (grad_output->get_shape().size() != 1 || grad_output->get_shape()[0] != 1)
+        {
+            throw std::runtime_error("Gradient for sum operation must be a scalar.");
+        }
+        float grad_value = grad_output->get_data()[0];
+
+        std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape());
+        std::fill(grad_input_tensor->data_->begin(), grad_input_tensor->data_->end(), grad_value);
+
+        parent->backward(grad_input_tensor);
+    }
+    else
+    {
+        std::cerr << "Error: Sum operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
+        const std::vector<float>& parent_data = parent->get_data();
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+
+        for (size_t i = 0; i < parent_data.size(); ++i)
+        {
+            if (parent_data[i] > 0)
+            {
+                grad_input_data[i] = grad_output_data[i];
+            }
+            else
+            {
+                grad_input_data[i] = 0.0f;
+            }
+        }
+        parent->backward(grad_input);
+    }
+    else
+    {
+        std::cerr << "Error: ReLU operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output)
+{
+     if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
+        const std::vector<float>& parent_data = parent->get_data();
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+
+        // Gradient of GELU approximation:
+        // 0.5 * (1 + tanh(sqrt(2/PI) * (x + 0.044715 * x^3))) + 0.5 * x * sech^2(sqrt(2/PI) * (x + 0.044715 * x^3)) * sqrt(2/PI) * (1 + 3 * 0.044715 * x^2)
+        const float M_SQRT2_OVER_PI = 0.7978845608028654f; // sqrt(2 / PI)
+        const float GELU_CONSTANT = 0.044715f;
+
+        for (size_t i = 0; i < parent_data.size(); ++i)
+        {
+            float x = parent_data[i];
+            float x3 = x * x * x;
+            float tanh_arg = M_SQRT2_OVER_PI * (x + GELU_CONSTANT * x3);
+            float tanh_val = std::tanh(tanh_arg);
+            float sech_sq = 1.0f - tanh_val * tanh_val; // sech^2(y) = 1 - tanh^2(y)
+            float derivative = 0.5f * (1.0f + tanh_val) + 0.5f * x * sech_sq * M_SQRT2_OVER_PI * (1.0f + 3.0f * GELU_CONSTANT * x * x);
+            grad_input_data[i] = grad_output_data[i] * derivative;
+        }
+        parent->backward(grad_input);
+    }
+    else
+    {
+        std::cerr << "Error: GELU operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
+        const std::vector<float>& parent_data = parent->get_data();
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+
+        // Gradient of sigmoid: sigmoid(x) * (1 - sigmoid(x))
+        for (size_t i = 0; i < parent_data.size(); ++i)
+        {
+            float sigmoid_x = 1.0f / (1.0f + std::exp(-parent_data[i]));
+            grad_input_data[i] = grad_output_data[i] * (sigmoid_x * (1.0f - sigmoid_x));
+        }
+        parent->backward(grad_input);
+    }
+    else
+    {
+        std::cerr << "Error: Sigmoid operation expected 1 parent, but found " << parents_.size() << std::endl;
+    }
+}
+
+void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output)
+{
+    if (parents_.size() == 1)
+    {
+        std::shared_ptr<Tensor> parent = parents_[0];
+        std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
+        const std::vector<float>& parent_data = parent->get_data();
+        const std::vector<float>& grad_output_data = grad_output->get_data();
+        std::vector<float>& grad_input_data = const_cast<std::vector<float>&>(grad_input->get_data());
+
+        // Gradient of tanh: 1 - tanh^2(x)
+        for (size_t i = 0; i < parent_data.size(); ++i)
+        {
+            float tanh_x = std::tanh(parent_data[i]);
+            grad_input_data[i] = grad_output_data[i] * (1.0f - tanh_x * tanh_x);
+        }
+        parent->backward(grad_input);
+    }
+    else
+    {
+        std::cerr << "Error: Tanh operation expected 1 parent, but found " << parents_.size() << std::endl;
     }
 }

@@ -1,4 +1,5 @@
 #include "layers/Linear.h"
+#include "layers/Activations.h"
 #include "utils/Optimizer.h"
 #include "utils/Tensor.h"
 #include "utils/LossFunction.h"
@@ -48,7 +49,9 @@ public:
 
     std::shared_ptr<Tensor> forward(const Tensor &input)
     {
-        return linear_layer_.forward(input);
+        std::shared_ptr<Tensor> output = linear_layer_.forward(input);
+        std::shared_ptr<Tensor> activation = ReLU().forward(output);
+        return activation;
     }
 
 private:

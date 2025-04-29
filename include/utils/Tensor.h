@@ -16,7 +16,11 @@ enum class OperationType
     Transpose,
     Reshape,
     Sum,
-    Div
+    Div,
+    ReLU,
+    GELU,
+    Sigmoid,
+    Tanh
 };
 
 class Tensor : public std::enable_shared_from_this<Tensor>
@@ -58,10 +62,12 @@ public:
     std::shared_ptr<Tensor> operator-(const std::shared_ptr<Tensor> &other) const;
     std::shared_ptr<Tensor> operator*(const std::shared_ptr<Tensor> &other) const;
     std::shared_ptr<Tensor> operator/(const std::shared_ptr<Tensor> &other) const;
+
     std::shared_ptr<Tensor> dot(const std::shared_ptr<Tensor> &other) const;
+    std::shared_ptr<Tensor> sum() const;
+
     std::shared_ptr<Tensor> transpose(const std::vector<int> &permutation) const;
     std::shared_ptr<Tensor> reshape(const std::vector<int> &new_shape) const;
-    std::shared_ptr<Tensor> sum() const;
 
     // Gradient handling
     void zero_grad();
@@ -101,11 +107,18 @@ private:
     void backward_add(const std::shared_ptr<Tensor> &grad_output);
     void backward_sub(const std::shared_ptr<Tensor> &grad_output);
     void backward_mul(const std::shared_ptr<Tensor> &grad_output);
-    void backward_dot(const std::shared_ptr<Tensor> &grad_output);
+    void backward_div(const std::shared_ptr<Tensor> &grad_output);
+
     void backward_transpose(const std::shared_ptr<Tensor> &grad_output);
     void backward_reshape(const std::shared_ptr<Tensor> &grad_output);
+
+    void backward_dot(const std::shared_ptr<Tensor> &grad_output);
     void backward_sum(const std::shared_ptr<Tensor> &grad_output);
-    void backward_div(const std::shared_ptr<Tensor> &grad_output);
+
+    void backward_relu(const std::shared_ptr<Tensor> &grad_output);
+    void backward_gelu(const std::shared_ptr<Tensor> &grad_output);
+    void backward_sigmoid(const std::shared_ptr<Tensor> &grad_output);
+    void backward_tanh(const std::shared_ptr<Tensor> &grad_output);
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H
