@@ -32,13 +32,7 @@ Tensor::Tensor(const std::vector<int> &shape, const std::shared_ptr<std::vector<
 }
 
 // Destructor
-Tensor::~Tensor()
-{
-    // With shared_ptr, removal from optimizable_tensors_ needs to be done carefully,
-    // perhaps when a tensor is explicitly 'freed' or a weak_ptr mechanism is used.
-    // For now, we'll leave this simplified or remove it if shared_ptr lifecycle is sufficient.
-    // If a factory is used, cleanup logic might go there.
-}
+Tensor::~Tensor() {}
 
 // Default factory
 std::shared_ptr<Tensor> Tensor::create()
