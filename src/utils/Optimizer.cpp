@@ -1,6 +1,8 @@
 #include "utils/Optimizer.h"
+#include "utils/Helpers.h"
 #include <cmath>
 #include <iostream>
+#include <limits>
 
 void SGD::step()
 {
@@ -44,6 +46,36 @@ void Adam::step()
 
     float beta1_t = std::pow(beta1_, t_);
     float beta2_t = std::pow(beta2_, t_);
+
+    // Gradient Clipping
+    float total_norm_sq = 0.0f;
+    for (size_t i = 0; i < parameters_.size(); ++i)
+    {
+        std::shared_ptr<Tensor> param = parameters_[i];
+        if (!param || param->get_grad().empty()) continue;
+
+        const std::vector<float>& param_grad = param->get_grad();
+        for (float grad_val : param_grad) {
+            total_norm_sq += grad_val * grad_val;
+        }
+    }
+    float total_norm = std::sqrt(total_norm_sq);
+    float clip_threshold = 1.0f;
+    float clip_coef = clip_threshold / (total_norm + epsilon_);
+
+    // Clip gradients if the total norm exceeds the threshold
+    if (clip_coef < 1.0f) {
+         for (size_t i = 0; i < parameters_.size(); ++i) {
+            std::shared_ptr<Tensor> param = parameters_[i];
+            if (!param || param->get_grad().empty()) continue;
+
+            std::vector<float>& param_grad_mutable = const_cast<std::vector<float>&>(param->get_grad());
+            for (float& grad_val : param_grad_mutable) {
+                grad_val *= clip_coef;
+            }
+        }
+    }
+
 
     for (size_t i = 0; i < parameters_.size(); ++i)
     {
