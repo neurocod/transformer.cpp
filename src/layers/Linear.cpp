@@ -12,28 +12,25 @@ Linear::Linear(int input_dim, int output_dim)
 {
     // Weights shape: (input_dim, output_dim)
     weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, true);
-    // Biases shape: (1, output_dim)
-    biases_ = Tensor::create(std::vector<int>{1, output_dim_}, true);
+    // Biases shape: (output_dim)
+    biases_ = Tensor::create(std::vector<int>{output_dim_}, true);
 
     // Initialize weights and biases with random values
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::normal_distribution<float> d(0, 0.01); // Mean 0, small standard deviation, using float
+    float std_dev = std::sqrt(2.0f / input_dim_);
+    std::normal_distribution<float> d(0, std_dev);
 
     // Initialize weights data
-    std::shared_ptr<std::vector<float>> weights_data = std::make_shared<std::vector<float>>(output_dim_ * input_dim_);
-    for (int i = 0; i < output_dim_ * input_dim_; ++i)
+    std::shared_ptr<std::vector<float>> weights_data = std::make_shared<std::vector<float>>(input_dim_ * output_dim_);
+    for (size_t i = 0; i < weights_data->size(); ++i)
     {
         (*weights_data)[i] = d(gen);
     }
     weights_->set_data(weights_data);
 
-    // Initialize biases data
     std::shared_ptr<std::vector<float>> biases_data = std::make_shared<std::vector<float>>(output_dim_);
-    for (int i = 0; i < output_dim_; ++i)
-    {
-        (*biases_data)[i] = 0.0f;
-    }
+    std::fill(biases_data->begin(), biases_data->end(), 0.0f);
     biases_->set_data(biases_data);
 }
 

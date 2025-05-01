@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <cmath>
+#include <sstream>
 
 std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
@@ -784,6 +785,7 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output)
             backward_softmax(grad_output);
             break;
         case OperationType::EmbeddingLookup:
+            std::cerr << "EmbeddingLookup backward" << std::endl;
             backward_embedding_lookup(grad_output);
             break;
         }
@@ -909,19 +911,22 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output)
         std::shared_ptr<Tensor> parent_a = parents_[0];
         std::shared_ptr<Tensor> parent_b = parents_[1];
 
-        if (parent_a->is_optimizable_)
-        {
+        bool a_needs_grad = parent_a->is_optimizable_ || parent_a->creator_op_ != OperationType::None;
+
+        if (a_needs_grad) {
             std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
             reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
             parent_a->backward(grad_a_propagated);
         }
 
-        if (parent_b->is_optimizable_)
-        {
+        bool b_needs_grad = parent_b->is_optimizable_ || parent_b->creator_op_ != OperationType::None;
+
+        if (b_needs_grad) {
             std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
             reduce_gradient(grad_output, grad_b_propagated, parent_b->get_shape());
             parent_b->backward(grad_b_propagated);
         }
+
     }
     else
     {
@@ -943,31 +948,24 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output)
         std::shared_ptr<Tensor> parent_a = parents_[0];
         std::shared_ptr<Tensor> parent_b = parents_[1];
 
-        if (parent_a->is_optimizable_)
-        {
-            std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-            reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
-            parent_a->backward(grad_a_propagated);
-        }
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
+        reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
+        parent_a->backward(grad_a_propagated);
 
-        if (parent_b->is_optimizable_)
-        {
-            std::shared_ptr<Tensor> neg_grad_output = Tensor::create(grad_output->get_shape());
-            if (neg_grad_output->data_ && grad_output->data_) {
-                std::shared_ptr<std::vector<float>> neg_data = std::make_shared<std::vector<float>>(grad_output->num_elements());
-                const std::vector<float> &grad_output_data = grad_output->get_data();
-                for (size_t i = 0; i < neg_data->size(); ++i)
-                {
-                    (*neg_data)[i] = -grad_output_data[i];
-                }
-                neg_grad_output->set_data(neg_data);
+        // Need to propagate -grad_output
+        std::shared_ptr<Tensor> neg_grad_output = Tensor::create(grad_output->get_shape());
+        if (neg_grad_output->data_ && grad_output->data_) {
+            std::shared_ptr<std::vector<float>> neg_data = std::make_shared<std::vector<float>>(grad_output->num_elements());
+            const std::vector<float> &grad_output_data = grad_output->get_data();
+            for (size_t i = 0; i < neg_data->size(); ++i) { (*neg_data)[i] = -grad_output_data[i]; }
+            neg_grad_output->set_data(neg_data);
 
-                std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-                reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
-                parent_b->backward(grad_b_propagated);
-            } else {
-                 std::cerr << "Error: Data vector missing in backward_sub gradient calculation." << std::endl;
-            }
+            std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
+            reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
+            parent_b->backward(grad_b_propagated);
+        } else {
+             std::cerr << "Error: Data vector missing in backward_sub gradient calculation." << std::endl;
+             // Consider throwing an exception or handling more robustly
         }
     }
     else
@@ -989,45 +987,31 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output)
         std::shared_ptr<Tensor> parent_a = parents_[0];
         std::shared_ptr<Tensor> parent_b = parents_[1];
 
-        if (parent_a->is_optimizable_)
-        {
-            std::vector<int> intermediate_shape = calculate_broadcast_shape(grad_output->get_shape(), parent_b->get_shape());
-            std::shared_ptr<Tensor> grad_a_intermediate_tensor = Tensor::create(intermediate_shape);
-            std::shared_ptr<Tensor> broadcasted_grad_a = grad_output->broadcast_to(intermediate_shape);
-            std::shared_ptr<Tensor> broadcasted_parent_b = parent_b->broadcast_to(intermediate_shape);
+        // grad_a = grad_output * parent_b
+        std::vector<int> intermediate_shape_a = calculate_broadcast_shape(grad_output->get_shape(), parent_b->get_shape());
+        std::shared_ptr<Tensor> grad_a_intermediate_tensor = Tensor::create(intermediate_shape_a);
+        std::shared_ptr<Tensor> broadcasted_grad_a = grad_output->broadcast_to(intermediate_shape_a);
+        std::shared_ptr<Tensor> broadcasted_parent_b = parent_b->broadcast_to(intermediate_shape_a);
+        if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ && broadcasted_parent_b->data_) {
+            for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i) { (*grad_a_intermediate_tensor->data_)[i] = (*broadcasted_grad_a->data_)[i] * (*broadcasted_parent_b->data_)[i]; }
+        } else { /* Handle missing data error */ std::cerr << "Error: Missing data in backward_mul for parent A grad calc." << std::endl; }
 
-            if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ && broadcasted_parent_b->data_)
-            {
-                for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i)
-                {
-                    (*grad_a_intermediate_tensor->data_)[i] = (*broadcasted_grad_a->data_)[i] * (*broadcasted_parent_b->data_)[i];
-                }
-            }
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
+        reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated, parent_a->get_shape());
+        parent_a->backward(grad_a_propagated);
 
-            std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-            reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated, parent_a->get_shape());
-            parent_a->backward(grad_a_propagated);
-        }
+        // grad_b = grad_output * parent_a
+        std::vector<int> intermediate_shape_b = calculate_broadcast_shape(grad_output->get_shape(), parent_a->get_shape());
+        std::shared_ptr<Tensor> grad_b_intermediate_tensor = Tensor::create(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_grad_b = grad_output->broadcast_to(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_parent_a = parent_a->broadcast_to(intermediate_shape_b);
+        if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ && broadcasted_parent_a->data_) {
+            for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i) { (*grad_b_intermediate_tensor->data_)[i] = (*broadcasted_grad_b->data_)[i] * (*broadcasted_parent_a->data_)[i]; }
+        } else { /* Handle missing data error */ std::cerr << "Error: Missing data in backward_mul for parent B grad calc." << std::endl; }
 
-        if (parent_b->is_optimizable_)
-        {
-            std::vector<int> intermediate_shape_b = calculate_broadcast_shape(grad_output->get_shape(), parent_a->get_shape());
-            std::shared_ptr<Tensor> grad_b_intermediate_tensor = Tensor::create(intermediate_shape_b);
-            std::shared_ptr<Tensor> broadcasted_grad_b = grad_output->broadcast_to(intermediate_shape_b);
-            std::shared_ptr<Tensor> broadcasted_parent_a = parent_a->broadcast_to(intermediate_shape_b);
-
-            if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ && broadcasted_parent_a->data_)
-            {
-                for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i)
-                {
-                    (*grad_b_intermediate_tensor->data_)[i] = (*broadcasted_grad_b->data_)[i] * (*broadcasted_parent_a->data_)[i];
-                }
-            }
-
-            std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-            reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated, parent_b->get_shape());
-            parent_b->backward(grad_b_propagated);
-        }
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
+        reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated, parent_b->get_shape());
+        parent_b->backward(grad_b_propagated);
     }
     else
     {
@@ -1037,49 +1021,55 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output)
 
 void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output)
 {
+    /*
+    Backward pass for Z = A / B (element-wise):
+    dL/dA = dL/dZ * dZ/dA = grad_output * (1 / B)
+    dL/dB = dL/dZ * dZ/dB = grad_output * (-A / B^2)
+    */
+   
     if (parents_.size() == 2)
     {
         std::shared_ptr<Tensor> parent_a = parents_[0]; // Numerator
         std::shared_ptr<Tensor> parent_b = parents_[1]; // Denominator
 
-        const std::vector<float> &parent_a_data = parent_a->get_data();
-        const std::vector<float> &parent_b_data = parent_b->get_data();
-        const std::vector<float> &grad_output_data = grad_output->get_data();
-
-        // For numerator: d(a/b)/da = 1/b
-        if (parent_a->is_optimizable_)
-        {
-            std::shared_ptr<Tensor> grad_a = Tensor::create(parent_a->get_shape());
-            std::vector<float> &grad_a_data = const_cast<std::vector<float> &>(grad_a->get_data());
-
-            for (size_t i = 0; i < grad_a_data.size(); ++i)
-            {
-                size_t b_idx = i % parent_b_data.size();
-                float denominator = parent_b_data[b_idx];
+        // grad_a = grad_output / parent_b
+        std::vector<int> intermediate_shape_a = calculate_broadcast_shape(grad_output->get_shape(), parent_b->get_shape());
+        std::shared_ptr<Tensor> grad_a_intermediate_tensor = Tensor::create(intermediate_shape_a);
+        std::shared_ptr<Tensor> broadcasted_grad_a = grad_output->broadcast_to(intermediate_shape_a);
+        std::shared_ptr<Tensor> broadcasted_parent_b_for_a = parent_b->broadcast_to(intermediate_shape_a);
+        if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ && broadcasted_parent_b_for_a->data_) {
+            for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i) {
+                float denom = (*broadcasted_parent_b_for_a->data_)[i];
+                (*grad_a_intermediate_tensor->data_)[i] = (denom == 0.0f) ? 0.0f : ((*broadcasted_grad_a->data_)[i] / denom);
             }
+        } else { std::cerr << "Error: Missing data in backward_div for parent A grad calc." << std::endl; }
 
-            std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-            reduce_gradient(grad_a, grad_a_propagated, parent_a->get_shape());
-            parent_a->backward(grad_a_propagated);
-        }
+        std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
+        reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated, parent_a->get_shape());
+        parent_a->backward(grad_a_propagated);
 
-        // For denominator: d(a/b)/db = -a/b^2
-        if (parent_b->is_optimizable_)
-        {
-            std::shared_ptr<Tensor> grad_b = Tensor::create(parent_b->get_shape());
-            std::vector<float> &grad_b_data = const_cast<std::vector<float> &>(grad_b->get_data());
 
-            for (size_t i = 0; i < grad_b_data.size(); ++i)
-            {
-                size_t a_idx = i % parent_a_data.size();
-                float numerator = parent_a_data[a_idx];
-                float denominator = parent_b_data[i];
+        // grad_b = grad_output * (-parent_a / parent_b^2)
+        std::vector<int> intermediate_shape_b = calculate_broadcast_shape(
+            calculate_broadcast_shape(grad_output->get_shape(), parent_a->get_shape()),
+            parent_b->get_shape()
+        );
+        std::shared_ptr<Tensor> grad_b_intermediate_tensor = Tensor::create(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_grad_b = grad_output->broadcast_to(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_parent_a_for_b = parent_a->broadcast_to(intermediate_shape_b);
+        std::shared_ptr<Tensor> broadcasted_parent_b_for_b = parent_b->broadcast_to(intermediate_shape_b);
+        if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ && broadcasted_parent_a_for_b->data_ && broadcasted_parent_b_for_b->data_) {
+            for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i) {
+                float numer = (*broadcasted_parent_a_for_b->data_)[i];
+                float denom = (*broadcasted_parent_b_for_b->data_)[i];
+                float denom_sq = denom * denom;
+                (*grad_b_intermediate_tensor->data_)[i] = (denom_sq == 0.0f) ? 0.0f : ((*broadcasted_grad_b->data_)[i] * (-numer / denom_sq));
             }
+        } else { std::cerr << "Error: Missing data in backward_div for parent B grad calc." << std::endl; }
 
-            std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-            reduce_gradient(grad_b, grad_b_propagated, parent_b->get_shape());
-            parent_b->backward(grad_b_propagated);
-        }
+        std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
+        reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated, parent_b->get_shape());
+        parent_b->backward(grad_b_propagated);
     }
     else
     {
