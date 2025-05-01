@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.14)
 
 project(TransformerCPP)
 
@@ -35,6 +35,9 @@ add_executable(neural_network
     src/models/Transformer.cpp
     src/utils/DataLoader.cpp
 )
+
+# Link filesystem library (C++17)
+target_link_libraries(neural_network PRIVATE stdc++fs)
 
 add_executable(test_tensor
     tests/test_tensor.cpp

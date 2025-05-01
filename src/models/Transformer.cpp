@@ -2,7 +2,9 @@
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
+#include <fstream>
 #include "utils/Helpers.h"
+#include "utils/Tensor.h"
 
 Transformer::Transformer(int input_vocab_size, int target_vocab_size, int embed_dim,
                          int max_sequence_length, int num_layers, int num_heads,
@@ -114,4 +116,128 @@ std::shared_ptr<Tensor> Transformer::forward(const std::shared_ptr<Tensor> &enco
     std::shared_ptr<Tensor> logits = final_linear_.forward(decoder_output);
 
     return logits;
+}
+
+void Transformer::save_weights(const std::string& filename) const {
+    std::ofstream outfile(filename, std::ios::binary | std::ios::trunc);
+    if (!outfile.is_open()) {
+        throw std::runtime_error("Failed to open file for saving weights: " + filename);
+    }
+
+    const auto& optimizable_tensors = Tensor::get_optimizable_tensors();
+    uint32_t num_tensors = optimizable_tensors.size();
+
+    // Write the number of tensors
+    outfile.write(reinterpret_cast<const char*>(&num_tensors), sizeof(num_tensors));
+
+    std::cout << "Saving " << num_tensors << " optimizable tensors to " << filename << "..." << std::endl;
+
+    for (const auto& tensor_ptr : optimizable_tensors) {
+        if (!tensor_ptr) {
+             std::cerr << "Warning: Encountered null tensor pointer while saving weights." << std::endl;
+             continue;
+        }
+        const std::vector<int>& shape = tensor_ptr->get_shape();
+        const std::vector<float>& data = tensor_ptr->get_data();
+
+        // Write shape information
+        uint32_t rank = shape.size();
+        outfile.write(reinterpret_cast<const char*>(&rank), sizeof(rank));
+        for (int dim_size : shape) {
+             uint32_t size = static_cast<uint32_t>(dim_size);
+             outfile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+        }
+
+        // Write data
+        uint64_t num_elements = data.size();
+         outfile.write(reinterpret_cast<const char*>(&num_elements), sizeof(num_elements));
+         if (num_elements > 0) {
+            outfile.write(reinterpret_cast<const char*>(data.data()), num_elements * sizeof(float));
+         }
+         if (!outfile) {
+             throw std::runtime_error("Error writing tensor data to file: " + filename);
+         }
+    }
+     std::cout << "Weights saved successfully." << std::endl;
+    outfile.close();
+}
+
+void Transformer::load_weights(const std::string& filename) {
+    std::ifstream infile(filename, std::ios::binary);
+    if (!infile.is_open()) {
+        throw std::runtime_error("Failed to open file for loading weights: " + filename);
+    }
+
+    uint32_t num_tensors_in_file;
+    infile.read(reinterpret_cast<char*>(&num_tensors_in_file), sizeof(num_tensors_in_file));
+     if (!infile) {
+         throw std::runtime_error("Failed to read number of tensors from file: " + filename);
+     }
+
+    auto& optimizable_tensors = Tensor::get_optimizable_tensors();
+    if (num_tensors_in_file != optimizable_tensors.size()) {
+        throw std::runtime_error("Mismatch between number of tensors in file (" + std::to_string(num_tensors_in_file) +
+                                 ") and model (" + std::to_string(optimizable_tensors.size()) + "). Model architecture may have changed.");
+    }
+
+     std::cout << "Loading " << num_tensors_in_file << " optimizable tensors from " << filename << "..." << std::endl;
+
+    for (size_t i = 0; i < num_tensors_in_file; ++i) {
+        std::shared_ptr<Tensor>& tensor_ptr = optimizable_tensors[i];
+         if (!tensor_ptr) {
+             std::cerr << "Warning: Encountered null tensor pointer in model while loading weights for index " << i << "." << std::endl;
+             uint32_t rank;
+             infile.read(reinterpret_cast<char*>(&rank), sizeof(rank));
+             for(uint32_t r=0; r<rank; ++r) { uint32_t dim_size; infile.read(reinterpret_cast<char*>(&dim_size), sizeof(dim_size)); }
+             uint64_t num_elements;
+             infile.read(reinterpret_cast<char*>(&num_elements), sizeof(num_elements));
+             infile.seekg(num_elements * sizeof(float), std::ios::cur);
+             continue;
+        }
+
+        // Read shape information from file
+        uint32_t rank;
+        infile.read(reinterpret_cast<char*>(&rank), sizeof(rank));
+        if (!infile) throw std::runtime_error("Failed to read tensor rank from file.");
+
+        std::vector<int> file_shape(rank);
+        for (uint32_t r = 0; r < rank; ++r) {
+            uint32_t dim_size;
+            infile.read(reinterpret_cast<char*>(&dim_size), sizeof(dim_size));
+             if (!infile) throw std::runtime_error("Failed to read tensor dimension size from file.");
+            file_shape[r] = static_cast<int>(dim_size);
+        }
+
+        // Read data size from file
+        uint64_t file_num_elements;
+        infile.read(reinterpret_cast<char*>(&file_num_elements), sizeof(file_num_elements));
+         if (!infile) throw std::runtime_error("Failed to read tensor element count from file.");
+
+        // Verify shape and size match the tensor in the model
+        const std::vector<int>& model_shape = tensor_ptr->get_shape();
+        size_t model_num_elements = tensor_ptr->num_elements();
+
+        if (file_shape != model_shape || file_num_elements != model_num_elements) {
+             infile.close();
+             throw std::runtime_error("Mismatch in shape or size for tensor index " + std::to_string(i) +
+                                      ". File shape: " + vector_to_string(file_shape) +
+                                      ", Model shape: " + vector_to_string(model_shape) +
+                                      ". File elements: " + std::to_string(file_num_elements) +
+                                      ", Model elements: " + std::to_string(model_num_elements));
+        }
+
+        // Read data into a temporary buffer, then set it in the tensor
+         if (model_num_elements > 0) {
+            auto data_buffer = std::make_shared<std::vector<float>>(model_num_elements);
+            infile.read(reinterpret_cast<char*>(data_buffer->data()), model_num_elements * sizeof(float));
+             if (!infile) {
+                 throw std::runtime_error("Error reading tensor data from file for tensor index " + std::to_string(i));
+             }
+            tensor_ptr->set_data(data_buffer);
+         } else {
+             tensor_ptr->set_data(std::make_shared<std::vector<float>>());
+         }
+    }
+     std::cout << "Weights loaded successfully." << std::endl;
+    infile.close();
 }

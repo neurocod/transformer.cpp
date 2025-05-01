@@ -30,6 +30,9 @@ public:
                                     const std::shared_ptr<Tensor> &decoder_input_ids,
                                     bool is_training);
 
+    void save_weights(const std::string& filename) const;
+    void load_weights(const std::string& filename);
+
     ~Transformer() = default;
 
 private:

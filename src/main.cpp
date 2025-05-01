@@ -19,6 +19,7 @@
 #include <memory>
 #include <random>
 #include <chrono>
+#include <filesystem>
 
 std::mt19937 global_rng(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
@@ -34,14 +35,16 @@ int main()
 
     // Training Parameters
     float learning_rate = 0.001f;
-    int num_epochs = 100;
+    int num_epochs = 10;
     int batch_size = 8;
     int input_seq_length = 10;
     int decoder_seq_length = 10;
 
     std::string data_filename = "../data/tiny_shakespeare.txt";
-    int seq_length = input_seq_length;
-    DataLoader data_loader(data_filename, seq_length, batch_size);
+    std::string weights_filename = "transformer_weights.bin";
+    bool load_existing_weights = true;
+
+    DataLoader data_loader(data_filename, input_seq_length, batch_size);
     data_loader.load_data();
 
     int input_vocab_size = data_loader.get_vocab_size();
@@ -50,6 +53,20 @@ int main()
     Transformer model(input_vocab_size, target_vocab_size, embed_dim,
                       max_sequence_length, num_layers, num_heads,
                       ff_hidden_dim, dropout_rate, pad_token_id);
+
+    // Load weights if they exist
+    if (load_existing_weights && std::filesystem::exists(weights_filename)) {
+        try {
+            std::cout << "Attempting to load weights from " << weights_filename << "..." << std::endl;
+            model.load_weights(weights_filename);
+            std::cout << "Weights loaded successfully." << std::endl;
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to load weights: " << e.what() << std::endl;
+            std::cerr << "Starting training from scratch." << std::endl;
+        }
+    } else {
+         std::cout << "No existing weights file found or loading disabled. Starting training from scratch." << std::endl;
+    }
 
     Adam optimizer(learning_rate);
 
@@ -90,6 +107,15 @@ int main()
     }
 
     std::cout << "\nTransformer training test run finished." << std::endl;
+
+    // Save weights after training
+    try {
+        std::cout << "Saving final weights to " << weights_filename << "..." << std::endl;
+        model.save_weights(weights_filename);
+        std::cout << "Weights saved successfully." << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to save weights: " << e.what() << std::endl;
+    }
 
     return 0;
 }
