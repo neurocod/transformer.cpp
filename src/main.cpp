@@ -99,6 +99,16 @@ int main()
                         max_sequence_length, num_layers, num_heads,
                         ff_hidden_dim, dropout_rate, pad_token_id);
 
+    // Print model parameters count
+    size_t total_params = 0;
+    const auto& parameters = Tensor::get_optimizable_tensors();
+    for (const auto& param : parameters) {
+        if (param) {
+            total_params += param->num_elements();
+        }
+    }
+    std::cout << "Total optimizable parameters: " << total_params << std::endl;
+
     // Load Weights
     bool weights_loaded = false;
     if ((load_existing_weights || inference_mode) && std::filesystem::exists(weights_filename))
