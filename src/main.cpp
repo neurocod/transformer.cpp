@@ -12,6 +12,7 @@
 #include "utils/Masking.h"
 #include "utils/Helpers.h"
 #include "utils/DataLoader.h"
+#include "utils/ConfigParser.h"
 
 #include <vector>
 #include <iostream>
@@ -22,27 +23,35 @@
 #include <filesystem>
 #include <limits>
 #include <algorithm>
+#include <stdexcept>
 
 std::mt19937 global_rng(std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
 // Function to convert string to tensor of IDs
-std::shared_ptr<Tensor> string_to_tensor(const std::string& text, const DataLoader& loader, int seq_len) {
-    const auto& char_to_id = loader.get_char_to_id_map();
+std::shared_ptr<Tensor> string_to_tensor(const std::string &text, const DataLoader &loader, int seq_len)
+{
+    const auto &char_to_id = loader.get_char_to_id_map();
     std::vector<float> ids;
     ids.reserve(seq_len);
-    for (char c : text) {
+    for (char c : text)
+    {
         auto it = char_to_id.find(c);
-        if (it != char_to_id.end()) {
+        if (it != char_to_id.end())
+        {
             ids.push_back(static_cast<float>(it->second));
-        } else {
+        }
+        else
+        {
             ids.push_back(0.0f);
         }
     }
     // Pad
-    while (ids.size() < seq_len) {
+    while (ids.size() < seq_len)
+    {
         ids.push_back(0.0f);
     }
-    if (ids.size() > seq_len) {
+    if (ids.size() > seq_len)
+    {
         ids.resize(seq_len);
     }
 
@@ -50,222 +59,243 @@ std::shared_ptr<Tensor> string_to_tensor(const std::string& text, const DataLoad
     return Tensor::create({1, seq_len}, std::make_shared<std::vector<float>>(ids));
 }
 
-// Function to convert tensor of IDs back to string
-std::string tensor_to_string(const std::shared_ptr<Tensor>& tensor, const DataLoader& loader) {
-    const auto& id_to_char = loader.get_id_to_char_map();
-    const auto& data = tensor->get_data();
-    std::string text = "";
-    for (float id_float : data) {
-        int id = static_cast<int>(id_float);
-         auto it = id_to_char.find(id);
-         if (it != id_to_char.end() && id != 0) {
-             text += it->second;
-         } else if (id != 0) {
-             text += '?';
-         }
-    }
-    return text;
-}
 
 int main()
 {
-    // Configuration
-    bool inference_mode = false;
-    int max_generate_length = 100;
-    std::string initial_prompt = "ROMEO:";
+    try
+    {
+        std::string config_filename = "../config.ini";
+        ConfigParser config(config_filename);
+        std::cout << "Loaded configuration from " << config_filename << std::endl;
 
-    int embed_dim = 128;
-    int max_sequence_length = 100;
-    int num_layers = 2;
-    int num_heads = 8;
-    int ff_hidden_dim = 512;
-    float dropout_rate = 0.1f;
-    float pad_token_id = 0.0f;
+        // General Settings
+        bool inference_mode = config.getValue<bool>("inference_mode");
+        bool load_existing_weights = config.getValue<bool>("load_existing_weights");
+        std::string weights_filename = config.getValue<std::string>("weights_filename");
+        std::string data_filename = config.getValue<std::string>("data_filename");
 
-    // Training Parameters
-    float learning_rate = 0.0005;
-    int num_epochs = 10;
-    int batch_size = 16;
-    int input_seq_length = 10;
-    int decoder_seq_length = 10;
+        // Model Architecture
+        int embed_dim = config.getValue<int>("embed_dim");
+        int max_sequence_length = config.getValue<int>("max_sequence_length");
+        int num_layers = config.getValue<int>("num_layers");
+        int num_heads = config.getValue<int>("num_heads");
+        int ff_hidden_dim = config.getValue<int>("ff_hidden_dim");
+        float dropout_rate = config.getValue<float>("dropout_rate");
+        float pad_token_id = config.getValue<float>("pad_token_id");
 
-    std::string data_filename = "../data/tiny_shakespeare.txt";
-    std::string weights_filename = "transformer_weights.bin";
-    bool load_existing_weights = true;
+        // Training Parameters
+        float learning_rate = config.getValue<float>("learning_rate");
+        int num_epochs = config.getValue<int>("num_epochs");
+        int batch_size = config.getValue<int>("batch_size");
+        int input_seq_length = config.getValue<int>("input_seq_length");
+        int decoder_seq_length = config.getValue<int>("decoder_seq_length");
 
-    DataLoader data_loader(data_filename, input_seq_length, batch_size);
-    data_loader.load_data();
+        // Inference Parameters
+        int max_generate_length = config.getValue<int>("max_generate_length");
+        std::string initial_prompt = config.getValue<std::string>("initial_prompt");
 
-    int input_vocab_size = data_loader.get_vocab_size();
-    int target_vocab_size = data_loader.get_vocab_size();
+        // DataLoader needs sequence length and batch size from config
+        DataLoader data_loader(data_filename, input_seq_length, batch_size);
+        data_loader.load_data();
 
-    Transformer model(input_vocab_size, target_vocab_size, embed_dim,
-                      max_sequence_length, num_layers, num_heads,
-                      ff_hidden_dim, dropout_rate, pad_token_id);
+        int input_vocab_size = data_loader.get_vocab_size();
+        int target_vocab_size = data_loader.get_vocab_size();
 
-    // Load Weights
-    bool weights_loaded = false;
-    if ((load_existing_weights || inference_mode) && std::filesystem::exists(weights_filename)) {
-        try {
-            std::cout << "Attempting to load weights from " << weights_filename << "..." << std::endl;
-            model.load_weights(weights_filename);
-            std::cout << "Weights loaded successfully." << std::endl;
-            weights_loaded = true;
-        } catch (const std::exception& e) {
-            std::cerr << "Failed to load weights: " << e.what() << std::endl;
-            if (inference_mode) {
-                std::cerr << "Cannot run inference without weights. Exiting." << std::endl;
+        Transformer model(input_vocab_size, target_vocab_size, embed_dim,
+                          max_sequence_length, num_layers, num_heads,
+                          ff_hidden_dim, dropout_rate, pad_token_id);
+
+        // Load Weights
+        bool weights_loaded = false;
+        if ((load_existing_weights || inference_mode) && std::filesystem::exists(weights_filename))
+        {
+            try
+            {
+                std::cout << "Attempting to load weights from " << weights_filename << "..." << std::endl;
+                model.load_weights(weights_filename);
+                std::cout << "Weights loaded successfully." << std::endl;
+                weights_loaded = true;
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Failed to load weights: " << e.what() << std::endl;
+                if (inference_mode)
+                {
+                    std::cerr << "Cannot run inference without weights. Exiting." << std::endl;
+                    return 1;
+                }
+                std::cerr << "Starting training from scratch." << std::endl;
+            }
+        }
+        else
+        {
+            if (inference_mode)
+            {
+                std::cerr << "Weights file '" << weights_filename << "' not found. Cannot run inference. Exiting." << std::endl;
                 return 1;
             }
-            std::cerr << "Starting training from scratch." << std::endl;
+            std::cout << "No existing weights file found or loading disabled. Starting training from scratch." << std::endl;
         }
-    } else {
-         if (inference_mode) {
-             std::cerr << "Weights file '" << weights_filename << "' not found. Cannot run inference. Exiting." << std::endl;
-             return 1;
-         }
-         std::cout << "No existing weights file found or loading disabled. Starting training from scratch." << std::endl;
-    }
-    // End Load Weights
+        // End Load Weights
 
-    if (!inference_mode) {
-        // Training Mode
-        Adam optimizer(learning_rate);
-        CrossEntropyLoss criterion;
-
-        std::cout << "Starting Transformer training..." << std::endl;
-
-        for (int epoch = 0; epoch < num_epochs; ++epoch)
+        if (!inference_mode)
         {
-            optimizer.zero_grad();
+            // Training Mode
+            Adam optimizer(learning_rate);
+            CrossEntropyLoss criterion;
 
-            std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = data_loader.get_batch();
-            std::shared_ptr<Tensor> encoder_input_ids = batch_data.first;
-            std::shared_ptr<Tensor> target_output_ids = batch_data.second;
-            std::shared_ptr<Tensor> decoder_input_ids = encoder_input_ids;
+            std::cout << "Starting Transformer training..." << std::endl;
 
-            // Forward pass
-            std::shared_ptr<Tensor> logits = model.forward(encoder_input_ids, decoder_input_ids, true);
+            for (int epoch = 0; epoch < num_epochs; ++epoch)
+            {
+                optimizer.zero_grad();
 
-            // Reshape logits
-            std::shared_ptr<Tensor> reshaped_logits = logits->reshape({batch_size * decoder_seq_length, target_vocab_size});
+                std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = data_loader.get_batch();
+                std::shared_ptr<Tensor> encoder_input_ids = batch_data.first;
+                std::shared_ptr<Tensor> target_output_ids = batch_data.second;
+                std::shared_ptr<Tensor> decoder_input_ids = encoder_input_ids;
 
-            // Compute loss
-            std::shared_ptr<Tensor> loss = criterion.compute_loss(reshaped_logits, target_output_ids);
+                // Forward pass
+                std::shared_ptr<Tensor> logits = model.forward(encoder_input_ids, decoder_input_ids, true);
 
-            std::cout << "Epoch [" << (epoch + 1) << "/" << num_epochs << "], Loss: " << vector_to_string(loss->get_data()) << std::endl;
+                // Reshape logits
+                std::shared_ptr<Tensor> reshaped_logits = logits->reshape({batch_size * decoder_seq_length, target_vocab_size});
 
-            // Backward pass
-            criterion.backward(loss);
-            optimizer.step();
-        }
+                // Compute loss
+                std::shared_ptr<Tensor> loss = criterion.compute_loss(reshaped_logits, target_output_ids);
 
-        std::cout << "\nTransformer training finished." << std::endl;
+                std::cout << "Epoch [" << (epoch + 1) << "/" << num_epochs << "], Loss: " << vector_to_string(loss->get_data()) << std::endl;
 
-        // Save weights after training
-        try {
-            std::cout << "Saving final weights to " << weights_filename << "..." << std::endl;
-            model.save_weights(weights_filename);
-            std::cout << "Weights saved successfully." << std::endl;
-        } catch (const std::exception& e) {
-            std::cerr << "Failed to save weights: " << e.what() << std::endl;
-        }
-        // End Training Mode
-
-    } else {
-        // Inference Mode
-        if (!weights_loaded) {
-             std::cerr << "Weights were not loaded (or failed to load). Cannot run inference. Exiting." << std::endl;
-             return 1;
-        }
-
-        std::cout << "\n--- Running Inference ---" << std::endl;
-        std::cout << "Initial prompt: \"" << initial_prompt << "\"" << std::endl;
-
-        int current_seq_len = input_seq_length;
-
-        // Tokenize the initial prompt
-        std::shared_ptr<Tensor> current_input_ids = string_to_tensor(initial_prompt, data_loader, current_seq_len);
-        std::vector<float> generated_ids = current_input_ids->get_data();
-
-        // Remove padding from initial prompt display if any was added by string_to_tensor
-         while (!generated_ids.empty() && generated_ids.back() == 0.0f) {
-             generated_ids.pop_back();
-         }
-         // Get actual length of the prompt after removing padding
-         int current_total_len = generated_ids.size();
-
-
-        std::cout << "Generating..." << std::endl;
-        for(float id_float : generated_ids) {
-            std::cout << data_loader.get_char_from_id(static_cast<int>(id_float));
-        }
-        std::cout << std::flush;
-
-
-        for (int i = 0; i < max_generate_length; ++i) {
-            std::vector<float> step_input_vec;
-            int start_idx = std::max(0, current_total_len - current_seq_len);
-            for(int k = start_idx; k < current_total_len; ++k) {
-                step_input_vec.push_back(generated_ids[k]);
-            }
-            // Pad if the current sequence is shorter than model's input length
-            while (step_input_vec.size() < current_seq_len) {
-                step_input_vec.push_back(pad_token_id);
+                // Backward pass
+                criterion.backward(loss);
+                optimizer.step();
             }
 
-            // Create tensor for this step (batch size 1)
-            std::shared_ptr<Tensor> step_input_tensor = Tensor::create({1, current_seq_len}, std::make_shared<std::vector<float>>(step_input_vec));
+            std::cout << "\nTransformer training finished." << std::endl;
 
-            // Encoder input and Decoder input are the same for autoregressive generation
-            std::shared_ptr<Tensor> encoder_input = step_input_tensor;
-            std::shared_ptr<Tensor> decoder_input = step_input_tensor;
-
-            // Forward pass (is_training = false)
-            std::shared_ptr<Tensor> logits = model.forward(encoder_input, decoder_input, false);
-            // Logits shape: (1, current_seq_len, target_vocab_size)
-
-            int last_token_index = std::min(current_total_len, current_seq_len) - 1;
-            if (last_token_index < 0) {
-                 std::cerr << "\nError: last_token_index is negative (" << last_token_index << "). current_total_len=" << current_total_len << ". Breaking." << std::endl;
-                 break;
+            // Save weights after training
+            try
+            {
+                std::cout << "Saving final weights to " << weights_filename << "..." << std::endl;
+                model.save_weights(weights_filename);
+                std::cout << "Weights saved successfully." << std::endl;
+            }
+            catch (const std::exception &e)
+            {
+                std::cerr << "Failed to save weights: " << e.what() << std::endl;
+            }
+            // End Training Mode
+        }
+        else
+        {
+            // Inference Mode
+            if (!weights_loaded)
+            {
+                std::cerr << "Weights were not loaded (or failed to load). Cannot run inference. Exiting." << std::endl;
+                return 1;
             }
 
-            const auto& logits_data = logits->get_data();
-            size_t logits_offset = last_token_index * target_vocab_size;
+            std::cout << "\n--- Running Inference ---" << std::endl;
+            std::cout << "Initial prompt: \"" << initial_prompt << "\"" << std::endl;
 
-            // Find the token with the highest logit
-            float max_logit = -std::numeric_limits<float>::infinity();
-            int predicted_id = -1;
-             if (logits_offset + target_vocab_size > logits_data.size()) {
-                 std::cerr << "\nError: Logits offset (" << logits_offset << ") + vocab_size (" << target_vocab_size
-                           << ") exceeds logits_data size (" << logits_data.size() << "). last_token_index=" << last_token_index << ". Breaking." << std::endl;
-                 break;
-             }
+            int current_seq_len = input_seq_length;
 
-            for (int j = 0; j < target_vocab_size; ++j) {
-                if (logits_data[logits_offset + j] > max_logit) {
-                    max_logit = logits_data[logits_offset + j];
-                    predicted_id = j;
+            // Tokenize the initial prompt
+            std::shared_ptr<Tensor> current_input_ids = string_to_tensor(initial_prompt, data_loader, current_seq_len);
+            std::vector<float> generated_ids = current_input_ids->get_data();
+
+            // Remove padding from initial prompt display if any was added by string_to_tensor
+            while (!generated_ids.empty() && generated_ids.back() == 0.0f)
+            {
+                generated_ids.pop_back();
+            }
+            // Get actual length of the prompt after removing padding
+            int current_total_len = generated_ids.size();
+
+            std::cout << "Generating..." << std::endl;
+            for (float id_float : generated_ids)
+            {
+                std::cout << data_loader.get_char_from_id(static_cast<int>(id_float));
+            }
+            std::cout << std::flush;
+
+            for (int i = 0; i < max_generate_length; ++i)
+            {
+                std::vector<float> step_input_vec;
+                int start_idx = std::max(0, current_total_len - current_seq_len);
+                for (int k = start_idx; k < current_total_len; ++k)
+                {
+                    step_input_vec.push_back(generated_ids[k]);
                 }
+                // Pad if the current sequence is shorter than model's input length
+                while (step_input_vec.size() < current_seq_len)
+                {
+                    step_input_vec.push_back(pad_token_id);
+                }
+
+                // Create tensor for this step (batch size 1)
+                std::shared_ptr<Tensor> step_input_tensor = Tensor::create({1, current_seq_len}, std::make_shared<std::vector<float>>(step_input_vec));
+
+                // Encoder input and Decoder input are the same for autoregressive generation
+                std::shared_ptr<Tensor> encoder_input = step_input_tensor;
+                std::shared_ptr<Tensor> decoder_input = step_input_tensor;
+
+                // Forward pass (is_training = false)
+                std::shared_ptr<Tensor> logits = model.forward(encoder_input, decoder_input, false);
+                // Logits shape: (1, current_seq_len, target_vocab_size)
+
+                int last_token_index = std::min(current_total_len, current_seq_len) - 1;
+                if (last_token_index < 0)
+                {
+                    std::cerr << "\nError: last_token_index is negative (" << last_token_index << "). current_total_len=" << current_total_len << ". Breaking." << std::endl;
+                    break;
+                }
+
+                const auto &logits_data = logits->get_data();
+                size_t logits_offset = last_token_index * target_vocab_size;
+
+                // Find the token with the highest logit
+                float max_logit = -std::numeric_limits<float>::infinity();
+                int predicted_id = -1;
+                if (logits_offset + target_vocab_size > logits_data.size())
+                {
+                    std::cerr << "\nError: Logits offset (" << logits_offset << ") + vocab_size (" << target_vocab_size
+                              << ") exceeds logits_data size (" << logits_data.size() << "). last_token_index=" << last_token_index << ". Breaking." << std::endl;
+                    break;
+                }
+
+                for (int j = 0; j < target_vocab_size; ++j)
+                {
+                    if (logits_data[logits_offset + j] > max_logit)
+                    {
+                        max_logit = logits_data[logits_offset + j];
+                        predicted_id = j;
+                    }
+                }
+
+                if (predicted_id == -1)
+                {
+                    std::cerr << "\nError: No valid predicted_id found (argmax failed?). Breaking." << std::endl;
+                    break;
+                }
+
+                // Append the predicted ID to our sequence
+                generated_ids.push_back(static_cast<float>(predicted_id));
+                current_total_len++;
+
+                // Convert the predicted ID to a character and print it
+                char next_char = data_loader.get_char_from_id(predicted_id);
+
+                std::cout << next_char << std::flush;
             }
 
-             if (predicted_id == -1) {
-                 std::cerr << "\nError: No valid predicted_id found (argmax failed?). Breaking." << std::endl;
-                 break;
-             }
-
-            // Append the predicted ID to our sequence
-            generated_ids.push_back(static_cast<float>(predicted_id));
-            current_total_len++;
-
-            // Convert the predicted ID to a character and print it
-            char next_char = data_loader.get_char_from_id(predicted_id);
-
-            std::cout << next_char << std::flush;
+            std::cout << "\n--- Generation Complete ---" << std::endl;
         }
-
-        std::cout << "\n--- Generation Complete ---" << std::endl;
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << "An error occurred: " << e.what() << std::endl;
+        return 1;
     }
 
     return 0;
