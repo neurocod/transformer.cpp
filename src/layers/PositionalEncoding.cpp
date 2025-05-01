@@ -66,7 +66,7 @@ std::shared_ptr<Tensor> PositionalEncoding::forward(const std::shared_ptr<Tensor
             }
         }
     }
-    output->set_creator_op(OperationType::Add);         // Doesn't rly matter what this is cause you don't train the positional encodings
+    output->set_creator_op(OperationType::Add); // Doesn't rly matter what this is cause you don't train the positional encodings
     output->set_parents({input, positional_encodings_});
 
     return output;

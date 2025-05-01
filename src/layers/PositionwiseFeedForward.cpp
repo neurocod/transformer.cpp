@@ -5,9 +5,10 @@ PositionwiseFeedForward::PositionwiseFeedForward(int input_dim, int hidden_dim)
       fc2_(hidden_dim, input_dim),
       input_dim_(input_dim),
       hidden_dim_(hidden_dim)
-{}
+{
+}
 
-std::shared_ptr<Tensor> PositionwiseFeedForward::forward(std::shared_ptr<Tensor>& input)
+std::shared_ptr<Tensor> PositionwiseFeedForward::forward(std::shared_ptr<Tensor> &input)
 {
     // The feed-forward network is applied to the last dimension (input_dim) independently for each position.
 

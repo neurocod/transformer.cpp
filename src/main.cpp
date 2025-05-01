@@ -63,19 +63,23 @@ int main()
         std::vector<float> decoder_input_ids_vec(batch_size * target_seq_length);
         std::vector<float> target_output_ids_vec(batch_size * target_seq_length);
 
-        for (size_t i = 0; i < batch_size * input_seq_length; ++i) {
+        for (size_t i = 0; i < batch_size * input_seq_length; ++i)
+        {
             encoder_input_ids_vec[i] = static_cast<float>(input_dist(gen));
         }
-         for (size_t i = 0; i < batch_size * target_seq_length; ++i) {
+        for (size_t i = 0; i < batch_size * target_seq_length; ++i)
+        {
             // Simulate shifted target input for decoder
-             if (i % target_seq_length == 0) {
-                 decoder_input_ids_vec[i] = 1.0f;
-             } else {
-                  decoder_input_ids_vec[i] = static_cast<float>(target_dist(gen));
-             }
+            if (i % target_seq_length == 0)
+            {
+                decoder_input_ids_vec[i] = 1.0f;
+            }
+            else
+            {
+                decoder_input_ids_vec[i] = static_cast<float>(target_dist(gen));
+            }
             target_output_ids_vec[i] = static_cast<float>(target_dist(gen));
         }
-
 
         std::shared_ptr<Tensor> encoder_input_ids = Tensor::create({batch_size, input_seq_length}, std::make_shared<std::vector<float>>(encoder_input_ids_vec));
         std::shared_ptr<Tensor> decoder_input_ids = Tensor::create({batch_size, target_seq_length}, std::make_shared<std::vector<float>>(decoder_input_ids_vec));

@@ -15,16 +15,17 @@ class PositionwiseFeedForward;
 class LayerNorm;
 class Dropout;
 
-class DecoderLayer {
+class DecoderLayer
+{
 public:
     // Constructor
     DecoderLayer(int embed_dim, int num_heads, int ff_hidden_dim, float dropout_rate = 0.1f);
 
     // Forward pass
-    std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor>& target_input,
-                                    std::shared_ptr<Tensor>& encoder_output,
-                                    std::shared_ptr<Tensor>& look_ahead_mask,
-                                    std::shared_ptr<Tensor>& padding_mask,
+    std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &target_input,
+                                    std::shared_ptr<Tensor> &encoder_output,
+                                    std::shared_ptr<Tensor> &look_ahead_mask,
+                                    std::shared_ptr<Tensor> &padding_mask,
                                     bool is_training);
 
     // Destructor

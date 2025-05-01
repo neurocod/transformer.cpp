@@ -8,13 +8,14 @@
 
 class Tensor;
 
-class PositionalEncoding {
+class PositionalEncoding
+{
 public:
     // Constructor
     PositionalEncoding(int max_sequence_length, int embed_dim);
 
     // Forward pass
-    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& input);
+    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
 
     // Destructor
     ~PositionalEncoding() = default;

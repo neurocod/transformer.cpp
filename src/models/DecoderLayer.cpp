@@ -15,11 +15,11 @@ DecoderLayer::DecoderLayer(int embed_dim, int num_heads, int ff_hidden_dim, floa
 {
 }
 
-std::shared_ptr<Tensor> DecoderLayer::forward(std::shared_ptr<Tensor>& target_input,
-                                    std::shared_ptr<Tensor>& encoder_output,
-                                    std::shared_ptr<Tensor>& look_ahead_mask,
-                                    std::shared_ptr<Tensor>& padding_mask,
-                                    bool is_training)
+std::shared_ptr<Tensor> DecoderLayer::forward(std::shared_ptr<Tensor> &target_input,
+                                              std::shared_ptr<Tensor> &encoder_output,
+                                              std::shared_ptr<Tensor> &look_ahead_mask,
+                                              std::shared_ptr<Tensor> &padding_mask,
+                                              bool is_training)
 {
     // target_input shape: (batch_size, target_sequence_length, embed_dim)
     // encoder_output shape: (batch_size, input_sequence_length, embed_dim)

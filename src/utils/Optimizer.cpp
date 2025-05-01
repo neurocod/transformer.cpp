@@ -31,7 +31,8 @@ Adam::Adam(float learning_rate, float beta1, float beta2, float epsilon)
     : learning_rate_(learning_rate), beta1_(beta1), beta2_(beta2), epsilon_(epsilon), t_(0)
 {
     // Initialize moments m and v for each optimizable parameter
-    for (const auto& param : parameters_) {
+    for (const auto &param : parameters_)
+    {
         m_.push_back(Tensor::create(param->get_shape()));
         v_.push_back(Tensor::create(param->get_shape()));
     }
@@ -47,13 +48,14 @@ void Adam::step()
     for (size_t i = 0; i < parameters_.size(); ++i)
     {
         std::shared_ptr<Tensor> param = parameters_[i];
-        if (!param || param->get_data().empty() || param->get_grad().empty()) continue;
+        if (!param || param->get_data().empty() || param->get_grad().empty())
+            continue;
 
-        std::vector<float>& param_data = const_cast<std::vector<float>&>(param->get_data());
-        const std::vector<float>& param_grad = param->get_grad();
+        std::vector<float> &param_data = const_cast<std::vector<float> &>(param->get_data());
+        const std::vector<float> &param_grad = param->get_grad();
 
-        std::vector<float>& m_data = const_cast<std::vector<float>&>(m_[i]->get_data());
-        std::vector<float>& v_data = const_cast<std::vector<float>&>(v_[i]->get_data());
+        std::vector<float> &m_data = const_cast<std::vector<float> &>(m_[i]->get_data());
+        std::vector<float> &v_data = const_cast<std::vector<float> &>(v_[i]->get_data());
 
         if (param_data.size() != param_grad.size() || param_data.size() != m_data.size() || param_data.size() != v_data.size())
         {

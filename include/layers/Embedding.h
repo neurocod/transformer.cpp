@@ -8,14 +8,15 @@
 
 class Tensor;
 
-class Embedding {
+class Embedding
+{
 public:
     // Constructor
     Embedding(int vocab_size, int embed_dim);
 
     // Input shape: (batch_size, sequence_length)
     // Output shape: (batch_size, sequence_length, embed_dim)
-    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& input_ids);
+    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input_ids);
 
     // Destructor
     ~Embedding() = default;

@@ -60,7 +60,6 @@ public:
     // Embedding
     std::shared_ptr<Tensor> embedding_indices_;
 
-
     // Getters for shape, data, and gradient
     const std::vector<int> &get_shape() const { return shape_; };
     const std::vector<float> &get_data() const { return *data_; };
@@ -150,7 +149,6 @@ private:
     void backward_softmax(const std::shared_ptr<Tensor> &grad_output);
     void backward_dropout(const std::shared_ptr<Tensor> &grad_output);
     void backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output);
-
 };
 
 #endif // TRANSFORMER_CPP_TENSOR_H
