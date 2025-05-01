@@ -111,15 +111,15 @@ size_t Tensor::get_linear_index(const std::vector<int> &indices) const
         throw std::runtime_error("Number of indices must match tensor dimensions.");
     }
     size_t linear_index = 0;
-    size_t stride = 1;
-    for (int i = shape_.size() - 1; i >= 0; --i)
+    const std::vector<size_t>& strides = calculate_strides(shape_);
+
+    for (size_t i = 0; i < shape_.size(); ++i)
     {
         if (indices[i] < 0 || indices[i] >= shape_[i])
         {
             throw std::runtime_error("Index out of bounds.");
         }
-        linear_index += indices[i] * stride;
-        stride *= shape_[i];
+        linear_index += indices[i] * strides[i];
     }
     return linear_index;
 }
@@ -584,13 +584,13 @@ std::shared_ptr<Tensor> Tensor::dot(const std::shared_ptr<Tensor> &other) const
                 offset_result += batch_idx[i] * stride_result[i];
             }
 
-            // Matrix Multiplication for the Current Batch
-            for (int i = 0; i < rows_a; ++i)
+            // Optimized Matrix Multiplication for the Current Batch (jik loop order)
+            for (int j = 0; j < cols_b; ++j) // Iterate over columns of B and result
             {
-                for (int j = 0; j < cols_b; ++j)
+                for (int i = 0; i < rows_a; ++i) // Iterate over rows of A and result
                 {
                     float sum = 0.0f;
-                    for (int k = 0; k < cols_a; ++k)
+                    for (int k = 0; k < cols_a; ++k) // Iterate over inner dimension
                     {
                         // Calculate linear indices within the current batch
                         size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
@@ -1179,14 +1179,12 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
     dL/dB = A^T . dL/dZ
     This requires implementing matrix multiplication for gradients and handling batch dimensions and broadcasting correctly.
     */
-
     if (parents_.size() == 2)
     {
         std::shared_ptr<Tensor> parent_a = parents_[0];
         std::shared_ptr<Tensor> parent_b = parents_[1];
 
         // Calculate dL/dA = dL/dZ . B^T
-        // Need to transpose the last two dimensions of parent_b
         std::vector<int> b_transpose_perm(parent_b->get_shape().size());
         std::iota(b_transpose_perm.begin(), b_transpose_perm.end(), 0);
         if (b_transpose_perm.size() >= 2)
@@ -1195,6 +1193,7 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
         }
         std::shared_ptr<Tensor> parent_b_transposed = parent_b->transpose(b_transpose_perm);
 
+        // Optimized matrix multiplication for grad_output . B^T
         std::shared_ptr<Tensor> grad_a_intermediate = grad_output->dot(parent_b_transposed);
 
         // Reduce gradient for parent A
@@ -1203,7 +1202,6 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
         parent_a->backward(grad_a_propagated);
 
         // Calculate dL/dB = A^T . dL/dZ
-        // Need to transpose the last two dimensions of parent_a
         std::vector<int> a_transpose_perm(parent_a->get_shape().size());
         std::iota(a_transpose_perm.begin(), a_transpose_perm.end(), 0);
         if (a_transpose_perm.size() >= 2)
@@ -1212,6 +1210,7 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
         }
         std::shared_ptr<Tensor> parent_a_transposed = parent_a->transpose(a_transpose_perm);
 
+        // Optimized matrix multiplication for A^T . grad_output
         std::shared_ptr<Tensor> grad_b_intermediate = parent_a_transposed->dot(grad_output);
 
         // Reduce gradient for parent B
