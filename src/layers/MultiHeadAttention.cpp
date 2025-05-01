@@ -72,8 +72,19 @@ std::shared_ptr<Tensor> MultiHeadAttention::forward(std::shared_ptr<Tensor> &que
     // query, key, value input shapes are (batch_size, sequence_length, embed_dim)
 
     const std::vector<int> &query_shape = query->get_shape();
+    const std::vector<int> &key_shape = key->get_shape();
+    const std::vector<int> &value_shape = value->get_shape();
+
+    if (query_shape.size() != 3 || key_shape.size() != 3 || value_shape.size() != 3 ||
+        query_shape[0] != key_shape[0] || query_shape[0] != value_shape[0] ||
+        query_shape[2] != embed_dim_ || key_shape[2] != embed_dim_ || value_shape[2] != embed_dim_)
+    {
+        throw std::runtime_error("Invalid input tensor shapes for MultiHeadAttention forward.");
+    }
+
     size_t batch_size = query_shape[0];
-    size_t sequence_length = query_shape[1];
+    size_t query_sequence_length = query_shape[1];
+    size_t key_sequence_length = key_shape[1];
 
     // Result shape: (batch_size, sequence_length, embed_dim) for q_proj, k_proj, v_proj
     std::shared_ptr<Tensor> q_proj = query_proj_.forward(query);
@@ -81,9 +92,9 @@ std::shared_ptr<Tensor> MultiHeadAttention::forward(std::shared_ptr<Tensor> &que
     std::shared_ptr<Tensor> v_proj = value_proj_.forward(value);
 
     // Reshape from (batch_size, sequence_length, embed_dim) to (batch_size, sequence_length, num_heads, head_dim)
-    std::shared_ptr<Tensor> q_reshaped = q_proj->reshape({(int)batch_size, (int)sequence_length, num_heads_, head_dim_});
-    std::shared_ptr<Tensor> k_reshaped = k_proj->reshape({(int)batch_size, (int)sequence_length, num_heads_, head_dim_});
-    std::shared_ptr<Tensor> v_reshaped = v_proj->reshape({(int)batch_size, (int)sequence_length, num_heads_, head_dim_});
+    std::shared_ptr<Tensor> q_reshaped = q_proj->reshape({(int)batch_size, (int)query_sequence_length, num_heads_, head_dim_});
+    std::shared_ptr<Tensor> k_reshaped = k_proj->reshape({(int)batch_size, (int)key_sequence_length, num_heads_, head_dim_});
+    std::shared_ptr<Tensor> v_reshaped = v_proj->reshape({(int)batch_size, (int)key_sequence_length, num_heads_, head_dim_});
 
     // Transpose to get (batch_size, num_heads, sequence_length, head_dim)
     // Permutation: [0, 2, 1, 3] for a 4D tensor
@@ -94,13 +105,13 @@ std::shared_ptr<Tensor> MultiHeadAttention::forward(std::shared_ptr<Tensor> &que
 
     std::shared_ptr<Tensor> attention_output_per_head = scaled_dot_product_attention(q_split_heads, k_split_heads, v_split_heads, mask);
 
-    // Transpose back to (batch_size, sequence_length, num_heads, head_dim)
+    // Transpose back to (batch_size, query_sequence_length, num_heads, head_dim)
     // Inverse permutation of [0, 2, 1, 3] is [0, 2, 1, 3]
     std::vector<int> inverse_perm = {0, 2, 1, 3};
     std::shared_ptr<Tensor> attention_output_transposed = attention_output_per_head->transpose(inverse_perm);
 
-    // Reshape to (batch_size, sequence_length, embed_dim)
-    std::shared_ptr<Tensor> attention_output_concat = attention_output_transposed->reshape({(int)batch_size, (int)sequence_length, embed_dim_});
+    // Reshape to (batch_size, query_sequence_length, embed_dim)
+    std::shared_ptr<Tensor> attention_output_concat = attention_output_transposed->reshape({(int)batch_size, (int)query_sequence_length, embed_dim_});
 
     std::shared_ptr<Tensor> final_output = output_proj_.forward(attention_output_concat);
 

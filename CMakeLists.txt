@@ -22,6 +22,7 @@ add_executable(neural_network
     src/utils/Masking.cpp
     src/models/Encoder.cpp
     src/models/Decoder.cpp
+    src/models/Transformer.cpp
 )
 
 add_executable(test_tensor

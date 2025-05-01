@@ -49,7 +49,7 @@ std::shared_ptr<Tensor> create_padding_mask(const std::shared_ptr<Tensor> &input
     {
         if (input_ids_data[i] == pad_token_id)
         {
-            mask_data[i] = 1.0f;
+            mask_data[i] = -std::numeric_limits<float>::infinity();
         }
         else
         {
@@ -57,16 +57,8 @@ std::shared_ptr<Tensor> create_padding_mask(const std::shared_ptr<Tensor> &input
         }
     }
 
-    float negative_infinity = -std::numeric_limits<float>::infinity();
-    std::shared_ptr<Tensor> inverted_mask = Tensor::create({(int)batch_size, (int)sequence_length});
-    std::vector<float> &inverted_mask_data = const_cast<std::vector<float> &>(inverted_mask->get_data());
-    for (size_t i = 0; i < batch_size * sequence_length; ++i)
-    {
-        inverted_mask_data[i] = (1.0f - mask_data[i]) * negative_infinity;
-    }
-
     // Create a mask of shape (batch_size, 1, 1, sequence_length) and rely on broadcasting rules to expand it over the query sequence length dimension.
-    std::shared_ptr<Tensor> final_mask = inverted_mask->reshape({(int)batch_size, 1, 1, (int)sequence_length});
+    std::shared_ptr<Tensor> final_mask = mask->reshape({(int)batch_size, 1, 1, (int)sequence_length});
 
     return final_mask;
 }
