@@ -2,6 +2,7 @@
 #include <iostream>
 #include <set>
 #include <chrono>
+#include <limits>
 
 DataLoader::DataLoader(const std::string& filename, int sequence_length, int batch_size)
     : filename_(filename), sequence_length_(sequence_length), batch_size_(batch_size), num_batches_(0) {}
@@ -92,15 +93,31 @@ std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> DataLoader::get_batc
 }
 
 char DataLoader::get_char_from_id(int id) const {
-    if (id < 0 || id >= chars_.size()) {
-        throw std::out_of_range("ID out of vocabulary range.");
+    auto it = id_to_char_.find(id);
+    if (it == id_to_char_.end()) {
+         // Return a default character or throw an error for unknown ID
+         it = id_to_char_.find(0); // Assuming 0 might be padding or unknown
+         if (it != id_to_char_.end()) return it->second;
+         return '?';
     }
-    return id_to_char_.at(id);
+    return it->second;
 }
 
-int DataLoader::get_id_from_char(char character) const {
-     if (char_to_id_.find(character) == char_to_id_.end()) {
-        throw std::runtime_error("Character not found in vocabulary.");
+int DataLoader::get_id_from_char(char ch) const {
+    auto it = char_to_id_.find(ch);
+    if (it == char_to_id_.end()) {
+         it = char_to_id_.find('\0');
+         if (it != char_to_id_.end()) return it->second;
+         if (char_to_id_.count(0)) return char_to_id_.at(0);
+        return -1;
     }
-    return char_to_id_.at(character);
+    return it->second;
+}
+
+const std::unordered_map<char, int>& DataLoader::get_char_to_id_map() const {
+    return char_to_id_;
+}
+
+const std::unordered_map<int, char>& DataLoader::get_id_to_char_map() const {
+    return id_to_char_;
 }

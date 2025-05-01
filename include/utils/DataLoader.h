@@ -35,6 +35,12 @@ public:
     // Get ID from character
     int get_id_from_char(char character) const;
 
+    // Getter for the char_to_id map
+    const std::unordered_map<char, int>& get_char_to_id_map() const;
+
+    // Getter for the id_to_char map
+    const std::unordered_map<int, char>& get_id_to_char_map() const;
+
 private:
     std::string filename_;
     int sequence_length_;
