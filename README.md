@@ -4,7 +4,7 @@ A high-performance C++ implementation of the Transformer architecture from scrat
 
 ## Overview
 
-TransformerCPP is a complete implementation of the Transformer model architecture described in the "Attention Is All You Need" paper. This project aims to provide an efficient C++ implementation without external dependencies on deep learning frameworks, making it suitable for deployment in environments where Python-based solutions may be impractical.
+TransformerCPP is a complete implementation of the Transformer model architecture described in the "Attention Is All You Need" paper. This project aims to provide an efficient C++ implementation without external dependencies on deep learning frameworks.
 
 ## Design Philosophy
 
@@ -17,8 +17,6 @@ The core design principles of this project are:
 3. **Flexibility**: The architecture supports both training and inference modes, with configurable parameters.
 
 4. **Minimal Dependencies**: The implementation relies only on the C++ standard library, with no external dependencies on deep learning frameworks.
-
-5. **Educational Value**: The code is well-commented and structured to help understand the inner workings of Transformer models.
 
 ## Project Structure
 
