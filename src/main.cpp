@@ -11,6 +11,7 @@
 #include "utils/LossFunction.h"
 #include "utils/Masking.h"
 #include "utils/Helpers.h"
+#include "utils/DataLoader.h"
 
 #include <vector>
 #include <iostream>
@@ -19,10 +20,10 @@
 #include <random>
 #include <chrono>
 
+std::mt19937 global_rng(std::chrono::high_resolution_clock::now().time_since_epoch().count());
+
 int main()
 {
-    int input_vocab_size = 50;
-    int target_vocab_size = 60;
     int embed_dim = 128;
     int max_sequence_length = 100;
     int num_layers = 2;
@@ -36,7 +37,15 @@ int main()
     int num_epochs = 100;
     int batch_size = 8;
     int input_seq_length = 10;
-    int target_seq_length = 12;
+    int decoder_seq_length = 10;
+
+    std::string data_filename = "../data/tiny_shakespeare.txt";
+    int seq_length = input_seq_length;
+    DataLoader data_loader(data_filename, seq_length, batch_size);
+    data_loader.load_data();
+
+    int input_vocab_size = data_loader.get_vocab_size();
+    int target_vocab_size = data_loader.get_vocab_size();
 
     Transformer model(input_vocab_size, target_vocab_size, embed_dim,
                       max_sequence_length, num_layers, num_heads,
@@ -58,38 +67,16 @@ int main()
     {
         optimizer.zero_grad();
 
-        // Generate a batch of synthetic data for the current epoch
-        std::vector<float> encoder_input_ids_vec(batch_size * input_seq_length);
-        std::vector<float> decoder_input_ids_vec(batch_size * target_seq_length);
-        std::vector<float> target_output_ids_vec(batch_size * target_seq_length);
-
-        for (size_t i = 0; i < batch_size * input_seq_length; ++i)
-        {
-            encoder_input_ids_vec[i] = static_cast<float>(input_dist(gen));
-        }
-        for (size_t i = 0; i < batch_size * target_seq_length; ++i)
-        {
-            // Simulate shifted target input for decoder
-            if (i % target_seq_length == 0)
-            {
-                decoder_input_ids_vec[i] = 1.0f;
-            }
-            else
-            {
-                decoder_input_ids_vec[i] = static_cast<float>(target_dist(gen));
-            }
-            target_output_ids_vec[i] = static_cast<float>(target_dist(gen));
-        }
-
-        std::shared_ptr<Tensor> encoder_input_ids = Tensor::create({batch_size, input_seq_length}, std::make_shared<std::vector<float>>(encoder_input_ids_vec));
-        std::shared_ptr<Tensor> decoder_input_ids = Tensor::create({batch_size, target_seq_length}, std::make_shared<std::vector<float>>(decoder_input_ids_vec));
-        std::shared_ptr<Tensor> target_output_ids = Tensor::create({batch_size * target_seq_length}, std::make_shared<std::vector<float>>(target_output_ids_vec));
+        std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = data_loader.get_batch();
+        std::shared_ptr<Tensor> encoder_input_ids = batch_data.first;
+        std::shared_ptr<Tensor> target_output_ids = batch_data.second;
+        std::shared_ptr<Tensor> decoder_input_ids = encoder_input_ids;
 
         // Forward pass (is_training = true)
         std::shared_ptr<Tensor> logits = model.forward(encoder_input_ids, decoder_input_ids, true);
 
-        // Reshape logits to (batch_size * target_seq_length, target_vocab_size) for CrossEntropyLoss
-        std::shared_ptr<Tensor> reshaped_logits = logits->reshape({batch_size * target_seq_length, target_vocab_size});
+        // Reshape logits to (batch_size * decoder_seq_length, target_vocab_size) for CrossEntropyLoss
+        std::shared_ptr<Tensor> reshaped_logits = logits->reshape({batch_size * decoder_seq_length, target_vocab_size});
 
         // Compute loss. CrossEntropyLoss expects predictions of shape (N, C) and targets of shape (N).
         std::shared_ptr<Tensor> loss = criterion.compute_loss(reshaped_logits, target_output_ids);

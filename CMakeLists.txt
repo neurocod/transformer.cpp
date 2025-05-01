@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(TransformerCPP)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto -DNDEBUG")
+set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-flto")
+
 include_directories(include)
 
 add_executable(neural_network
@@ -23,6 +33,7 @@ add_executable(neural_network
     src/models/Encoder.cpp
     src/models/Decoder.cpp
     src/models/Transformer.cpp
+    src/utils/DataLoader.cpp
 )
 
 add_executable(test_tensor
