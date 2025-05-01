@@ -156,7 +156,3 @@ The project includes a test suite for the tensor operations:
 - The `num_threads` parameter in `config.ini` controls parallel execution. For optimal performance, set this to a value appropriate for your hardware.
 - Multi-threading is applied to computationally intensive operations such as matrix multiplication, element-wise operations, and attention calculations.
 - The implementation uses SIMD optimizations when compiled with appropriate flags.
-
-## License
-
-[Add license information here]
