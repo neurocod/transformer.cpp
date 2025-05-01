@@ -1,5 +1,7 @@
 #include "utils/Tensor.h"
 #include "utils/Helpers.h"
+#include "utils/ThreadPool.h"
+#include "utils/ConfigParser.h"
 #include <stdexcept>
 #include <cassert>
 #include <iostream>
@@ -111,7 +113,7 @@ size_t Tensor::get_linear_index(const std::vector<int> &indices) const
         throw std::runtime_error("Number of indices must match tensor dimensions.");
     }
     size_t linear_index = 0;
-    const std::vector<size_t>& strides = calculate_strides(shape_);
+    const std::vector<size_t> &strides = calculate_strides(shape_);
 
     for (size_t i = 0; i < shape_.size(); ++i)
     {
@@ -219,21 +221,38 @@ std::shared_ptr<Tensor> Tensor::broadcast_to(const std::vector<int> &new_shape) 
 // Basic tensor operations
 std::shared_ptr<Tensor> Tensor::operator+(const std::shared_ptr<Tensor> &other) const
 {
-    // Broadcasting logic for forward pass
     std::vector<int> result_shape = calculate_broadcast_shape(shape_, other->shape_);
     std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
     std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
     std::shared_ptr<Tensor> result = Tensor::create(result_shape);
-    // Record operation and parents for backward pass
     result->creator_op_ = OperationType::Add;
     result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
     result->parents_.push_back(other);
 
-    for (size_t i = 0; i < result->data_->size(); ++i)
+    size_t total_elements = result->data_->size();
+    size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+    if (total_elements < num_threads)
+        num_threads = total_elements;
+    size_t elements_per_thread = total_elements / num_threads;
+
+    std::vector<std::function<void()>> tasks;
+    for (size_t t = 0; t < num_threads; ++t)
     {
-        (*result->data_)[i] = (*broadcasted_a->data_)[i] + (*broadcasted_b->data_)[i];
+        size_t start_idx = t * elements_per_thread;
+        size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+        // A lambda task for each chunk of work
+        tasks.emplace_back([&, start_idx, end_idx]()
+                           {
+            for (size_t i = start_idx; i < end_idx; ++i)
+            {
+                (*result->data_)[i] = (*broadcasted_a->data_)[i] + (*broadcasted_b->data_)[i];
+            } });
     }
+
+    getThreadPool().run_batch(std::move(tasks));
+
     return result;
 }
 
@@ -248,10 +267,28 @@ std::shared_ptr<Tensor> Tensor::operator-(const std::shared_ptr<Tensor> &other) 
     result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
     result->parents_.push_back(other);
 
-    for (size_t i = 0; i < result->data_->size(); ++i)
+    size_t total_elements = result->data_->size();
+    size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+    if (total_elements < num_threads)
+        num_threads = total_elements;
+    size_t elements_per_thread = total_elements / num_threads;
+
+    std::vector<std::function<void()>> tasks;
+    for (size_t t = 0; t < num_threads; ++t)
     {
-        (*result->data_)[i] = (*broadcasted_a->data_)[i] - (*broadcasted_b->data_)[i];
+        size_t start_idx = t * elements_per_thread;
+        size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+        tasks.emplace_back([&, start_idx, end_idx]()
+                           {
+            for (size_t i = start_idx; i < end_idx; ++i)
+            {
+                (*result->data_)[i] = (*broadcasted_a->data_)[i] - (*broadcasted_b->data_)[i];
+            } });
     }
+
+    getThreadPool().run_batch(std::move(tasks));
+
     return result;
 }
 
@@ -266,10 +303,28 @@ std::shared_ptr<Tensor> Tensor::operator*(const std::shared_ptr<Tensor> &other) 
     result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
     result->parents_.push_back(other);
 
-    for (size_t i = 0; i < result->data_->size(); ++i)
+    size_t total_elements = result->data_->size();
+    size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+    if (total_elements < num_threads)
+        num_threads = total_elements;
+    size_t elements_per_thread = total_elements / num_threads;
+
+    std::vector<std::function<void()>> tasks;
+    for (size_t t = 0; t < num_threads; ++t)
     {
-        (*result->data_)[i] = (*broadcasted_a->data_)[i] * (*broadcasted_b->data_)[i];
+        size_t start_idx = t * elements_per_thread;
+        size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+        tasks.emplace_back([&, start_idx, end_idx]()
+                           {
+            for (size_t i = start_idx; i < end_idx; ++i)
+            {
+                (*result->data_)[i] = (*broadcasted_a->data_)[i] * (*broadcasted_b->data_)[i];
+            } });
     }
+
+    getThreadPool().run_batch(std::move(tasks));
+
     return result;
 }
 
@@ -284,14 +339,32 @@ std::shared_ptr<Tensor> Tensor::operator/(const std::shared_ptr<Tensor> &other) 
     result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this())); // numerator
     result->parents_.push_back(other);                                               // denominator
 
-    for (size_t i = 0; i < result->data_->size(); ++i)
+    size_t total_elements = result->data_->size();
+    size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+    if (total_elements < num_threads)
+        num_threads = total_elements;
+    size_t elements_per_thread = total_elements / num_threads;
+
+    std::vector<std::function<void()>> tasks;
+    for (size_t t = 0; t < num_threads; ++t)
     {
-        if ((*broadcasted_b->data_)[i] == 0.0f)
-        {
-            throw std::runtime_error("Division by zero encountered in Tensor division.");
-        }
-        (*result->data_)[i] = (*broadcasted_a->data_)[i] / (*broadcasted_b->data_)[i];
+        size_t start_idx = t * elements_per_thread;
+        size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+        tasks.emplace_back([&, start_idx, end_idx]()
+                           {
+            for (size_t i = start_idx; i < end_idx; ++i)
+            {
+                if ((*broadcasted_b->data_)[i] == 0.0f)
+                {
+                    throw std::runtime_error("Division by zero encountered in Tensor division.");
+                }
+                (*result->data_)[i] = (*broadcasted_a->data_)[i] / (*broadcasted_b->data_)[i];
+            } });
     }
+
+    getThreadPool().run_batch(std::move(tasks));
+
     return result;
 }
 
@@ -530,7 +603,6 @@ std::shared_ptr<Tensor> Tensor::dot(const std::shared_ptr<Tensor> &other) const
                                      std::to_string(cols_a) + " vs " + std::to_string(rows_b) + ").");
         }
 
-        // Batch Dimension Handling
         std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
         std::vector<int> batch_dims_b(other->shape_.begin(), other->shape_.end() - 2);
         std::vector<int> batch_shape = calculate_broadcast_shape(batch_dims_a, batch_dims_b);
@@ -548,71 +620,92 @@ std::shared_ptr<Tensor> Tensor::dot(const std::shared_ptr<Tensor> &other) const
         std::vector<size_t> stride_b = calculate_strides(other->shape_);
         std::vector<size_t> stride_result = calculate_strides(result_shape);
 
-        // Batch Iteration
         size_t total_batches = batch_shape.empty() ? 1 : std::accumulate(batch_shape.begin(), batch_shape.end(), size_t{1}, std::multiplies<size_t>());
         std::vector<size_t> batch_strides_result = calculate_strides(batch_shape);
 
-        for (size_t batch_linear_idx = 0; batch_linear_idx < total_batches; ++batch_linear_idx)
+        size_t num_output_elements_per_batch = rows_a * cols_b;
+        size_t total_output_elements = total_batches * num_output_elements_per_batch;
+
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (total_output_elements < num_threads)
+            num_threads = total_output_elements;
+        size_t elements_per_thread = total_output_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            // Calculate multi-dimensional batch index for current batch
-            std::vector<int> batch_idx(batch_shape.size());
-            size_t temp_batch_linear = batch_linear_idx;
-            for (size_t i = 0; i < batch_shape.size(); ++i)
-            {
-                if (batch_strides_result[i] == 0)
-                    continue;
-                batch_idx[i] = temp_batch_linear / batch_strides_result[i];
-                temp_batch_linear %= batch_strides_result[i];
-            }
+            size_t start_linear_idx = t * elements_per_thread;
+            size_t end_linear_idx = (t == num_threads - 1) ? total_output_elements : start_linear_idx + elements_per_thread;
 
-            // Calculate linear offset for the start of the current batch in each tensor
-            size_t offset_a = 0, offset_b = 0, offset_result = 0;
-            int batch_offset_a = batch_shape.size() - batch_dims_a.size();
-            int batch_offset_b = batch_shape.size() - batch_dims_b.size();
+            tasks.emplace_back([&, start_linear_idx, end_linear_idx, total_batches, num_output_elements_per_batch, rows_a, cols_b, cols_a, stride_a, stride_b, stride_result, batch_shape, batch_strides_result, batch_dims_a, batch_dims_b]()
+                               {
+                std::vector<int> batch_idx(batch_shape.size());
+                for (size_t linear_idx_result = start_linear_idx; linear_idx_result < end_linear_idx; ++linear_idx_result)
+                {
+                    size_t batch_linear_idx = linear_idx_result / num_output_elements_per_batch;
+                    size_t matrix_linear_idx = linear_idx_result % num_output_elements_per_batch;
 
-            for (size_t i = 0; i < batch_shape.size(); ++i)
-            {
-                // Handle broadcasting: if original batch dim was 1, use index 0, else use current batch_idx
-                if (i >= batch_offset_a)
-                {
-                    offset_a += (batch_dims_a[i - batch_offset_a] == 1 ? 0 : batch_idx[i]) * stride_a[i - batch_offset_a];
-                }
-                if (i >= batch_offset_b)
-                {
-                    offset_b += (batch_dims_b[i - batch_offset_b] == 1 ? 0 : batch_idx[i]) * stride_b[i - batch_offset_b];
-                }
-                offset_result += batch_idx[i] * stride_result[i];
-            }
+                    int i = matrix_linear_idx / cols_b;
+                    int j = matrix_linear_idx % cols_b;
 
-            // Optimized Matrix Multiplication for the Current Batch (jik loop order)
-            for (int j = 0; j < cols_b; ++j) // Iterate over columns of B and result
-            {
-                for (int i = 0; i < rows_a; ++i) // Iterate over rows of A and result
-                {
-                    float sum = 0.0f;
-                    for (int k = 0; k < cols_a; ++k) // Iterate over inner dimension
+                    size_t temp_batch_linear = batch_linear_idx;
+                     for (int d = batch_shape.size() - 1; d >= 0; --d)
+                     {
+                         if (batch_strides_result.size() > 0 && batch_strides_result[d] == 0) continue;
+                         if (batch_strides_result.empty()) { batch_idx.clear(); break; }
+                         batch_idx[d] = temp_batch_linear / batch_strides_result[d];
+                         temp_batch_linear %= batch_strides_result[d];
+                     }
+
+                    size_t offset_a = 0, offset_b = 0, offset_result = 0;
+                    int batch_offset_a = batch_shape.size() - batch_dims_a.size();
+                    int batch_offset_b = batch_shape.size() - batch_dims_b.size();
+
+                    for (size_t d = 0; d < batch_shape.size(); ++d)
                     {
-                        // Calculate linear indices within the current batch
-                        size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
-                        size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] + j * stride_b[other->shape_.size() - 1];
-
-                        // Bounds checking
-                        if (idx_a >= data_->size() || idx_b >= other->data_->size())
-                        {
-                            throw std::runtime_error("Index out of bounds during dot product calculation.");
+                        if (d >= batch_offset_a && d - batch_offset_a < stride_a.size()) {
+                            offset_a += (batch_dims_a[d - batch_offset_a] == 1 ? 0 : batch_idx[d]) * stride_a[d - batch_offset_a];
+                        } else if (batch_dims_a.empty() && shape_.size() >= 2) {
+                            offset_a = 0;
                         }
-                        sum += (*data_)[idx_a] * (*other->data_)[idx_b];
+
+                        if (d >= batch_offset_b && d - batch_offset_b < stride_b.size()) {
+                            offset_b += (batch_dims_b[d - batch_offset_b] == 1 ? 0 : batch_idx[d]) * stride_b[d - batch_offset_b];
+                        } else if (batch_dims_b.empty() && other->shape_.size() >= 2) {
+                            offset_b = 0;
+                        }
+                         if (!batch_shape.empty() && d < stride_result.size())
+                         {
+                             offset_result += batch_idx[d] * stride_result[d];
+                         } else if (batch_shape.empty()) {
+                             offset_result = 0;
+                         }
                     }
-                    // Calculate result linear index within the current batch
-                    size_t idx_result = offset_result + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
-                    if (idx_result >= result->data_->size())
+
+
+                    float sum = 0.0f;
+                    for (int k = 0; k < cols_a; ++k)
                     {
-                        throw std::runtime_error("Result index out of bounds during dot product calculation.");
+                         size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] + k * stride_a[shape_.size() - 1];
+                         size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] + j * stride_b[other->shape_.size() - 1];
+
+                         if (idx_a >= data_->size() || idx_b >= other->data_->size())
+                         {
+                             throw std::runtime_error("Index out of bounds during dot product calculation.");
+                         }
+                         sum += (*data_)[idx_a] * (*other->data_)[idx_b];
                     }
+                    size_t idx_result = offset_result + i * stride_result[result_shape.size() - 2] + j * stride_result[result_shape.size() - 1];
+                     if (idx_result >= result->data_->size())
+                     {
+                         throw std::runtime_error("Result index out of bounds during dot product calculation.");
+                     }
                     (*result->data_)[idx_result] = sum;
-                }
-            }
+                } });
         }
+
+        getThreadPool().run_batch(std::move(tasks));
+
         return result;
     }
     else
@@ -628,14 +721,38 @@ std::shared_ptr<Tensor> Tensor::sum() const
     result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
 
     float total_sum = 0.0f;
-    if (data_)
+    if (data_ && !data_->empty())
     {
-        for (float val : *data_)
+        size_t num_elements = data_->size();
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (num_elements < num_threads)
+            num_threads = num_elements;
+        size_t elements_per_thread = num_elements / num_threads;
+
+        std::vector<float> partial_sums(num_threads, 0.0f);
+        std::vector<std::function<void()>> tasks;
+
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            total_sum += val;
+            size_t start_idx = t * elements_per_thread;
+            size_t end_idx = (t == num_threads - 1) ? num_elements : start_idx + elements_per_thread;
+
+            tasks.emplace_back([&, t, start_idx, end_idx]()
+                               {
+                for (size_t i = start_idx; i < end_idx; ++i)
+                {
+                    partial_sums[t] += (*data_)[i];
+                } });
+        }
+
+        getThreadPool().run_batch(std::move(tasks));
+
+        for (float partial_sum : partial_sums)
+        {
+            total_sum += partial_sum;
         }
     }
-    if (result->data_)
+    if (result->data_ && !result->data_->empty())
     {
         (*result->data_)[0] = total_sum;
     }
@@ -672,33 +789,47 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const
     }
     size_t dim_size = shape_[actual_dim];
 
-    for (size_t i = 0; i < outer_size; ++i)
+    size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+    if (outer_size * inner_size < num_threads)
+        num_threads = outer_size * inner_size;
+    size_t work_per_thread = (outer_size * inner_size) / num_threads;
+
+    std::vector<std::function<void()>> tasks;
+
+    for (size_t t = 0; t < num_threads; ++t)
     {
-        for (size_t k = 0; k < inner_size; ++k)
-        {
-            size_t start_idx = i * dim_size * inner_size + k;
+        size_t start_work_idx = t * work_per_thread;
+        size_t end_work_idx = (t == num_threads - 1) ? (outer_size * inner_size) : start_work_idx + work_per_thread;
 
-            // Find maximum for numerical stability
-            float max_val = -std::numeric_limits<float>::infinity();
-            for (size_t j = 0; j < dim_size; ++j)
+        tasks.emplace_back([&, start_work_idx, end_work_idx, inner_size, dim_size]()
+                           {
+            for (size_t work_idx = start_work_idx; work_idx < end_work_idx; ++work_idx)
             {
-                max_val = std::max(max_val, input_data[start_idx + j * inner_size]);
-            }
+                size_t i = work_idx / inner_size;
+                size_t k = work_idx % inner_size;
 
-            // Compute exponentials and sum_exp
-            float sum_exp = 0.0f;
-            for (size_t j = 0; j < dim_size; ++j)
-            {
-                sum_exp += std::exp(input_data[start_idx + j * inner_size] - max_val);
-            }
+                size_t start_idx = i * dim_size * inner_size + k;
 
-            // Compute softmax
-            for (size_t j = 0; j < dim_size; ++j)
-            {
-                output_data[start_idx + j * inner_size] = std::exp(input_data[start_idx + j * inner_size] - max_val) / sum_exp;
-            }
-        }
+                float max_val = -std::numeric_limits<float>::infinity();
+                for (size_t j = 0; j < dim_size; ++j)
+                {
+                    max_val = std::max(max_val, input_data[start_idx + j * inner_size]);
+                }
+
+                float sum_exp = 0.0f;
+                for (size_t j = 0; j < dim_size; ++j)
+                {
+                    sum_exp += std::exp(input_data[start_idx + j * inner_size] - max_val);
+                }
+
+                for (size_t j = 0; j < dim_size; ++j)
+                {
+                    output_data[start_idx + j * inner_size] = std::exp(input_data[start_idx + j * inner_size] - max_val) / sum_exp;
+                }
+            } });
     }
+
+    getThreadPool().run_batch(std::move(tasks));
 
     output->creator_op_ = OperationType::Softmax;
     output->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
@@ -796,7 +927,6 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output, std::sh
 {
     const std::vector<int> &grad_shape = grad_output->get_shape();
 
-    // If shapes are identical, no reduction needed
     if (grad_shape == parent_shape)
     {
         parent_grad = Tensor::create(parent_shape);
@@ -804,10 +934,8 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output, std::sh
         return;
     }
 
-    // Initialize parent_grad with zeros and the correct shape
     parent_grad = Tensor::create(parent_shape);
 
-    // Identify dimensions to sum over
     std::vector<int> dims_to_sum;
     int max_dims = std::max(grad_shape.size(), parent_shape.size());
     int grad_dim_offset = max_dims - grad_shape.size();
@@ -824,12 +952,10 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output, std::sh
         }
         else if (parent_dim != grad_dim && parent_dim != 1)
         {
-            // Should have been caught by is_broadcastable earlier
             throw std::runtime_error("Inconsistent shapes found during gradient reduction.");
         }
     }
 
-    // Perform Reduction
     size_t parent_total_elements = parent_grad->num_elements();
     if (parent_total_elements == 0)
         return;
@@ -837,62 +963,81 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output, std::sh
     std::vector<size_t> parent_strides = calculate_strides(parent_shape);
     std::vector<size_t> grad_strides = calculate_strides(grad_shape);
 
-    std::vector<int> parent_indices(parent_shape.size());
-    std::vector<int> grad_indices_template(grad_shape.size());
+    size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+    if (parent_total_elements < num_threads)
+        num_threads = parent_total_elements;
+    size_t elements_per_thread = parent_total_elements / num_threads;
 
-    for (size_t p_idx = 0; p_idx < parent_total_elements; ++p_idx)
+    std::vector<std::function<void()>> tasks;
+
+    for (size_t t = 0; t < num_threads; ++t)
     {
-        // Get multi-dim indices for parent_grad[p_idx]
-        size_t temp_p_idx = p_idx;
-        for (int d = parent_shape.size() - 1; d >= 0; --d)
-        {
-            parent_indices[d] = temp_p_idx % parent_shape[d];
-            temp_p_idx /= parent_shape[d];
-        }
+        size_t start_p_idx = t * elements_per_thread;
+        size_t end_p_idx = (t == num_threads - 1) ? parent_total_elements : start_p_idx + elements_per_thread;
 
-        // Determine the corresponding range/indices in grad_output to sum
-        float sum_val = 0.0f;
-        size_t grad_total_elements = grad_output->num_elements();
-        std::vector<int> current_grad_indices(grad_shape.size());
+        tasks.emplace_back([&, start_p_idx, end_p_idx, grad_output, parent_grad, parent_shape, grad_shape, parent_strides, grad_strides]()
+                           {
+            std::vector<int> parent_indices(parent_shape.size());
+            size_t grad_total_elements = grad_output->num_elements();
+            std::vector<int> current_grad_indices(grad_shape.size());
+            int p_offset = grad_shape.size() - parent_shape.size();
 
-        // Iterate through all grad_output elements and check if they map to the current parent element
-        if (grad_output->data_)
-        {
-            for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx)
+            for (size_t p_idx = start_p_idx; p_idx < end_p_idx; ++p_idx)
             {
-                // Get multi-dim indices for grad_output[g_idx]
-                size_t temp_g_idx = g_idx;
-                for (int d = grad_shape.size() - 1; d >= 0; --d)
+                size_t temp_p_idx = p_idx;
+                for (int d = parent_shape.size() - 1; d >= 0; --d)
                 {
-                    current_grad_indices[d] = temp_g_idx % grad_shape[d];
-                    temp_g_idx /= grad_shape[d];
+                    if (parent_strides.size() > 0 && parent_strides[d] == 0) continue;
+                    if (parent_strides.empty()) break;
+                    parent_indices[d] = temp_p_idx / parent_strides[d];
+                    temp_p_idx %= parent_strides[d];
                 }
 
-                // Check if this grad element corresponds to the current parent element
-                bool corresponds = true;
-                int p_offset = grad_shape.size() - parent_shape.size();
-                for (size_t d = 0; d < parent_shape.size(); ++d)
-                {
-                    if (parent_shape[d] != 1 && parent_indices[d] != current_grad_indices[d + p_offset])
+                float sum_val = 0.0f;
+                 if (grad_output->data_)
+                 {
+                    for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx)
                     {
-                        corresponds = false;
-                        break;
+                         size_t temp_g_idx = g_idx;
+                         for (int d = grad_shape.size() - 1; d >= 0; --d)
+                         {
+                             if (grad_strides.size() > 0 && grad_strides[d] == 0) continue;
+                             if (grad_strides.empty()) break;
+                             current_grad_indices[d] = temp_g_idx / grad_strides[d];
+                             temp_g_idx %= grad_strides[d];
+                         }
+
+                        bool corresponds = true;
+                        for (size_t d = 0; d < parent_shape.size(); ++d)
+                        {
+                             if (parent_shape.size() > 0 && d < parent_indices.size() && p_offset + d < current_grad_indices.size())
+                             {
+                                 if (parent_shape[d] != 1 && parent_indices[d] != current_grad_indices[p_offset + d])
+                                 {
+                                     corresponds = false;
+                                     break;
+                                 }
+                             } else if (parent_shape.size() > 0 && parent_shape[d] != 1) {
+                                  corresponds = false;
+                                  break;
+                             }
+                        }
+
+                        if (corresponds)
+                        {
+                            sum_val += (*grad_output->data_)[g_idx];
+                        }
                     }
-                }
+                 }
 
-                if (corresponds)
+                if (parent_grad->data_ && p_idx < parent_grad->data_->size())
                 {
-                    sum_val += (*grad_output->data_)[g_idx];
+                    (*parent_grad->data_)[p_idx] = sum_val;
                 }
-            }
-        }
-
-        // Assign the sum to parent_grad.data_
-        if (parent_grad->data_)
-        {
-            (*parent_grad->data_)[p_idx] = sum_val;
-        }
+            } });
     }
+
+    getThreadPool().run_batch(std::move(tasks));
 }
 
 // Backward methods for specific operations
@@ -1226,19 +1371,10 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output)
 
 void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output)
 {
-    /*
-    Backward pass for Y = sum(X):
-    dL/dX = dL/dY * dY/dX
-    Since Y = sum(X_i), dY/dX_i = 1 for all i.
-    So, dL/dX_i = dL/dY * 1 = dL/dY.
-    The gradient dL/dY is the incoming grad_output (which should be a scalar).
-    */
-
     if (parents_.size() == 1)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
 
-        // The incoming gradient should be a scalar (shape {1})
         if (grad_output->get_shape().size() != 1 || grad_output->get_shape()[0] != 1)
         {
             throw std::runtime_error("Gradient for sum operation must be a scalar.");
@@ -1246,7 +1382,24 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output)
         float grad_value = grad_output->get_data()[0];
 
         std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(parent->get_shape());
-        std::fill(grad_input_tensor->data_->begin(), grad_input_tensor->data_->end(), grad_value);
+
+        size_t total_elements = grad_input_tensor->num_elements();
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (total_elements < num_threads)
+            num_threads = total_elements;
+        size_t elements_per_thread = total_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+        for (size_t t = 0; t < num_threads; ++t)
+        {
+            size_t start_idx = t * elements_per_thread;
+            size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+            tasks.emplace_back([&, grad_value, start_idx, end_idx]()
+                               { std::fill(grad_input_tensor->data_->begin() + start_idx, grad_input_tensor->data_->begin() + end_idx, grad_value); });
+        }
+
+        getThreadPool().run_batch(std::move(tasks));
 
         parent->backward(grad_input_tensor);
     }
@@ -1266,17 +1419,34 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output)
         const std::vector<float> &grad_output_data = grad_output->get_data();
         std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
-        for (size_t i = 0; i < parent_data.size(); ++i)
+        size_t total_elements = parent_data.size();
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (total_elements < num_threads)
+            num_threads = total_elements;
+        size_t elements_per_thread = total_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            if (parent_data[i] > 0)
-            {
-                grad_input_data[i] = grad_output_data[i];
-            }
-            else
-            {
-                grad_input_data[i] = 0.0f;
-            }
+            size_t start_idx = t * elements_per_thread;
+            size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+            tasks.emplace_back([&, start_idx, end_idx]()
+                               {
+                for (size_t i = start_idx; i < end_idx; ++i)
+                {
+                    if (parent_data[i] > 0)
+                    {
+                        grad_input_data[i] = grad_output_data[i];
+                    }
+                    else
+                    {
+                        grad_input_data[i] = 0.0f;
+                    }
+                } });
         }
+
+        getThreadPool().run_batch(std::move(tasks));
         parent->backward(grad_input);
     }
     else
@@ -1295,21 +1465,37 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output)
         const std::vector<float> &grad_output_data = grad_output->get_data();
         std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
-        // Gradient of GELU approximation:
-        // 0.5 * (1 + tanh(sqrt(2/PI) * (x + 0.044715 * x^3))) + 0.5 * x * sech^2(sqrt(2/PI) * (x + 0.044715 * x^3)) * sqrt(2/PI) * (1 + 3 * 0.044715 * x^2)
         const float M_SQRT2_OVER_PI = 0.7978845608028654f; // sqrt(2 / PI)
         const float GELU_CONSTANT = 0.044715f;
 
-        for (size_t i = 0; i < parent_data.size(); ++i)
+        size_t total_elements = parent_data.size();
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (total_elements < num_threads)
+            num_threads = total_elements;
+        size_t elements_per_thread = total_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            float x = parent_data[i];
-            float x3 = x * x * x;
-            float tanh_arg = M_SQRT2_OVER_PI * (x + GELU_CONSTANT * x3);
-            float tanh_val = std::tanh(tanh_arg);
-            float sech_sq = 1.0f - tanh_val * tanh_val; // sech^2(y) = 1 - tanh^2(y)
-            float derivative = 0.5f * (1.0f + tanh_val) + 0.5f * x * sech_sq * M_SQRT2_OVER_PI * (1.0f + 3.0f * GELU_CONSTANT * x * x);
-            grad_input_data[i] = grad_output_data[i] * derivative;
+            size_t start_idx = t * elements_per_thread;
+            size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+            tasks.emplace_back([&, start_idx, end_idx]()
+                               {
+                for (size_t i = start_idx; i < end_idx; ++i)
+                {
+                    float x = parent_data[i];
+                    float x3 = x * x * x;
+                    float tanh_arg = M_SQRT2_OVER_PI * (x + GELU_CONSTANT * x3);
+                    float tanh_val = std::tanh(tanh_arg);
+                    float sech_sq = 1.0f - tanh_val * tanh_val;
+                    float derivative = 0.5f * (1.0f + tanh_val) + 0.5f * x * sech_sq * M_SQRT2_OVER_PI * (1.0f + 3.0f * GELU_CONSTANT * x * x);
+                    grad_input_data[i] = grad_output_data[i] * derivative;
+                } });
         }
+
+        getThreadPool().run_batch(std::move(tasks));
+
         parent->backward(grad_input);
     }
     else
@@ -1328,12 +1514,29 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output)
         const std::vector<float> &grad_output_data = grad_output->get_data();
         std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
-        // Gradient of sigmoid: sigmoid(x) * (1 - sigmoid(x))
-        for (size_t i = 0; i < parent_data.size(); ++i)
+        size_t total_elements = parent_data.size();
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (total_elements < num_threads)
+            num_threads = total_elements;
+        size_t elements_per_thread = total_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            float sigmoid_x = 1.0f / (1.0f + std::exp(-parent_data[i]));
-            grad_input_data[i] = grad_output_data[i] * (sigmoid_x * (1.0f - sigmoid_x));
+            size_t start_idx = t * elements_per_thread;
+            size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+            tasks.emplace_back([&, start_idx, end_idx]()
+                               {
+                for (size_t i = start_idx; i < end_idx; ++i)
+                {
+                    float sigmoid_x = 1.0f / (1.0f + std::exp(-parent_data[i]));
+                    grad_input_data[i] = grad_output_data[i] * (sigmoid_x * (1.0f - sigmoid_x));
+                } });
         }
+
+        getThreadPool().run_batch(std::move(tasks));
+
         parent->backward(grad_input);
     }
     else
@@ -1352,12 +1555,29 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output)
         const std::vector<float> &grad_output_data = grad_output->get_data();
         std::vector<float> &grad_input_data = const_cast<std::vector<float> &>(grad_input->get_data());
 
-        // Gradient of tanh: 1 - tanh^2(x)
-        for (size_t i = 0; i < parent_data.size(); ++i)
+        size_t total_elements = parent_data.size();
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (total_elements < num_threads)
+            num_threads = total_elements;
+        size_t elements_per_thread = total_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            float tanh_x = std::tanh(parent_data[i]);
-            grad_input_data[i] = grad_output_data[i] * (1.0f - tanh_x * tanh_x);
+            size_t start_idx = t * elements_per_thread;
+            size_t end_idx = (t == num_threads - 1) ? total_elements : start_idx + elements_per_thread;
+
+            tasks.emplace_back([&, start_idx, end_idx]()
+                               {
+                for (size_t i = start_idx; i < end_idx; ++i)
+                {
+                    float tanh_x = std::tanh(parent_data[i]);
+                    grad_input_data[i] = grad_output_data[i] * (1.0f - tanh_x * tanh_x);
+                } });
         }
+
+        getThreadPool().run_batch(std::move(tasks));
+
         parent->backward(grad_input);
     }
     else
@@ -1390,23 +1610,39 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output)
 
         size_t outer_dims_elements = num_elements / last_dim_size;
 
-        for (size_t i = 0; i < outer_dims_elements; ++i)
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (outer_dims_elements < num_threads)
+            num_threads = outer_dims_elements;
+        size_t slices_per_thread = outer_dims_elements / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+
+        for (size_t t = 0; t < num_threads; ++t)
         {
-            size_t start_idx = i * last_dim_size;
-            float sum_of_grads = 0.0f;
+            size_t start_slice_idx = t * slices_per_thread;
+            size_t end_slice_idx = (t == num_threads - 1) ? outer_dims_elements : start_slice_idx + slices_per_thread;
 
-            // Calculate sum of gradients for this instance
-            for (size_t j = 0; j < last_dim_size; ++j)
-            {
-                sum_of_grads += grad_output_data[start_idx + j];
-            }
+            tasks.emplace_back([&, start_slice_idx, end_slice_idx, last_dim_size]()
+                               {
+                for (size_t i = start_slice_idx; i < end_slice_idx; ++i)
+                {
+                    size_t start_idx = i * last_dim_size;
+                    float sum_of_grads = 0.0f;
 
-            // Calculate gradient for each element in the original input
-            for (size_t j = 0; j < last_dim_size; ++j)
-            {
-                grad_input_intermediate_data[start_idx + j] = grad_output_data[start_idx + j] - std::exp(output_data[start_idx + j]) * sum_of_grads;
-            }
+                    for (size_t j = 0; j < last_dim_size; ++j)
+                    {
+                        sum_of_grads += grad_output_data[start_idx + j];
+                    }
+
+                    for (size_t j = 0; j < last_dim_size; ++j)
+                    {
+                        grad_input_intermediate_data[start_idx + j] = grad_output_data[start_idx + j] - std::exp(output_data[start_idx + j]) * sum_of_grads;
+                    }
+                } });
         }
+
+        getThreadPool().run_batch(std::move(tasks));
+
         std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
         reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
         parent->backward(grad_input_propagated);
@@ -1489,10 +1725,6 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output)
 
 void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output)
 {
-    // LayerNorm has one parent (the input) and two parameters (gamma and beta).
-    // The gradients for gamma and beta are accumulated in their respective grad_ members.
-    // The gradient for the input is propagated backward.
-
     if (parents_.size() == 1)
     {
         std::shared_ptr<Tensor> input_parent = parents_[0];
@@ -1521,7 +1753,6 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output)
             return;
         }
 
-        // Calculate gradients for gamma and beta
         if (gamma->grad_ && beta->grad_)
         {
             std::vector<float> &gamma_grad_data = const_cast<std::vector<float> &>(gamma->get_grad());
@@ -1532,63 +1763,102 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output)
                 throw std::runtime_error("Gamma or Beta gradient size mismatch in LayerNorm backward.");
             }
 
-            for (size_t j = 0; j < last_dim_size; ++j)
+            size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+            if (outer_dims_elements < num_threads)
+                num_threads = outer_dims_elements;
+            size_t slices_per_thread = outer_dims_elements / num_threads;
+
+            std::vector<std::vector<float>> thread_gamma_grads(num_threads, std::vector<float>(last_dim_size, 0.0f));
+            std::vector<std::vector<float>> thread_beta_grads(num_threads, std::vector<float>(last_dim_size, 0.0f));
+            std::vector<std::function<void()>> tasks_gamma_beta;
+
+            for (size_t t = 0; t < num_threads; ++t)
             {
-                float sum_grad_gamma = 0.0f;
-                float sum_grad_beta = 0.0f;
-                for (size_t i = 0; i < outer_dims_elements; ++i)
+                size_t start_slice_idx = t * slices_per_thread;
+                size_t end_slice_idx = (t == num_threads - 1) ? outer_dims_elements : start_slice_idx + slices_per_thread;
+
+                tasks_gamma_beta.emplace_back([&, t, start_slice_idx, end_slice_idx, last_dim_size]()
+                                              {
+                    for (size_t i = start_slice_idx; i < end_slice_idx; ++i)
+                    {
+                        size_t start_idx = i * last_dim_size;
+                        for (size_t j = 0; j < last_dim_size; ++j)
+                        {
+                            size_t idx = start_idx + j;
+                            thread_gamma_grads[t][j] += grad_output_data[idx] * centered_input_data[idx] * inv_stddev_data[i];
+                            thread_beta_grads[t][j] += grad_output_data[idx];
+                        }
+                    } });
+            }
+
+            getThreadPool().run_batch(std::move(tasks_gamma_beta));
+
+            for (size_t t = 0; t < num_threads; ++t)
+            {
+                for (size_t j = 0; j < last_dim_size; ++j)
                 {
-                    size_t idx = i * last_dim_size + j;
-                    sum_grad_gamma += grad_output_data[idx] * centered_input_data[idx] * inv_stddev_data[i];
-                    sum_grad_beta += grad_output_data[idx];
+                    gamma_grad_data[j] += thread_gamma_grads[t][j];
+                    beta_grad_data[j] += thread_beta_grads[t][j];
                 }
-                gamma_grad_data[j] += sum_grad_gamma;
-                beta_grad_data[j] += sum_grad_beta;
             }
         }
 
-        // Calculate gradient for the input tensor
         std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(input_shape);
         std::vector<float> &grad_input_intermediate_data = const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
 
         const std::vector<float> &mean_data = mean->get_data();
-        const std::vector<float> &variance_data = mean->get_data(); // Re-using mean data for shape, will use inv_stddev for calculation
+        const std::vector<float> &variance_data = mean->get_data();
 
-        for (size_t i = 0; i < outer_dims_elements; ++i)
+        size_t num_threads_input = std::thread::hardware_concurrency();
+        if (outer_dims_elements < num_threads_input)
+            num_threads_input = outer_dims_elements;
+        size_t slices_per_thread_input = outer_dims_elements / num_threads_input;
+
+        std::vector<std::function<void()>> tasks_input;
+
+        for (size_t t = 0; t < num_threads_input; ++t)
         {
-            size_t start_idx = i * last_dim_size;
-            float current_mean = mean_data[i];
-            float current_inv_stddev = inv_stddev_data[i];
-            float current_variance = (1.0f / (current_inv_stddev * current_inv_stddev)) - epsilon; // Recalculate variance
+            size_t start_slice_idx = t * slices_per_thread_input;
+            size_t end_slice_idx = (t == num_threads_input - 1) ? outer_dims_elements : start_slice_idx + slices_per_thread_input;
 
-            // Partial derivative with respect to each element of the input
-            for (size_t j = 0; j < last_dim_size; ++j)
-            {
-                float grad_out = grad_output_data[start_idx + j];
-                float x_mu = centered_input_data[start_idx + j]; // (x - mu)
-
-                float term1 = gamma_data[j] * current_inv_stddev;
-                float term2 = gamma_data[j] * x_mu * std::pow(current_inv_stddev, 3) / last_dim_size;
-
-                float sum_term2 = 0.0f;
-                for (size_t k = 0; k < last_dim_size; ++k)
+            tasks_input.emplace_back([&, start_slice_idx, end_slice_idx, last_dim_size, epsilon]()
+                                     {
+                for (size_t i = start_slice_idx; i < end_slice_idx; ++i)
                 {
-                    sum_term2 += grad_output_data[start_idx + k] * centered_input_data[start_idx + k];
-                }
-                term2 *= sum_term2;
+                    size_t start_idx = i * last_dim_size;
+                    float current_mean = mean_data[i];
+                    float current_inv_stddev = inv_stddev_data[i];
+                    float current_variance = (1.0f / (current_inv_stddev * current_inv_stddev)) - epsilon;
 
-                float sum_grad_out = 0.0f;
-                for (size_t k = 0; k < last_dim_size; ++k)
-                {
-                    sum_grad_out += grad_output_data[start_idx + k];
-                }
-                float term3 = sum_grad_out / last_dim_size;
+                    float sum_term2 = 0.0f;
+                    for (size_t k = 0; k < last_dim_size; ++k)
+                    {
+                        sum_term2 += grad_output_data[start_idx + k] * centered_input_data[start_idx + k];
+                    }
 
-                grad_input_intermediate_data[start_idx + j] = grad_out * term1 - term2 - term3 * term1;
-            }
+                    float sum_grad_out = 0.0f;
+                    for (size_t k = 0; k < last_dim_size; ++k)
+                    {
+                        sum_grad_out += grad_output_data[start_idx + k];
+                    }
+
+                    for (size_t j = 0; j < last_dim_size; ++j)
+                    {
+                        float grad_out = grad_output_data[start_idx + j];
+                        float x_mu = centered_input_data[start_idx + j];
+
+                        float term1 = gamma_data[j] * current_inv_stddev;
+                        float term2 = gamma_data[j] * x_mu * std::pow(current_inv_stddev, 3) / last_dim_size;
+                        term2 *= sum_term2;
+                        float term3 = sum_grad_out / last_dim_size;
+
+                        grad_input_intermediate_data[start_idx + j] = grad_out * term1 - term2 - term3 * term1;
+                    }
+                } });
         }
 
-        // Propagate gradient to the input parent
+        getThreadPool().run_batch(std::move(tasks_input));
+
         std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
         reduce_gradient(grad_input_intermediate, grad_input_propagated, input_parent->get_shape());
         input_parent->backward(grad_input_propagated);
@@ -1605,7 +1875,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output)
     {
         std::shared_ptr<Tensor> parent = parents_[0];
         std::shared_ptr<Tensor> grad_input_intermediate = Tensor::create(this->get_shape());
-        const std::vector<float> &output_data = this->get_data(); // Output of softmax
+        const std::vector<float> &output_data = this->get_data();
         const std::vector<float> &grad_output_data = grad_output->get_data();
         std::vector<float> &grad_input_intermediate_data = const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
 
@@ -1636,28 +1906,54 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output)
         }
         size_t dim_size = shape[dim];
 
-        for (size_t i = 0; i < outer_size; ++i)
+        size_t num_slices_to_process = outer_size * inner_size;
+        if (num_slices_to_process == 0)
         {
-            for (size_t k = 0; k < inner_size; ++k)
-            {
-                size_t start_idx = i * dim_size * inner_size + k;
-
-                // Compute the Jacobian product for this slice along the softmax dimension
-                for (size_t j = 0; j < dim_size; ++j)
-                {
-                    size_t current_idx = start_idx + j * inner_size;
-                    float grad_out_val = grad_output_data[current_idx];
-                    float softmax_out_val = output_data[current_idx];
-
-                    float sum_term = 0.0f;
-                    for (size_t l = 0; l < dim_size; ++l)
-                    {
-                        sum_term += grad_output_data[start_idx + l * inner_size] * output_data[start_idx + l * inner_size];
-                    }
-                    grad_input_intermediate_data[current_idx] = softmax_out_val * (grad_out_val - sum_term);
-                }
-            }
+            std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
+            reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
+            parent->backward(grad_input_propagated);
+            return;
         }
+
+        size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+        if (num_slices_to_process < num_threads)
+            num_threads = num_slices_to_process;
+        size_t slices_per_thread = num_slices_to_process / num_threads;
+
+        std::vector<std::function<void()>> tasks;
+
+        for (size_t t = 0; t < num_threads; ++t)
+        {
+            size_t start_slice_work_idx = t * slices_per_thread;
+            size_t end_slice_work_idx = (t == num_threads - 1) ? num_slices_to_process : start_slice_work_idx + slices_per_thread;
+
+            tasks.emplace_back([&, start_slice_work_idx, end_slice_work_idx, inner_size, dim_size]()
+                               {
+                for (size_t work_idx = start_slice_work_idx; work_idx < end_slice_work_idx; ++work_idx)
+                {
+                     size_t i = work_idx / inner_size; // outer index
+                     size_t k = work_idx % inner_size; // inner index
+
+                    size_t start_idx = i * dim_size * inner_size + k;
+
+                    // Compute the Jacobian product for this slice along the softmax dimension
+                    for (size_t j = 0; j < dim_size; ++j)
+                    {
+                        size_t current_idx = start_idx + j * inner_size;
+                        float grad_out_val = grad_output_data[current_idx];
+                        float softmax_out_val = output_data[current_idx];
+
+                        float sum_term = 0.0f;
+                        for (size_t l = 0; l < dim_size; ++l)
+                        {
+                            sum_term += grad_output_data[start_idx + l * inner_size] * output_data[start_idx + l * inner_size];
+                        }
+                        grad_input_intermediate_data[current_idx] = softmax_out_val * (grad_out_val - sum_term);
+                    }
+                } });
+        }
+
+        getThreadPool().run_batch(std::move(tasks));
 
         std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
         reduce_gradient(grad_input_intermediate, grad_input_propagated, parent->get_shape());
@@ -1732,27 +2028,53 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
             throw std::runtime_error("Gradient output shape mismatch in EmbeddingLookup backward.");
         }
 
-        // The gradient for a specific embedding vector is the sum of the gradients from all times that token appeared in the batch and sequence.
         if (weights_parent->grad_)
         {
             std::vector<float> &weights_grad_data = const_cast<std::vector<float> &>(weights_parent->get_grad());
             size_t vocab_size = weights_parent->get_shape()[0];
 
-            for (size_t i = 0; i < batch_size * sequence_length; ++i)
+            size_t total_indices = batch_size * sequence_length;
+            size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
+            if (total_indices < num_threads)
+                num_threads = total_indices;
+            size_t indices_per_thread = total_indices / num_threads;
+
+            std::vector<std::vector<float>> thread_local_grads(num_threads, std::vector<float>(vocab_size * embed_dim, 0.0f));
+            std::vector<std::function<void()>> tasks;
+
+            for (size_t t = 0; t < num_threads; ++t)
             {
-                float token_id_float = input_ids_data[i];
-                if (token_id_float < 0 || token_id_float >= vocab_size || std::fmod(token_id_float, 1.0f) != 0.0f)
-                {
-                    throw std::runtime_error("Input token ID out of vocabulary bounds or not an integer in Embedding backward.");
-                }
-                int token_id = static_cast<int>(token_id_float);
+                size_t start_idx = t * indices_per_thread;
+                size_t end_idx = (t == num_threads - 1) ? total_indices : start_idx + indices_per_thread;
 
-                size_t grad_output_start_idx = i * embed_dim;
-                size_t weights_grad_start_idx = token_id * embed_dim;
+                tasks.emplace_back([&, t, start_idx, end_idx, vocab_size, embed_dim]()
+                                   {
+                    for (size_t i = start_idx; i < end_idx; ++i)
+                    {
+                        float token_id_float = input_ids_data[i];
+                        if (token_id_float < 0 || token_id_float >= vocab_size || std::fmod(token_id_float, 1.0f) != 0.0f)
+                        {
+                            continue;
+                        }
+                        int token_id = static_cast<int>(token_id_float);
 
-                for (size_t j = 0; j < embed_dim; ++j)
+                        size_t grad_output_start_idx = i * embed_dim;
+                        size_t weights_grad_start_idx = token_id * embed_dim;
+
+                        for (size_t j = 0; j < embed_dim; ++j)
+                        {
+                            thread_local_grads[t][weights_grad_start_idx + j] += grad_output_data[grad_output_start_idx + j];
+                        }
+                    } });
+            }
+
+            getThreadPool().run_batch(std::move(tasks));
+
+            for (size_t t = 0; t < num_threads; ++t)
+            {
+                for (size_t i = 0; i < vocab_size * embed_dim; ++i)
                 {
-                    weights_grad_data[weights_grad_start_idx + j] += grad_output_data[grad_output_start_idx + j];
+                    weights_grad_data[i] += thread_local_grads[t][i];
                 }
             }
         }

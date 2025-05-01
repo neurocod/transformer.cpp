@@ -34,4 +34,6 @@ private:
     std::atomic<size_t> expected_tasks_ = 0;
 };
 
+ThreadPool& getThreadPool();
+
 #endif // THREAD_POOL_H

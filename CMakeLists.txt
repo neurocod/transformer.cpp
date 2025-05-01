@@ -34,6 +34,8 @@ add_executable(neural_network
     src/models/Decoder.cpp
     src/models/Transformer.cpp
     src/utils/DataLoader.cpp
+    src/utils/ThreadPool.cpp
+    src/utils/ConfigParser.cpp
 )
 
 # Link filesystem library (C++17)
@@ -43,4 +45,6 @@ add_executable(test_tensor
     tests/test_tensor.cpp
     src/utils/Tensor.cpp
     src/layers/Linear.cpp
+    src/utils/ThreadPool.cpp
+    src/utils/ConfigParser.cpp
 )

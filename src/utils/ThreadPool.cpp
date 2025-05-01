@@ -1,8 +1,15 @@
-#include "ThreadPool.h"
+#include "utils/ThreadPool.h"
 #include <stdexcept>
 #include <iostream>
+#include "utils/ConfigParser.h"
+#include <thread>
 
-ThreadPool pool(std::thread::hardware_concurrency());
+ThreadPool& getThreadPool() {
+    static ThreadPool pool([]() {
+        return ConfigParser::getInstance().getValue<int>("num_threads");
+    }());
+    return pool;
+}
 
 ThreadPool::ThreadPool(size_t num_threads) : stop_(false)
 {

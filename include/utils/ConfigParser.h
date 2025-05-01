@@ -7,13 +7,28 @@
 #include <sstream>
 #include <stdexcept>
 #include <algorithm>
-#include <cctype> 
+#include <cctype>
+#include <mutex>
 
 class ConfigParser
 {
 public:
-    ConfigParser(const std::string &filename)
+    static ConfigParser &getInstance(const std::string &filename = "")
     {
+        static ConfigParser instance(filename);
+        return instance;
+    }
+
+    // Delete copy constructor and assignment operator to prevent cloning
+    ConfigParser(const ConfigParser &) = delete;
+    ConfigParser &operator=(const ConfigParser &) = delete;
+
+    // Method to load the configuration
+    void loadConfig(const std::string &filename)
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        config_map_.clear();
+
         std::ifstream file(filename);
         if (!file.is_open())
         {
@@ -60,6 +75,7 @@ public:
     template <typename T>
     T getValue(const std::string &key) const
     {
+        std::lock_guard<std::mutex> lock(mutex_);
         auto it = config_map_.find(key);
         if (it == config_map_.end())
         {
@@ -70,8 +86,10 @@ public:
         {
             std::string value = it->second;
             std::transform(value.begin(), value.end(), value.begin(), ::tolower);
-            if (value == "true") return true;
-            if (value == "false") return false;
+            if (value == "true")
+                return true;
+            if (value == "false")
+                return false;
             throw std::runtime_error("Failed to parse boolean value for key: " + key);
         }
         else
@@ -88,18 +106,19 @@ public:
     }
 
 private:
+    ConfigParser(const std::string &filename = "")
+    {
+        if (!filename.empty())
+        {
+            loadConfig(filename);
+        }
+    }
+
     std::unordered_map<std::string, std::string> config_map_;
+    mutable std::mutex mutex_;
 };
 
 template <>
-std::string ConfigParser::getValue<std::string>(const std::string &key) const
-{
-    auto it = config_map_.find(key);
-    if (it == config_map_.end())
-    {
-        throw std::runtime_error("Config key not found: " + key);
-    }
-    return it->second;
-};
+std::string ConfigParser::getValue<std::string>(const std::string &key) const;
 
 #endif // CONFIGPARSER_H
