@@ -1,12 +1,10 @@
 #ifndef TRANSFORMER_CPP_EMBEDDING_H
 #define TRANSFORMER_CPP_EMBEDDING_H
 
-#include "utils/Tensor.h"
 #include <memory>
 #include <vector>
 #include <random>
-
-class Tensor;
+#include "../utils/Tensor.h"
 
 class Embedding
 {

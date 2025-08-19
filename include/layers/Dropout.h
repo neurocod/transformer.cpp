@@ -1,11 +1,9 @@
 #ifndef TRANSFORMER_CPP_DROPOUT_H
 #define TRANSFORMER_CPP_DROPOUT_H
 
-#include "../utils/Tensor.h"
 #include <memory>
 #include <random>
-
-class Tensor;
+#include "../utils/Tensor.h"
 
 class Dropout
 {

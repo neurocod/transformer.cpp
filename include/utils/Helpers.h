@@ -7,6 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include <sstream>
+#include "Tensor.h"
 
 inline void print_tensor(const std::shared_ptr<Tensor> &t, const std::string &name)
 {

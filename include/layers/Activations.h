@@ -1,12 +1,10 @@
 #ifndef TRANSFORMER_CPP_ACTIVATIONS_H
 #define TRANSFORMER_CPP_ACTIVATIONS_H
 
-#include "utils/Tensor.h"
 #include <memory>
 #include <cmath>
 #include <algorithm>
-
-class Tensor;
+#include "../utils/Tensor.h"
 
 // Base class for activation functions
 class Activation

@@ -1,19 +1,14 @@
 #ifndef TRANSFORMER_CPP_DECODERLAYER_H
 #define TRANSFORMER_CPP_DECODERLAYER_H
 
-#include "utils/Tensor.h"
-#include "layers/MultiHeadAttention.h"
-#include "layers/PositionwiseFeedForward.h"
-#include "layers/LayerNorm.h"
-#include "layers/Dropout.h"
 #include <memory>
 #include <vector>
+#include "../layers/MultiHeadAttention.h"
+#include "../layers/PositionwiseFeedForward.h"
+#include "../layers/LayerNorm.h"
+#include "../layers/Dropout.h"
 
 class Tensor;
-class MultiHeadAttention;
-class PositionwiseFeedForward;
-class LayerNorm;
-class Dropout;
 
 class DecoderLayer
 {

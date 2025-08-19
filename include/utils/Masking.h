@@ -1,12 +1,10 @@
 #ifndef TRANSFORMER_CPP_MASKING_H
 #define TRANSFORMER_CPP_MASKING_H
 
-#include "utils/Tensor.h"
 #include <memory>
 #include <vector>
 #include <limits>
-
-class Tensor;
+#include "Tensor.h"
 
 // Generates a look-ahead mask to prevent attention to future tokens in the decoder.
 std::shared_ptr<Tensor> create_look_ahead_mask(int sequence_length);

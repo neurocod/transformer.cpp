@@ -1,12 +1,10 @@
 #ifndef TRANSFORMER_CPP_OPTIMIZER_H
 #define TRANSFORMER_CPP_OPTIMIZER_H
 
-#include "utils/Tensor.h"
 #include <vector>
 #include <numeric>
 #include <memory>
-
-class Tensor;
+#include "Tensor.h"
 
 // Base class for all optimizers
 class Optimizer

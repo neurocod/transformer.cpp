@@ -1,16 +1,12 @@
 #ifndef TRANSFORMER_CPP_POSITIONWISEFEEDFORWARD_H
 #define TRANSFORMER_CPP_POSITIONWISEFEEDFORWARD_H
 
-#include "utils/Tensor.h"
-#include "layers/Linear.h"
-#include "layers/Activations.h"
 #include <memory>
 #include <vector>
+#include "Linear.h"
+#include "Activations.h"
 
 class Tensor;
-class Linear;
-class Activation;
-class ReLU;
 
 class PositionwiseFeedForward
 {

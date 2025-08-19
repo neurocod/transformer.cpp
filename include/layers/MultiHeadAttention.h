@@ -1,13 +1,11 @@
 #ifndef TRANSFORMER_CPP_MULTIHEADATTENTION_H
 #define TRANSFORMER_CPP_MULTIHEADATTENTION_H
 
-#include "../utils/Tensor.h"
-#include "Linear.h"
 #include <memory>
 #include <vector>
+#include "Linear.h"
 
 class Tensor;
-class Linear;
 
 class MultiHeadAttention
 {

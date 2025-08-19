@@ -1,10 +1,8 @@
 #ifndef TRANSFORMER_CPP_LOSSFUNCTION_H
 #define TRANSFORMER_CPP_LOSSFUNCTION_H
 
-#include "utils/Tensor.h"
 #include <memory>
-
-class Tensor;
+#include "Tensor.h"
 
 class LossFunction
 {

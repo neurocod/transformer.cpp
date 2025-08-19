@@ -1,23 +1,17 @@
 #ifndef TRANSFORMER_CPP_TRANSFORMER_H
 #define TRANSFORMER_CPP_TRANSFORMER_H
 
-#include "utils/Tensor.h"
-#include "layers/Embedding.h"
-#include "layers/PositionalEncoding.h"
-#include "models/Encoder.h"
-#include "models/Decoder.h"
-#include "layers/Linear.h"
-#include "utils/Masking.h"
-
 #include <vector>
 #include <memory>
+#include <string>
+#include "../layers/Embedding.h"
+#include "../layers/PositionalEncoding.h"
+#include "Encoder.h"
+#include "Decoder.h"
+#include "../layers/Linear.h"
+#include "../utils/Masking.h"
 
 class Tensor;
-class Embedding;
-class PositionalEncoding;
-class Encoder;
-class Decoder;
-class Linear;
 
 class Transformer
 {

@@ -10,8 +10,7 @@
 #include <algorithm>
 #include <memory>
 #include <stdexcept>
-
-#include "utils/Tensor.h"
+#include "Tensor.h"
 
 extern std::mt19937 global_rng;
 

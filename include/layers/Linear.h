@@ -1,11 +1,9 @@
 #ifndef TRANSFORMER_CPP_LINEAR_H
 #define TRANSFORMER_CPP_LINEAR_H
 
-#include "utils/Tensor.h"
 #include <vector>
 #include <memory>
-
-class Tensor;
+#include "../utils/Tensor.h"
 
 class Linear
 {

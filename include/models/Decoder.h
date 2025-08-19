@@ -1,13 +1,11 @@
 #ifndef TRANSFORMER_CPP_DECODER_H
 #define TRANSFORMER_CPP_DECODER_H
 
-#include "../utils/Tensor.h"
-#include "DecoderLayer.h"
 #include <vector>
 #include <memory>
+#include "DecoderLayer.h"
 
 class Tensor;
-class DecoderLayer;
 
 class Decoder
 {

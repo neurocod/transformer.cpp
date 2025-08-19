@@ -1,12 +1,10 @@
 #ifndef TRANSFORMER_CPP_POSITIONALENCODING_H
 #define TRANSFORMER_CPP_POSITIONALENCODING_H
 
-#include "utils/Tensor.h"
 #include <memory>
 #include <vector>
 #include <cmath>
-
-class Tensor;
+#include "../utils/Tensor.h"
 
 class PositionalEncoding
 {

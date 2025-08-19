@@ -1,13 +1,11 @@
 #ifndef TRANSFORMER_CPP_ENCODER_H
 #define TRANSFORMER_CPP_ENCODER_H
 
-#include "utils/Tensor.h"
-#include "EncoderLayer.h"
 #include <vector>
 #include <memory>
+#include "EncoderLayer.h"
 
 class Tensor;
-class EncoderLayer;
 
 class Encoder
 {
