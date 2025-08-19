@@ -1,32 +1,38 @@
 #include "utils/DataLoader.h"
 #include <iostream>
-#include <set>
-#include <chrono>
-#include <limits>
+#include <fstream>
+#include <unordered_set>
 
 DataLoader::DataLoader(const std::string& filename, int sequence_length, int batch_size)
     : filename_(filename), sequence_length_(sequence_length), batch_size_(batch_size), num_batches_(0) {}
 
 void DataLoader::load_data() {
     std::cout << "Loading data from: " << filename_ << std::endl;
-    std::ifstream file(filename_);
-    if (!file.is_open()) {
+    std::ifstream file(filename_, std::ios::binary | std::ios::ate);
+    if (!file) {
         throw std::runtime_error("Could not open data file: " + filename_);
     }
 
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    std::string text = buffer.str();
-    file.close();
+    std::string text;
+    text.resize(static_cast<std::size_t>(file.tellg()));
+    file.seekg(0);
+    file.read(text.data(), text.size());
 
     // Build Vocabulary
-    std::set<char> unique_chars(text.begin(), text.end());
+    std::unordered_set<char> unique_chars(text.begin(), text.end());
     chars_.assign(unique_chars.begin(), unique_chars.end());
-    std::sort(chars_.begin(), chars_.end());
 
     for (size_t i = 0; i < chars_.size(); ++i) {
         char_to_id_[chars_[i]] = i;
         id_to_char_[i] = chars_[i];
+    }
+    std::cout << "char_to_id: " << std::endl;
+    for (auto& pair : char_to_id_) {
+        std::cout << pair.first << " -> " << pair.second << std::endl;
+    }
+    std::cout << "id_to_char: " << std::endl;
+    for (auto& pair : id_to_char_) {
+        std::cout << pair.first << " -> " << pair.second << std::endl;
     }
 
     std::cout << "Vocabulary size: " << chars_.size() << std::endl;
