@@ -1,28 +1,27 @@
 #ifndef TRANSFORMER_CPP_POSITIONALENCODING_H
 #define TRANSFORMER_CPP_POSITIONALENCODING_H
 
+#include "../utils/Tensor.h"
+#include <cmath>
 #include <memory>
 #include <vector>
-#include <cmath>
-#include "../utils/Tensor.h"
 
-class PositionalEncoding
-{
+class PositionalEncoding {
 public:
-    // Constructor
-    PositionalEncoding(int max_sequence_length, int embed_dim);
+  // Constructor
+  PositionalEncoding(int max_sequence_length, int embed_dim);
 
-    // Forward pass
-    std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
+  // Forward pass
+  std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
 
-    // Destructor
-    ~PositionalEncoding() = default;
+  // Destructor
+  ~PositionalEncoding() = default;
 
 private:
-    std::shared_ptr<Tensor> positional_encodings_; // Pre-calculated
+  std::shared_ptr<Tensor> positional_encodings_; // Pre-calculated
 
-    int max_sequence_length_;
-    int embed_dim_;
+  int max_sequence_length_;
+  int embed_dim_;
 };
 
 #endif // TRANSFORMER_CPP_POSITIONALENCODING_H
