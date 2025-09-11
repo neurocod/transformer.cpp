@@ -4,8 +4,7 @@ PositionalEncoding::PositionalEncoding(int max_sequence_length, int embed_dim)
     : max_sequence_length_(max_sequence_length), embed_dim_(embed_dim) {
   // Pre-calculate the positional encodings matrix
   positional_encodings_ = Tensor::create({max_sequence_length_, embed_dim_});
-  std::vector<float> &encodings_data =
-      const_cast<std::vector<float> &>(positional_encodings_->get_data());
+  std::vector<float> &encodings_data = positional_encodings_->data_ref();
 
   for (int pos = 0; pos < max_sequence_length_; ++pos) {
     for (int i = 0; i < embed_dim_; ++i) {
@@ -47,8 +46,7 @@ PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
   // Add the pre-calculated positional encodings to the input tensor.
   std::shared_ptr<Tensor> output = Tensor::create(input_shape);
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
   const std::vector<float> &encoding_data = positional_encodings_->get_data();
 
   for (size_t b = 0; b < batch_size; ++b) {

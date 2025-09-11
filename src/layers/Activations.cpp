@@ -5,8 +5,7 @@
 std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
     output_data[i] = std::max(0.0f, input_data[i]);
@@ -21,8 +20,7 @@ std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
 std::shared_ptr<Tensor> GELU::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   // GELU approximation: 0.5 * x * (1 + tanh(sqrt(2 / PI) * (x + 0.044715 *
   // x^3)))
@@ -44,8 +42,7 @@ std::shared_ptr<Tensor> GELU::forward(const std::shared_ptr<Tensor> &input) {
 std::shared_ptr<Tensor> Sigmoid::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
     output_data[i] = 1.0f / (1.0f + std::exp(-input_data[i]));
@@ -60,8 +57,7 @@ std::shared_ptr<Tensor> Sigmoid::forward(const std::shared_ptr<Tensor> &input) {
 std::shared_ptr<Tensor> Tanh::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
     output_data[i] = std::tanh(input_data[i]);

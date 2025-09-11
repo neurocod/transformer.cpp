@@ -22,10 +22,8 @@ std::shared_ptr<Tensor> Dropout::forward(const std::shared_ptr<Tensor> &input,
   std::shared_ptr<Tensor> mask = Tensor::create(input->get_shape());
 
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
-  std::vector<float> &mask_data =
-      const_cast<std::vector<float> &>(mask->get_data());
+  std::vector<float> &output_data = output->data_ref();
+  std::vector<float> &mask_data = mask->data_ref();
 
   float scale = 1.0f / (1.0f - rate_);
 

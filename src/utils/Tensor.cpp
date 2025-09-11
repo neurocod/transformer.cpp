@@ -775,8 +775,7 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
 
   std::shared_ptr<Tensor> output = Tensor::create(shape_);
   const std::vector<float> &input_data = *data_;
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   size_t num_elements = shared_from_this()->num_elements();
   if (num_elements == 0)
@@ -1423,8 +1422,7 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_data =
-        const_cast<std::vector<float> &>(grad_input->get_data());
+    std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
@@ -1464,8 +1462,7 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_data =
-        const_cast<std::vector<float> &>(grad_input->get_data());
+    std::vector<float> &grad_input_data = grad_input->data_ref();
 
     const float M_SQRT2_OVER_PI = 0.7978845608028654f; // sqrt(2 / PI)
     const float GELU_CONSTANT = 0.044715f;
@@ -1513,8 +1510,7 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_data =
-        const_cast<std::vector<float> &>(grad_input->get_data());
+    std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
@@ -1553,8 +1549,7 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_data =
-        const_cast<std::vector<float> &>(grad_input->get_data());
+    std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
@@ -1593,8 +1588,7 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output) {
         Tensor::create(shared_from_this()->get_shape());
     const std::vector<float> &output_data = shared_from_this()->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_intermediate_data =
-        const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
+    std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     const std::vector<int> &shape = shared_from_this()->get_shape();
     size_t last_dim_size = shape.empty() ? 0 : shape.back();
@@ -1665,8 +1659,7 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output) {
         Tensor::create(log_probs->get_shape());
     const std::vector<float> &target_data = parents_[1]->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_intermediate_data =
-        const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
+    std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     if (grad_output->num_elements() != 1) {
       throw std::runtime_error("Gradient for NLLLoss must be a scalar.");
@@ -1754,10 +1747,8 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
     }
 
     if (gamma->grad_ && beta->grad_) {
-      std::vector<float> &gamma_grad_data =
-          const_cast<std::vector<float> &>(gamma->get_grad());
-      std::vector<float> &beta_grad_data =
-          const_cast<std::vector<float> &>(beta->get_grad());
+      std::vector<float> &gamma_grad_data = gamma->grad_ref();
+      std::vector<float> &beta_grad_data = beta->grad_ref();
 
       if (gamma_grad_data.size() != last_dim_size ||
           beta_grad_data.size() != last_dim_size) {
@@ -1810,8 +1801,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
 
     std::shared_ptr<Tensor> grad_input_intermediate =
         Tensor::create(input_shape);
-    std::vector<float> &grad_input_intermediate_data =
-        const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
+    std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     const std::vector<float> &mean_data = mean->get_data();
     const std::vector<float> &variance_data = mean->get_data();
@@ -1886,8 +1876,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
         Tensor::create(this->get_shape());
     const std::vector<float> &output_data = this->get_data();
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_intermediate_data =
-        const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
+    std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     const std::vector<int> &shape = this->get_shape();
     int dim = -1; // Need to figure out the dimension softmax was applied on.
@@ -1982,8 +1971,7 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> grad_input_intermediate =
         Tensor::create(this->get_shape());
     const std::vector<float> &grad_output_data = grad_output->get_data();
-    std::vector<float> &grad_input_intermediate_data =
-        const_cast<std::vector<float> &>(grad_input_intermediate->get_data());
+    std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     // Retrieve the mask and scale factor stored during the forward pass
     std::shared_ptr<Tensor> mask = this->dropout_mask_;
@@ -2042,8 +2030,7 @@ void Tensor::backward_embedding_lookup(
     }
 
     if (weights_parent->grad_) {
-      std::vector<float> &weights_grad_data =
-          const_cast<std::vector<float> &>(weights_parent->get_grad());
+      std::vector<float> &weights_grad_data = weights_parent->grad_ref();
       size_t vocab_size = weights_parent->get_shape()[0];
 
       size_t total_indices = batch_size * sequence_length;

@@ -61,8 +61,7 @@ std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
   std::vector<int> combined_mask_shape = {batch_size, 1, sequence_length,
                                           sequence_length};
   std::shared_ptr<Tensor> combined_mask = Tensor::create(combined_mask_shape);
-  std::vector<float> &combined_mask_data =
-      const_cast<std::vector<float> &>(combined_mask->get_data());
+  std::vector<float> &combined_mask_data = combined_mask->data_ref();
 
   const std::vector<float> &look_ahead_data = look_ahead_mask->get_data();
   const std::vector<float> &padding_data = padding_mask->get_data();

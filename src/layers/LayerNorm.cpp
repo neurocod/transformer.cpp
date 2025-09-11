@@ -79,13 +79,11 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
 
   // Normalize, scale, and shift
   std::shared_ptr<Tensor> output = Tensor::create(input_shape);
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   // Store centered input for backward pass
   centered_input_ = Tensor::create(input_shape);
-  std::vector<float> &centered_input_data =
-      const_cast<std::vector<float> &>(centered_input_->get_data());
+  std::vector<float> &centered_input_data = centered_input_->data_ref();
 
   const std::vector<float> &gamma_data = gamma_->get_data();
   const std::vector<float> &beta_data = beta_->get_data();
