@@ -1,9 +1,6 @@
-#ifndef TRANSFORMER_CPP_LINEAR_H
-#define TRANSFORMER_CPP_LINEAR_H
+#pragma once
 
 #include "../utils/Tensor.h"
-#include <memory>
-#include <vector>
 
 class Linear {
 public:
@@ -24,5 +21,3 @@ private:
   int input_dim_;
   int output_dim_;
 };
-
-#endif // TRANSFORMER_CPP_LINEAR_H

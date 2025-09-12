@@ -1,5 +1,4 @@
-#ifndef DATALOADER_H
-#define DATALOADER_H
+#pragma once
 
 #include "Tensor.h"
 #include <memory>
@@ -48,5 +47,3 @@ private:
 
   size_t num_batches_;
 };
-
-#endif // DATALOADER_H

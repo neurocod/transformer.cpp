@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_MASKING_H
-#define TRANSFORMER_CPP_MASKING_H
+#pragma once
 
 #include "Tensor.h"
 #include <limits>
@@ -14,5 +13,3 @@ std::shared_ptr<Tensor> create_look_ahead_mask(int sequence_length);
 std::shared_ptr<Tensor>
 create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
                     float pad_token_id = 0.0f);
-
-#endif // TRANSFORMER_CPP_MASKING_H

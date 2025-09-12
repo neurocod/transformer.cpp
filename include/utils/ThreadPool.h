@@ -1,5 +1,4 @@
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+#pragma once
 
 #include <atomic>
 #include <condition_variable>
@@ -34,5 +33,3 @@ private:
 };
 
 ThreadPool &getThreadPool();
-
-#endif // THREAD_POOL_H

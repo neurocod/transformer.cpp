@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_DROPOUT_H
-#define TRANSFORMER_CPP_DROPOUT_H
+#pragma once
 
 #include "../utils/Tensor.h"
 #include <memory>
@@ -24,5 +23,3 @@ private:
   std::shared_ptr<std::mt19937> generator_;
   std::shared_ptr<std::uniform_real_distribution<float>> distribution_;
 };
-
-#endif // TRANSFORMER_CPP_DROPOUT_H

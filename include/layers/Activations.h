@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_ACTIVATIONS_H
-#define TRANSFORMER_CPP_ACTIVATIONS_H
+#pragma once
 
 #include "../utils/Tensor.h"
 #include <algorithm>
@@ -46,5 +45,3 @@ public:
   std::shared_ptr<Tensor>
   forward(const std::shared_ptr<Tensor> &input) override;
 };
-
-#endif // TRANSFORMER_CPP_ACTIVATIONS_H

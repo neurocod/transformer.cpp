@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_POSITIONWISEFEEDFORWARD_H
-#define TRANSFORMER_CPP_POSITIONWISEFEEDFORWARD_H
+#pragma once
 
 #include "Activations.h"
 #include "Linear.h"
@@ -27,5 +26,3 @@ private:
   int input_dim_;
   int hidden_dim_;
 };
-
-#endif // TRANSFORMER_CPP_POSITIONWISEFEEDFORWARD_H

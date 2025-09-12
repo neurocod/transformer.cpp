@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_TRANSFORMER_H
-#define TRANSFORMER_CPP_TRANSFORMER_H
+#pragma once
 
 #include "../layers/Embedding.h"
 #include "../layers/Linear.h"
@@ -56,5 +55,3 @@ private:
   std::shared_ptr<Tensor> create_decoder_cross_attention_mask(
       const std::shared_ptr<Tensor> &encoder_input_ids);
 };
-
-#endif // TRANSFORMER_CPP_TRANSFORMER_H

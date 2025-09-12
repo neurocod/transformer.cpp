@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_DECODERLAYER_H
-#define TRANSFORMER_CPP_DECODERLAYER_H
+#pragma once
 
 #include "../layers/Dropout.h"
 #include "../layers/LayerNorm.h"
@@ -39,5 +38,3 @@ private:
 
   float dropout_rate_;
 };
-
-#endif // TRANSFORMER_CPP_DECODERLAYER_H

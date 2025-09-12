@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_ENCODER_H
-#define TRANSFORMER_CPP_ENCODER_H
+#pragma once
 
 #include "EncoderLayer.h"
 #include <memory>
@@ -30,5 +29,3 @@ private:
   int ff_hidden_dim_;
   float dropout_rate_;
 };
-
-#endif // TRANSFORMER_CPP_ENCODER_H

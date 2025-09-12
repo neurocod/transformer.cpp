@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_LAYERNORM_H
-#define TRANSFORMER_CPP_LAYERNORM_H
+#pragma once
 
 #include "../utils/Tensor.h"
 #include <memory>
@@ -31,5 +30,3 @@ private:
   std::shared_ptr<Tensor> inv_stddev_;
   std::shared_ptr<Tensor> centered_input_;
 };
-
-#endif // TRANSFORMER_CPP_LAYERNORM_H

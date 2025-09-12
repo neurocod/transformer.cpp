@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_OPTIMIZER_H
-#define TRANSFORMER_CPP_OPTIMIZER_H
+#pragma once
 
 #include "Tensor.h"
 #include <memory>
@@ -69,5 +68,3 @@ private:
   std::vector<std::shared_ptr<Tensor>> m_; // First moment
   std::vector<std::shared_ptr<Tensor>> v_; // Second moment
 };
-
-#endif // TRANSFORMER_CPP_OPTIMIZER_H

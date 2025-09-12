@@ -1,5 +1,4 @@
-#ifndef CONFIGPARSER_H
-#define CONFIGPARSER_H
+#pragma once
 
 #include <algorithm>
 #include <cctype>
@@ -111,5 +110,3 @@ private:
 
 template <>
 std::string ConfigParser::getValue<std::string>(const std::string &key) const;
-
-#endif // CONFIGPARSER_H

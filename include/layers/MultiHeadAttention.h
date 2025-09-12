@@ -1,9 +1,6 @@
-#ifndef TRANSFORMER_CPP_MULTIHEADATTENTION_H
-#define TRANSFORMER_CPP_MULTIHEADATTENTION_H
+#pragma once
 
 #include "Linear.h"
-#include <memory>
-#include <vector>
 
 class Tensor;
 
@@ -38,5 +35,3 @@ private:
       std::shared_ptr<Tensor> &q, std::shared_ptr<Tensor> &k,
       std::shared_ptr<Tensor> &v, std::shared_ptr<Tensor> mask = nullptr);
 };
-
-#endif // TRANSFORMER_CPP_MULTIHEADATTENTION_H

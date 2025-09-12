@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_EMBEDDING_H
-#define TRANSFORMER_CPP_EMBEDDING_H
+#pragma once
 
 #include "../utils/Tensor.h"
 #include <memory>
@@ -26,5 +25,3 @@ private:
   int vocab_size_;
   int embed_dim_;
 };
-
-#endif // TRANSFORMER_CPP_EMBEDDING_H

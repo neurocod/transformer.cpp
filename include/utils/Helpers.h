@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_HELPER_H
-#define TRANSFORMER_CPP_HELPER_H
+#pragma once
 
 #include "Tensor.h"
 #include <algorithm>
@@ -84,5 +83,3 @@ inline std::string vector_to_string(const std::vector<T> &vec) {
   oss << "]";
   return oss.str();
 }
-
-#endif // TRANSFORMER_CPP_HELPER_H

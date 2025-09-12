@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_LOSSFUNCTION_H
-#define TRANSFORMER_CPP_LOSSFUNCTION_H
+#pragma once
 
 #include "Tensor.h"
 #include <memory>
@@ -39,5 +38,3 @@ public:
   compute_loss(std::shared_ptr<Tensor> &predictions,
                std::shared_ptr<Tensor> &targets) override;
 };
-
-#endif // TRANSFORMER_CPP_LOSSFUNCTION_H

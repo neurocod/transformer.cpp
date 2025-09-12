@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_POSITIONALENCODING_H
-#define TRANSFORMER_CPP_POSITIONALENCODING_H
+#pragma once
 
 #include "../utils/Tensor.h"
 #include <cmath>
@@ -23,5 +22,3 @@ private:
   int max_sequence_length_;
   int embed_dim_;
 };
-
-#endif // TRANSFORMER_CPP_POSITIONALENCODING_H

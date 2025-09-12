@@ -1,5 +1,4 @@
-#ifndef TRANSFORMER_CPP_TENSOR_H
-#define TRANSFORMER_CPP_TENSOR_H
+#pragma once
 
 #include <memory>
 #include <numeric>
@@ -169,5 +168,3 @@ private:
   void backward_dropout(const std::shared_ptr<Tensor> &grad_output);
   void backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output);
 };
-
-#endif // TRANSFORMER_CPP_TENSOR_H
