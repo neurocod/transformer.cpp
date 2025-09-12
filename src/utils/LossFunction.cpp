@@ -46,8 +46,7 @@ MeanSquaredErrorLoss::compute_loss(std::shared_ptr<Tensor> &predictions,
 std::shared_ptr<Tensor> log_softmax(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
   const std::vector<float> &input_data = input->get_data();
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
   const std::vector<int> &shape = input->get_shape();
   size_t last_dim_size = shape.empty() ? 0 : shape.back();
   size_t num_elements = input->num_elements();

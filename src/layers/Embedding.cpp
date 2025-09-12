@@ -34,8 +34,7 @@ Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
 
   std::shared_ptr<Tensor> output =
       Tensor::create({(int)batch_size, (int)sequence_length, embed_dim_});
-  std::vector<float> &output_data =
-      const_cast<std::vector<float> &>(output->get_data());
+  std::vector<float> &output_data = output->data_ref();
 
   const std::vector<float> &input_ids_data = input_ids->get_data();
   const std::vector<float> &weights_data = weights_->get_data();

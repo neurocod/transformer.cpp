@@ -64,6 +64,8 @@ public:
   const std::vector<int> &get_shape() const { return shape_; };
   const std::vector<float> &get_data() const { return *data_; };
   const std::vector<float> &get_grad() const { return *grad_; };
+  std::vector<float> &data_ref() { return *data_; }
+  std::vector<float> &grad_ref() { return *grad_; }
 
   // Setter for data
   void set_data(const std::shared_ptr<std::vector<float>> &data);

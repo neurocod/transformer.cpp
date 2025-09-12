@@ -5,8 +5,7 @@
 std::shared_ptr<Tensor> create_look_ahead_mask(int sequence_length) {
   std::shared_ptr<Tensor> mask =
       Tensor::create({sequence_length, sequence_length});
-  std::vector<float> &mask_data =
-      const_cast<std::vector<float> &>(mask->get_data());
+  std::vector<float> &mask_data = mask->data_ref();
 
   // Create a lower triangular mask with -inf in the upper triangle
   float negative_infinity = -std::numeric_limits<float>::infinity();
@@ -40,8 +39,7 @@ create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
 
   std::shared_ptr<Tensor> mask =
       Tensor::create({(int)batch_size, (int)sequence_length});
-  std::vector<float> &mask_data =
-      const_cast<std::vector<float> &>(mask->get_data());
+  std::vector<float> &mask_data = mask->data_ref();
   const std::vector<float> &input_ids_data = input_ids->get_data();
 
   for (size_t i = 0; i < batch_size * sequence_length; ++i) {
