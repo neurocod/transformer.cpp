@@ -8,9 +8,6 @@
 #include "utils/Tensor.h"
 #include <filesystem>
 
-std::mt19937 global_rng(
-    std::chrono::high_resolution_clock::now().time_since_epoch().count());
-
 // Function to convert string to tensor of IDs
 std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
                                          const DataLoader &loader,

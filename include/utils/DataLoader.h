@@ -1,10 +1,7 @@
 #pragma once
 #include "Tensor.h"
-#include <random>
 #include <string>
 #include <unordered_map>
-
-extern std::mt19937 global_rng;
 
 class DataLoader {
 public:

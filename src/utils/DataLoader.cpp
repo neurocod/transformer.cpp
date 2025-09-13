@@ -1,7 +1,12 @@
 #include "utils/DataLoader.h"
 #include <fstream>
 #include <iostream>
+#include <chrono>
 #include <unordered_set>
+#include <random>
+
+static std::mt19937 global_rng(
+  std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
 DataLoader::DataLoader(const std::string &filename, int sequence_length,
                        int batch_size)
