@@ -1,10 +1,8 @@
 #pragma once
 #include "Tensor.h"
-#include <memory>
 #include <random>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 extern std::mt19937 global_rng;
 

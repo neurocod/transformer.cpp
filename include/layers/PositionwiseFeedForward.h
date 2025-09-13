@@ -1,10 +1,6 @@
 #pragma once
 #include "Activations.h"
 #include "Linear.h"
-#include <memory>
-#include <vector>
-
-class Tensor;
 
 class PositionwiseFeedForward {
 public:

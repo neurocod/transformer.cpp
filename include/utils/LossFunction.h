@@ -1,6 +1,5 @@
 #pragma once
 #include "Tensor.h"
-#include <memory>
 
 class LossFunction {
 public:

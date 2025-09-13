@@ -1,6 +1,5 @@
 #pragma once
 #include "../utils/Tensor.h"
-#include <memory>
 #include <random>
 
 class Dropout {

@@ -3,9 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
-#include <memory>
 #include <sstream>
-#include <vector>
 
 inline void print_tensor(const std::shared_ptr<Tensor> &t,
                          const std::string &name) {

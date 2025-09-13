@@ -3,10 +3,6 @@
 #include "../layers/LayerNorm.h"
 #include "../layers/MultiHeadAttention.h"
 #include "../layers/PositionwiseFeedForward.h"
-#include <memory>
-#include <vector>
-
-class Tensor;
 
 class DecoderLayer {
 public:

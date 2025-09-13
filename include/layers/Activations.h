@@ -1,8 +1,5 @@
 #pragma once
 #include "../utils/Tensor.h"
-#include <algorithm>
-#include <cmath>
-#include <memory>
 
 // Base class for activation functions
 class Activation {

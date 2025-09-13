@@ -1,8 +1,5 @@
 #pragma once
 #include "Tensor.h"
-#include <memory>
-#include <numeric>
-#include <vector>
 
 // Base class for all optimizers
 class Optimizer {

@@ -5,9 +5,7 @@
 #include "../utils/Masking.h"
 #include "Decoder.h"
 #include "Encoder.h"
-#include <memory>
 #include <string>
-#include <vector>
 
 class Tensor;
 

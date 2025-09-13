@@ -1,9 +1,5 @@
 #pragma once
 #include "DecoderLayer.h"
-#include <memory>
-#include <vector>
-
-class Tensor;
 
 class Decoder {
 public:

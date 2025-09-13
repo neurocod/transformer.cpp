@@ -1,11 +1,6 @@
 #include "utils/Tensor.h"
 #include "utils/Helpers.h"
-#include <iostream>
-#include <vector>
 #include <cassert>
-#include <numeric>
-#include <algorithm>
-#include <memory>
 
 void test_addition()
 {

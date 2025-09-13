@@ -1,7 +1,5 @@
 #pragma once
 #include "../utils/Tensor.h"
-#include <memory>
-#include <vector>
 
 class LayerNorm {
 public:

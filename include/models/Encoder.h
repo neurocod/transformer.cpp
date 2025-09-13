@@ -1,9 +1,5 @@
 #pragma once
 #include "EncoderLayer.h"
-#include <memory>
-#include <vector>
-
-class Tensor;
 
 class Encoder {
 public:

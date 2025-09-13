@@ -1,15 +1,7 @@
 #include "utils/Tensor.h"
 #include "utils/ConfigParser.h"
-#include "utils/Helpers.h"
 #include "utils/ThreadPool.h"
-#include <algorithm>
-#include <cassert>
-#include <cmath>
 #include <iostream>
-#include <memory>
-#include <numeric>
-#include <sstream>
-#include <stdexcept>
 
 std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
@@ -56,8 +48,7 @@ std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
 }
 
 // Factory method with shape and data
-std::shared_ptr<Tensor>
-Tensor::create(const std::vector<int> &shape,
+std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
                const std::shared_ptr<std::vector<float>> &data,
                bool is_optimizable) {
   std::shared_ptr<Tensor> tensor =
