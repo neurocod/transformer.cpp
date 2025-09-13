@@ -49,44 +49,37 @@ std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
 }
 
 int main() {
-  ConfigParser::getInstance("../config.ini");
-  bool inference_mode =
-      ConfigParser::getInstance().getValue<bool>("inference_mode");
-  bool load_existing_weights =
-      ConfigParser::getInstance().getValue<bool>("load_existing_weights");
-  std::string weights_filename =
-      ConfigParser::getInstance().getValue<std::string>("weights_filename");
-  std::string data_filename =
-      ConfigParser::getInstance().getValue<std::string>("data_filename");
+#ifdef _WIN32
+  namespace fs = std::filesystem;
+  fs::path cwd = fs::current_path();
+  fs::path newCwd = cwd.parent_path().parent_path();
+  fs::current_path(newCwd);
+#endif
+  ConfigParser& config = ConfigParser::getInstance("../config.ini");
+  const bool inference_mode = config.getValue<bool>("inference_mode");
+  const bool load_existing_weights = config.getValue<bool>("load_existing_weights");
+  const std::string weights_filename = config.getValue<std::string>("weights_filename");
+  const std::string data_filename = config.getValue<std::string>("data_filename");
 
   // Model Architecture
-  int embed_dim = ConfigParser::getInstance().getValue<int>("embed_dim");
-  int max_sequence_length =
-      ConfigParser::getInstance().getValue<int>("max_sequence_length");
-  int num_layers = ConfigParser::getInstance().getValue<int>("num_layers");
-  int num_heads = ConfigParser::getInstance().getValue<int>("num_heads");
-  int ff_hidden_dim =
-      ConfigParser::getInstance().getValue<int>("ff_hidden_dim");
-  float dropout_rate =
-      ConfigParser::getInstance().getValue<float>("dropout_rate");
-  float pad_token_id =
-      ConfigParser::getInstance().getValue<float>("pad_token_id");
+  const int embed_dim = config.getValue<int>("embed_dim");
+  const int max_sequence_length = config.getValue<int>("max_sequence_length");
+  const int num_layers = config.getValue<int>("num_layers");
+  const int num_heads = config.getValue<int>("num_heads");
+  const int ff_hidden_dim = config.getValue<int>("ff_hidden_dim");
+  const float dropout_rate = config.getValue<float>("dropout_rate");
+  const float pad_token_id = config.getValue<float>("pad_token_id");
 
   // Training Parameters
-  float learning_rate =
-      ConfigParser::getInstance().getValue<float>("learning_rate");
-  int num_epochs = ConfigParser::getInstance().getValue<int>("num_epochs");
-  int batch_size = ConfigParser::getInstance().getValue<int>("batch_size");
-  int input_seq_length =
-      ConfigParser::getInstance().getValue<int>("input_seq_length");
-  int decoder_seq_length =
-      ConfigParser::getInstance().getValue<int>("decoder_seq_length");
+  const float learning_rate = config.getValue<float>("learning_rate");
+  const int num_epochs = config.getValue<int>("num_epochs");
+  const int batch_size = config.getValue<int>("batch_size");
+  const int input_seq_length = config.getValue<int>("input_seq_length");
+  const int decoder_seq_length = config.getValue<int>("decoder_seq_length");
 
   // Inference Parameters
-  int max_generate_length =
-      ConfigParser::getInstance().getValue<int>("max_generate_length");
-  std::string initial_prompt =
-      ConfigParser::getInstance().getValue<std::string>("initial_prompt");
+  int max_generate_length = config.getValue<int>("max_generate_length");
+  std::string initial_prompt = config.getValue<std::string>("initial_prompt");
 
   // DataLoader needs sequence length and batch size from config
   DataLoader data_loader(data_filename, input_seq_length, batch_size);
