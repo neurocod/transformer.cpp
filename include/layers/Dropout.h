@@ -6,16 +6,12 @@
 
 class Dropout {
 public:
-  // Constructor
   Dropout(float rate);
+  ~Dropout() = default;
 
   // Forward pass
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input,
                                   bool is_training);
-
-  // Destructor
-  ~Dropout() = default;
-
 private:
   float rate_; // Dropout rate
 

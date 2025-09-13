@@ -11,17 +11,13 @@ class Tensor;
 
 class EncoderLayer {
 public:
-  // Constructor
   EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim,
                float dropout_rate = 0.1f);
+  ~EncoderLayer() = default;
 
-  // Forward pass
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input,
                                   std::shared_ptr<Tensor> &padding_mask,
                                   bool is_training);
-
-  // Destructor
-  ~EncoderLayer() = default;
 
 private:
   MultiHeadAttention self_attention_;

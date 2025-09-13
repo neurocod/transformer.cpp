@@ -50,9 +50,6 @@ std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> &input) {
   return output;
 }
 
-// Destructor
-Linear::~Linear() {}
-
 std::shared_ptr<Tensor> Linear::get_weights() { return weights_; }
 
 std::shared_ptr<Tensor> Linear::get_biases() { return biases_; }

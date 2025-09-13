@@ -19,7 +19,6 @@ Tensor::Tensor()
       grad_(std::make_shared<std::vector<float>>()),
       creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
 
-// Constructor with shape
 Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable)
     : shape_{shape}, creator_op_(OperationType::None), parents_{},
       is_optimizable_{is_optimizable} {
@@ -28,7 +27,6 @@ Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable)
   grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
-// Constructor with shape and data
 Tensor::Tensor(const std::vector<int> &shape,
                const std::shared_ptr<std::vector<float>> &data,
                bool is_optimizable)
@@ -42,9 +40,6 @@ Tensor::Tensor(const std::vector<int> &shape,
   data_ = data;
   grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
-
-// Destructor
-Tensor::~Tensor() {}
 
 // Default factory
 std::shared_ptr<Tensor> Tensor::create() { return std::make_shared<Tensor>(); }

@@ -11,7 +11,6 @@ extern std::mt19937 global_rng;
 
 class DataLoader {
 public:
-  // Constructor
   DataLoader(const std::string &filename, int sequence_length, int batch_size);
 
   // Load and preprocess the data

@@ -29,17 +29,12 @@ enum class OperationType {
 
 class Tensor : public std::enable_shared_from_this<Tensor> {
 public:
-  // Constructor
   Tensor();
-  // Constructor with shape
   Tensor(const std::vector<int> &shape, bool is_optimizable = false);
-  // Constructor with shape and data (initializer list or vector)
   Tensor(const std::vector<int> &shape,
          const std::shared_ptr<std::vector<float>> &data,
          bool is_optimizable = false);
-
-  // Destructor
-  ~Tensor();
+  ~Tensor() {}
 
   // Intermediate values for different functions
   // Backward permutation

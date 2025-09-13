@@ -6,8 +6,8 @@ class Tensor;
 
 class MultiHeadAttention {
 public:
-  // Constructor
   MultiHeadAttention(int embed_dim, int num_heads);
+  ~MultiHeadAttention() = default;
 
   // Forward pass
   // query, key, and value can be the same tensor for self-attention, or
@@ -16,9 +16,6 @@ public:
                                   std::shared_ptr<Tensor> &key,
                                   std::shared_ptr<Tensor> &value,
                                   std::shared_ptr<Tensor> mask = nullptr);
-
-  // Destructor
-  ~MultiHeadAttention() = default;
 
 private:
   Linear query_proj_;

@@ -11,9 +11,9 @@ class Tensor;
 
 class DecoderLayer {
 public:
-  // Constructor
   DecoderLayer(int embed_dim, int num_heads, int ff_hidden_dim,
                float dropout_rate = 0.1f);
+  ~DecoderLayer() = default;
 
   // Forward pass
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &target_input,
@@ -21,9 +21,6 @@ public:
                                   std::shared_ptr<Tensor> &look_ahead_mask,
                                   std::shared_ptr<Tensor> &padding_mask,
                                   bool is_training);
-
-  // Destructor
-  ~DecoderLayer() = default;
 
 private:
   MultiHeadAttention masked_self_attention_;

@@ -7,18 +7,15 @@
 
 class Embedding {
 public:
-  // Constructor
   Embedding(int vocab_size, int embed_dim);
+  ~Embedding() = default;
 
   // Input shape: (batch_size, sequence_length)
   // Output shape: (batch_size, sequence_length, embed_dim)
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input_ids);
 
-  // Destructor
-  ~Embedding() = default;
 
   std::shared_ptr<Tensor> get_weights();
-
 private:
   std::shared_ptr<Tensor> weights_;
 

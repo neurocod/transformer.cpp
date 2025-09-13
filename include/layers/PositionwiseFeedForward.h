@@ -9,15 +9,10 @@ class Tensor;
 
 class PositionwiseFeedForward {
 public:
-  // Constructor
   PositionwiseFeedForward(int input_dim, int hidden_dim);
-
-  // Forward pass
-  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
-
-  // Destructor
   ~PositionwiseFeedForward() = default;
 
+  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
 private:
   Linear fc1_;
   Linear fc2_;

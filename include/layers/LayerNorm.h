@@ -6,14 +6,12 @@
 
 class LayerNorm {
 public:
-  // Constructor
   LayerNorm(int normalized_shape, float epsilon = 1e-5f);
+  ~LayerNorm() = default;
 
   // Forward pass
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
 
-  // Destructor
-  ~LayerNorm() = default;
 
   // Getters for learnable parameters
   std::shared_ptr<Tensor> get_gamma();

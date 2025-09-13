@@ -33,10 +33,7 @@ protected:
 
 class SGD : public Optimizer {
 public:
-  // Constructor takes a learning rate
   SGD(float learning_rate) : learning_rate_(learning_rate) {}
-
-  // Destructor
   ~SGD() override = default;
 
   // Implements the SGD optimization step
@@ -48,16 +45,12 @@ private:
 
 class Adam : public Optimizer {
 public:
-  // Constructor
   Adam(float learning_rate = 0.001f, float beta1 = 0.9f, float beta2 = 0.999f,
        float epsilon = 1e-8f);
-
-  // Destructor
   ~Adam() override = default;
 
   // Implements the Adam optimization step
   void step() override;
-
 private:
   float learning_rate_;
   float beta1_;
