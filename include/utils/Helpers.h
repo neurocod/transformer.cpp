@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Tensor.h"
 #include <algorithm>
 #include <cmath>

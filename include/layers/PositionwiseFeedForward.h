@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Activations.h"
 #include "Linear.h"
 #include <memory>

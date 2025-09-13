@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../layers/Embedding.h"
 #include "../layers/Linear.h"
 #include "../layers/PositionalEncoding.h"

@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Linear.h"
 
 class Tensor;

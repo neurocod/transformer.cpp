@@ -1,5 +1,4 @@
 #pragma once
-
 #include "../layers/Dropout.h"
 #include "../layers/LayerNorm.h"
 #include "../layers/MultiHeadAttention.h"

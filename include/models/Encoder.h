@@ -1,5 +1,4 @@
 #pragma once
-
 #include "EncoderLayer.h"
 #include <memory>
 #include <vector>
