@@ -60,16 +60,12 @@ public:
   std::vector<float> &data_ref() { return *data_; }
   std::vector<float> &grad_ref() { return *grad_; }
 
-  // Setter for data
   void set_data(const std::shared_ptr<std::vector<float>> &data);
-  // Setter of parents
   void set_parents(const std::vector<std::shared_ptr<Tensor>> &parents) {
     parents_ = parents;
   }
-  // Setter of creator operation
   void set_creator_op(OperationType op) { creator_op_ = op; }
 
-  // Get list of optimizable tensors
   static std::vector<std::shared_ptr<Tensor>> &get_optimizable_tensors() {
     return optimizable_tensors_;
   }
@@ -77,7 +73,6 @@ public:
   float get(const std::vector<int> &indices) const;
   // Set element by multi-dimensional index
   void set(const std::vector<int> &indices, float value);
-  // Add a getter for the is_optimizable flag
   bool is_optimizable() const { return is_optimizable_; }
 
   // Basic tensor operations
@@ -119,6 +114,7 @@ private:
   std::vector<int> shape_;
   std::shared_ptr<std::vector<float>> data_;
   std::shared_ptr<std::vector<float>> grad_;
+  // allows to track the computation graph, enabling correct gradient calculation and backpropagation
   std::vector<std::shared_ptr<Tensor>> parents_;
   bool is_optimizable_ = false;
 

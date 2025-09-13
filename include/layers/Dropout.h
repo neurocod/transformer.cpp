@@ -14,6 +14,6 @@ private:
   float rate_; // Dropout rate
 
   // Random number generator and distribution for creating the mask
-  std::shared_ptr<std::mt19937> generator_;
-  std::shared_ptr<std::uniform_real_distribution<float>> distribution_;
+  std::mt19937 generator_;
+  std::uniform_real_distribution<float> distribution_;
 };

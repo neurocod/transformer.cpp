@@ -2,14 +2,13 @@
 #include <random>
 #include <stdexcept>
 
-Dropout::Dropout(float rate) : rate_(rate) {
+Dropout::Dropout(float rate) : rate_(rate),
+  generator_(std::random_device{}()),
+  distribution_(0.0f, 1.0f)
+{
   if (rate_ < 0.0f || rate_ >= 1.0f) {
     throw std::runtime_error("Dropout rate must be between 0 and less than 1.");
   }
-  // Initialize random number generator and distribution
-  generator_ = std::make_shared<std::mt19937>(std::random_device{}());
-  distribution_ =
-      std::make_shared<std::uniform_real_distribution<float>>(0.0f, 1.0f);
 }
 
 std::shared_ptr<Tensor> Dropout::forward(const std::shared_ptr<Tensor> &input,
@@ -28,7 +27,7 @@ std::shared_ptr<Tensor> Dropout::forward(const std::shared_ptr<Tensor> &input,
   float scale = 1.0f / (1.0f - rate_);
 
   for (size_t i = 0; i < input_data.size(); ++i) {
-    if ((*distribution_)(*generator_) > rate_) {
+    if (distribution_(generator_) > rate_) {
       // Keep the element
       output_data[i] = input_data[i] * scale;
       mask_data[i] = 1.0f;
