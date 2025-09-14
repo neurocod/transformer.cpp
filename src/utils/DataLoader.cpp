@@ -3,16 +3,17 @@
 static std::mt19937 g_randBatch(
   std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-DataLoader::DataLoader(const std::string &filename, int sequence_length,
-                       int batch_size)
-    : filename_(filename), sequence_length_(sequence_length),
-      batch_size_(batch_size), num_batches_(0) {}
+DataLoader::DataLoader(int sequence_length, int batch_size):
+  sequence_length_(sequence_length),
+  batch_size_(batch_size)
+{
+}
 
-void DataLoader::load_data() {
-  std::cout << "Loading data from: " << filename_ << std::endl;
-  std::ifstream file(filename_, std::ios::binary | std::ios::ate);
+void DataLoader::loadData(const std::string& filename) {
+  std::cout << "Loading data from: " << filename << std::endl;
+  std::ifstream file(filename, std::ios::binary | std::ios::ate);
   if (!file) {
-    throw std::runtime_error("Could not open data file: " + filename_);
+    throw std::runtime_error("Could not open data file: " + filename);
   }
 
   std::string text;
