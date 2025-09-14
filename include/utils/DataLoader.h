@@ -5,7 +5,7 @@ class DataLoader {
 public:
   DataLoader(int sequence_length, int batch_size);
 
-  void loadData(const std::string& filename);
+  void readFile(const std::string& filename);
   std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> randBatch();
 
   char get_char_from_id(int id) const;
@@ -16,11 +16,11 @@ public:
   const std::unordered_map<int, char> &get_id_to_char_map() const;
 private:
   int sequence_length_;
-  int batch_size_;
+  int _batchSize;
 
   std::vector<char> chars_;
-  std::unordered_map<char, int> char_to_id_;
-  std::unordered_map<int, char> id_to_char_;
+  std::unordered_map<char, int> _charToId;
+  std::unordered_map<int, char> _idToChar;
   std::vector<int> data_;
 
   size_t num_batches_ = 0;

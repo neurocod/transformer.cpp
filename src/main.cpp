@@ -67,9 +67,8 @@ int main() {
   int max_generate_length = config.getValue<int>("max_generate_length");
   std::string initial_prompt = config.getValue<std::string>("initial_prompt");
 
-  // DataLoader needs sequence length and batch size from config
   DataLoader data_loader(input_seq_length, batch_size);
-  data_loader.load_data(data_filename);
+  data_loader.readFile(data_filename);
 
   int input_vocab_size = data_loader.get_vocab_size();
   int target_vocab_size = data_loader.get_vocab_size();
