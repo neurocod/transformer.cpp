@@ -1,6 +1,5 @@
 #pragma once
 #include "Tensor.h"
-#include <limits>
 
 // Generates a look-ahead mask to prevent attention to future tokens in the
 // decoder.

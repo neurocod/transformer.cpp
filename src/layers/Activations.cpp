@@ -1,6 +1,4 @@
 #include "layers/Activations.h"
-#include <algorithm>
-#include <cmath>
 
 std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());

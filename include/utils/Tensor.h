@@ -1,8 +1,4 @@
 #pragma once
-#include <memory>
-#include <numeric>
-#include <stdexcept>
-#include <vector>
 
 enum class OperationType {
   None,

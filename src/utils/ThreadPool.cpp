@@ -1,8 +1,5 @@
 #include "utils/ThreadPool.h"
 #include "utils/ConfigParser.h"
-#include <iostream>
-#include <stdexcept>
-#include <thread>
 
 ThreadPool &getThreadPool() {
   static ThreadPool pool([]() {

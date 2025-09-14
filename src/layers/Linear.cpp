@@ -1,7 +1,4 @@
 #include "layers/Linear.h"
-#include <iostream>
-#include <random>
-#include <stdexcept>
 
 Linear::Linear(int input_dim, int output_dim)
     : input_dim_(input_dim), output_dim_(output_dim) {

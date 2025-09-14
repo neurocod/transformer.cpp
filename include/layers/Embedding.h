@@ -1,6 +1,5 @@
 #pragma once
 #include "../utils/Tensor.h"
-#include <random>
 
 class Embedding {
 public:

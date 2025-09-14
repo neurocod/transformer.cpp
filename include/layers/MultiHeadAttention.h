@@ -1,8 +1,6 @@
 #pragma once
 #include "Linear.h"
 
-class Tensor;
-
 class MultiHeadAttention {
 public:
   MultiHeadAttention(int embed_dim, int num_heads);

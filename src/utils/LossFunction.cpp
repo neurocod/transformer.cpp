@@ -1,5 +1,3 @@
-#include <cmath>
-#include <limits>
 #include <utils/LossFunction.h>
 
 void LossFunction::backward(std::shared_ptr<Tensor> &loss) {

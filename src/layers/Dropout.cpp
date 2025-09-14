@@ -1,6 +1,4 @@
 #include "layers/Dropout.h"
-#include <random>
-#include <stdexcept>
 
 Dropout::Dropout(float rate) : rate_(rate),
   generator_(std::random_device{}()),

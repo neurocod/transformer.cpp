@@ -1,7 +1,4 @@
 #include "layers/LayerNorm.h"
-#include <cmath>
-#include <iostream>
-#include <numeric>
 
 LayerNorm::LayerNorm(int normalized_shape, float epsilon)
     : normalized_shape_(normalized_shape), epsilon_(epsilon) {

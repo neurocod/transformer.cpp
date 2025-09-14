@@ -1,5 +1,4 @@
 #include "models/EncoderLayer.h"
-#include <iostream>
 
 EncoderLayer::EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim,
                            float dropout_rate)

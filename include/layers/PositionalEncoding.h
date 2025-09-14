@@ -1,6 +1,5 @@
 #pragma once
 #include "../utils/Tensor.h"
-#include <cmath>
 
 class PositionalEncoding {
 public:

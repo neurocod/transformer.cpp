@@ -38,6 +38,8 @@ add_executable(neural_network
     src/utils/ConfigParser.cpp
 )
 
+target_precompile_headers(neural_network PRIVATE src/pch.h)
+
 if (WIN32)
 else()
   # Link filesystem library (C++17)
@@ -51,3 +53,5 @@ add_executable(test_tensor
     src/utils/ThreadPool.cpp
     src/utils/ConfigParser.cpp
 )
+
+target_precompile_headers(test_tensor PRIVATE src/pch.h)

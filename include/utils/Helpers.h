@@ -1,9 +1,5 @@
 #pragma once
 #include "Tensor.h"
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <sstream>
 
 inline void print_tensor(const std::shared_ptr<Tensor> &t,
                          const std::string &name) {

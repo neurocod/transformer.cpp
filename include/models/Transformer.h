@@ -5,9 +5,6 @@
 #include "../utils/Masking.h"
 #include "Decoder.h"
 #include "Encoder.h"
-#include <string>
-
-class Tensor;
 
 class Transformer {
 public:

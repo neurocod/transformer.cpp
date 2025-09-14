@@ -1,5 +1,4 @@
 #include "layers/Embedding.h"
-#include <stdexcept>
 
 Embedding::Embedding(int vocab_size, int embed_dim)
     : vocab_size_(vocab_size), embed_dim_(embed_dim) {

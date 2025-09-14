@@ -1,7 +1,5 @@
 #pragma once
 #include "Tensor.h"
-#include <string>
-#include <unordered_map>
 
 class DataLoader {
 public:
