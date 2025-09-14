@@ -14,7 +14,7 @@ public:
   int get_vocab_size() const;
 
   // Get a random batch of data
-  std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> get_batch();
+  std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> randBatch();
 
   // Get character from ID
   char get_char_from_id(int id) const;

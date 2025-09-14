@@ -4,9 +4,7 @@
 // Base class for all optimizers
 class Optimizer {
 public:
-  // Constructor
   Optimizer() {}
-
   virtual ~Optimizer() = default;
 
   // Derived classes must implement this to update parameters based on gradients

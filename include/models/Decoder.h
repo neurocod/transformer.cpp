@@ -14,7 +14,6 @@ public:
                                   std::shared_ptr<Tensor> &padding_mask,
                                   bool is_training);
 
-
 private:
   std::vector<DecoderLayer> layers_;
 

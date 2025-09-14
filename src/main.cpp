@@ -131,8 +131,7 @@ int main() {
     for (int epoch = 0; epoch < num_epochs; ++epoch) {
       optimizer.zero_grad();
 
-      std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data =
-          data_loader.get_batch();
+      std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = data_loader.randBatch();
       std::shared_ptr<Tensor> encoder_input_ids = batch_data.first;
       std::shared_ptr<Tensor> target_output_ids = batch_data.second;
       std::shared_ptr<Tensor> decoder_input_ids = encoder_input_ids;

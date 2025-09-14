@@ -1,5 +1,4 @@
 #include "models/Decoder.h"
-#include <iostream>
 
 Decoder::Decoder(int num_layers, int embed_dim, int num_heads,
                  int ff_hidden_dim, float dropout_rate)
