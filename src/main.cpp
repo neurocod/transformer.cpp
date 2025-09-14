@@ -1,4 +1,4 @@
-#include "models/Transformer.h"
+﻿#include "models/Transformer.h"
 #include "utils/ConfigParser.h"
 #include "utils/DataLoader.h"
 #include "utils/Helpers.h"
@@ -35,12 +35,21 @@ std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
 }
 
 int main() {
+#ifdef NDEBUG
+  std::cout << "[LOG] Build type: RELEASE" << std::endl;
+#else
+  std::cout << "[LOG] Build type: DEBUG" << std::endl;
+#endif
 #ifdef _WIN32
   namespace fs = std::filesystem;
   fs::path cwd = fs::current_path();
   fs::path newCwd = cwd.parent_path().parent_path();
   fs::current_path(newCwd);
 #endif
+  using clock = std::chrono::high_resolution_clock;
+
+  auto t_init_start = clock::now();
+
   ConfigParser& config = ConfigParser::getInstance("../config.ini");
   const bool inference_mode = config.getValue<bool>("inference_mode");
   const bool load_existing_weights = config.getValue<bool>("load_existing_weights");
@@ -76,6 +85,10 @@ int main() {
   Transformer model(input_vocab_size, target_vocab_size, embed_dim,
                     max_sequence_length, num_layers, num_heads, ff_hidden_dim,
                     dropout_rate, pad_token_id);
+
+  auto t_init_end = clock::now();
+  auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
+  std::cout << "[LOG] Model initialization took " << init_ms << " ms." << std::endl;
 
   // Print model parameters count
   size_t total_params = 0;
@@ -125,7 +138,11 @@ int main() {
 
     std::cout << "Starting Transformer training..." << std::endl;
 
+    auto t_train_start = clock::now();
+
     for (int epoch = 0; epoch < num_epochs; ++epoch) {
+      auto epoch_start = std::chrono::high_resolution_clock::now();
+
       optimizer.zero_grad();
 
       std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = data_loader.randBatch();
@@ -152,7 +169,15 @@ int main() {
       // Backward pass
       criterion.backward(loss);
       optimizer.step();
+
+      auto epoch_end = std::chrono::high_resolution_clock::now();
+      auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count();
+      std::cout << "[LOG] Epoch " << (epoch + 1) << " took " << epoch_ms << " ms." << std::endl;
     }
+
+    auto t_train_end = clock::now();
+    auto train_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_train_end - t_train_start).count();
+    std::cout << "[LOG] Model training took " << train_ms << " ms." << std::endl;
 
     std::cout << "\nTransformer training finished." << std::endl;
 
