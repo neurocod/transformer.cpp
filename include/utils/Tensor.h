@@ -51,9 +51,9 @@ public:
 
   // Getters for shape, data, and gradient
   const std::vector<int> &get_shape() const { return shape_; };
-  const std::vector<float> &get_data() const { return *data_; };
+  const std::vector<float> &get_data() const { return *_data; };
   const std::vector<float> &get_grad() const { return *grad_; };
-  std::vector<float> &data_ref() { return *data_; }
+  std::vector<float> &data_ref() { return *_data; }
   std::vector<float> &grad_ref() { return *grad_; }
 
   void set_data(const std::shared_ptr<std::vector<float>> &data);
@@ -108,7 +108,7 @@ private:
   static std::vector<std::shared_ptr<Tensor>> optimizable_tensors_;
 
   std::vector<int> shape_;
-  std::shared_ptr<std::vector<float>> data_;
+  std::shared_ptr<std::vector<float>> _data;
   std::shared_ptr<std::vector<float>> grad_;
   // allows to track the computation graph, enabling correct gradient calculation and backpropagation
   std::vector<std::shared_ptr<Tensor>> parents_;

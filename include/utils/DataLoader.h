@@ -14,14 +14,15 @@ public:
   int get_vocab_size() const;
   const std::unordered_map<char, int> &get_char_to_id_map() const;
   const std::unordered_map<int, char> &get_id_to_char_map() const;
+  void printStatistics() const;
 private:
-  int sequence_length_;
-  int _batchSize;
+  const int _sequenceLength;
+  const int _batchSize;
 
-  std::vector<char> chars_;
+  std::vector<char> _chars;
   std::unordered_map<char, int> _charToId;
   std::unordered_map<int, char> _idToChar;
-  std::vector<int> data_;
+  std::vector<int> _data;
 
-  size_t num_batches_ = 0;
+  size_t _numBatches = 0;
 };

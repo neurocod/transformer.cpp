@@ -7,7 +7,7 @@ std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
 // Default constructor
 Tensor::Tensor()
-    : shape_{{}}, data_(std::make_shared<std::vector<float>>()),
+    : shape_{{}}, _data(std::make_shared<std::vector<float>>()),
       grad_(std::make_shared<std::vector<float>>()),
       creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
 
@@ -15,7 +15,7 @@ Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable)
     : shape_{shape}, creator_op_(OperationType::None), parents_{},
       is_optimizable_{is_optimizable} {
   size_t total_elements = num_elements();
-  data_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+  _data = std::make_shared<std::vector<float>>(total_elements, 0.0f);
   grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
@@ -29,7 +29,7 @@ Tensor::Tensor(const std::vector<int> &shape,
     throw std::runtime_error(
         "Data size does not match the specified shape in constructor.");
   }
-  data_ = data;
+  _data = data;
   grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
@@ -65,7 +65,7 @@ void Tensor::set_data(const std::shared_ptr<std::vector<float>> &data) {
   if (data->size() != total_elements) {
     throw std::runtime_error("Data size mismatch in set_data.");
   }
-  data_ = data;
+  _data = data;
   grad_->assign(total_elements, 0.0f);
   // When data is explicitly set, this tensor is a leaf node, not derived from
   // an operation.
@@ -75,16 +75,16 @@ void Tensor::set_data(const std::shared_ptr<std::vector<float>> &data) {
 
 // Get element by multi-dimensional index
 float Tensor::get(const std::vector<int> &indices) const {
-  if (!data_)
+  if (!_data)
     throw std::runtime_error("Accessing data on a null shared_ptr.");
-  return (*data_)[get_linear_index(indices)];
+  return (*_data)[get_linear_index(indices)];
 }
 
 // Set element by multi-dimensional index
 void Tensor::set(const std::vector<int> &indices, float value) {
-  if (!data_)
+  if (!_data)
     throw std::runtime_error("Accessing data on a null shared_ptr.");
-  (*data_)[get_linear_index(indices)] = value;
+  (*_data)[get_linear_index(indices)] = value;
 }
 
 size_t Tensor::num_elements() const {
@@ -208,7 +208,7 @@ Tensor::operator+(const std::shared_ptr<Tensor> &other) const {
       std::const_pointer_cast<Tensor>(shared_from_this()));
   result->parents_.push_back(other);
 
-  size_t total_elements = result->data_->size();
+  size_t total_elements = result->_data->size();
   size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
   if (total_elements < num_threads)
     num_threads = total_elements;
@@ -223,8 +223,8 @@ Tensor::operator+(const std::shared_ptr<Tensor> &other) const {
     // A lambda task for each chunk of work
     tasks.emplace_back([&, start_idx, end_idx]() {
       for (size_t i = start_idx; i < end_idx; ++i) {
-        (*result->data_)[i] =
-            (*broadcasted_a->data_)[i] + (*broadcasted_b->data_)[i];
+        (*result->_data)[i] =
+            (*broadcasted_a->_data)[i] + (*broadcasted_b->_data)[i];
       }
     });
   }
@@ -247,7 +247,7 @@ Tensor::operator-(const std::shared_ptr<Tensor> &other) const {
       std::const_pointer_cast<Tensor>(shared_from_this()));
   result->parents_.push_back(other);
 
-  size_t total_elements = result->data_->size();
+  size_t total_elements = result->_data->size();
   size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
   if (total_elements < num_threads)
     num_threads = total_elements;
@@ -261,8 +261,8 @@ Tensor::operator-(const std::shared_ptr<Tensor> &other) const {
 
     tasks.emplace_back([&, start_idx, end_idx]() {
       for (size_t i = start_idx; i < end_idx; ++i) {
-        (*result->data_)[i] =
-            (*broadcasted_a->data_)[i] - (*broadcasted_b->data_)[i];
+        (*result->_data)[i] =
+            (*broadcasted_a->_data)[i] - (*broadcasted_b->_data)[i];
       }
     });
   }
@@ -285,7 +285,7 @@ Tensor::operator*(const std::shared_ptr<Tensor> &other) const {
       std::const_pointer_cast<Tensor>(shared_from_this()));
   result->parents_.push_back(other);
 
-  size_t total_elements = result->data_->size();
+  size_t total_elements = result->_data->size();
   size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
   if (total_elements < num_threads)
     num_threads = total_elements;
@@ -299,8 +299,8 @@ Tensor::operator*(const std::shared_ptr<Tensor> &other) const {
 
     tasks.emplace_back([&, start_idx, end_idx]() {
       for (size_t i = start_idx; i < end_idx; ++i) {
-        (*result->data_)[i] =
-            (*broadcasted_a->data_)[i] * (*broadcasted_b->data_)[i];
+        (*result->_data)[i] =
+            (*broadcasted_a->_data)[i] * (*broadcasted_b->_data)[i];
       }
     });
   }
@@ -323,7 +323,7 @@ Tensor::operator/(const std::shared_ptr<Tensor> &other) const {
       std::const_pointer_cast<Tensor>(shared_from_this())); // numerator
   result->parents_.push_back(other);                        // denominator
 
-  size_t total_elements = result->data_->size();
+  size_t total_elements = result->_data->size();
   size_t num_threads = ConfigParser::getInstance().getValue<int>("num_threads");
   if (total_elements < num_threads)
     num_threads = total_elements;
@@ -337,12 +337,12 @@ Tensor::operator/(const std::shared_ptr<Tensor> &other) const {
 
     tasks.emplace_back([&, start_idx, end_idx]() {
       for (size_t i = start_idx; i < end_idx; ++i) {
-        if ((*broadcasted_b->data_)[i] == 0.0f) {
+        if ((*broadcasted_b->_data)[i] == 0.0f) {
           throw std::runtime_error(
               "Division by zero encountered in Tensor division.");
         }
-        (*result->data_)[i] =
-            (*broadcasted_a->data_)[i] / (*broadcasted_b->data_)[i];
+        (*result->_data)[i] =
+            (*broadcasted_a->_data)[i] / (*broadcasted_b->_data)[i];
       }
     });
   }
@@ -429,11 +429,11 @@ Tensor::transpose(const std::vector<int> &permutation) const {
     }
 
     // Bounds checks
-    if (i >= data_->size() || new_linear_idx >= result->data_->size()) {
+    if (i >= _data->size() || new_linear_idx >= result->_data->size()) {
       throw std::runtime_error(
           "Index out of bounds during transpose calculation.");
     }
-    (*result->data_)[new_linear_idx] = (*data_)[i];
+    (*result->_data)[new_linear_idx] = (*_data)[i];
   }
 
   return result;
@@ -496,9 +496,9 @@ Tensor::reshape(const std::vector<int> &new_shape) const {
                              std::to_string(new_num_elements) + " elements).");
   }
 
-  // For reshape, share the underlying data_ with the original tensor
+  // For reshape, share the underlying _data with the original tensor
   std::shared_ptr<Tensor> result = Tensor::create(actual_new_shape);
-  result->data_ = shared_from_this()->data_;
+  result->_data = shared_from_this()->_data;
   result->grad_ = std::make_shared<std::vector<float>>(new_num_elements, 0.0f);
 
   result->creator_op_ = OperationType::Reshape;
@@ -531,7 +531,7 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
     result->parents_.push_back(other);
 
     for (size_t i = 0; i < shape_[0]; ++i) {
-      (*result->data_)[0] += (*data_)[i] * (*other->data_)[i];
+      (*result->_data)[0] += (*_data)[i] * (*other->_data)[i];
     }
     return result;
   }
@@ -559,9 +559,9 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
       float sum = 0.0f;
       size_t matrix_row_start_idx = i * matrix_stride;
       for (int k = 0; k < cols_a; ++k) {
-        sum += (*data_)[matrix_row_start_idx + k] * (*other->data_)[k];
+        sum += (*_data)[matrix_row_start_idx + k] * (*other->_data)[k];
       }
-      (*result->data_)[i] = sum;
+      (*result->_data)[i] = sum;
     }
     return result;
   }
@@ -683,20 +683,20 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
             size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] +
                            j * stride_b[other->shape_.size() - 1];
 
-            if (idx_a >= data_->size() || idx_b >= other->data_->size()) {
+            if (idx_a >= _data->size() || idx_b >= other->_data->size()) {
               throw std::runtime_error(
                   "Index out of bounds during dot product calculation.");
             }
-            sum += (*data_)[idx_a] * (*other->data_)[idx_b];
+            sum += (*_data)[idx_a] * (*other->_data)[idx_b];
           }
           size_t idx_result = offset_result +
                               i * stride_result[result_shape.size() - 2] +
                               j * stride_result[result_shape.size() - 1];
-          if (idx_result >= result->data_->size()) {
+          if (idx_result >= result->_data->size()) {
             throw std::runtime_error(
                 "Result index out of bounds during dot product calculation.");
           }
-          (*result->data_)[idx_result] = sum;
+          (*result->_data)[idx_result] = sum;
         }
       });
     }
@@ -716,8 +716,8 @@ std::shared_ptr<Tensor> Tensor::sum() const {
       std::const_pointer_cast<Tensor>(shared_from_this()));
 
   float total_sum = 0.0f;
-  if (data_ && !data_->empty()) {
-    size_t num_elements = data_->size();
+  if (_data && !_data->empty()) {
+    size_t num_elements = _data->size();
     size_t num_threads =
         ConfigParser::getInstance().getValue<int>("num_threads");
     if (num_elements < num_threads)
@@ -734,7 +734,7 @@ std::shared_ptr<Tensor> Tensor::sum() const {
 
       tasks.emplace_back([&, t, start_idx, end_idx]() {
         for (size_t i = start_idx; i < end_idx; ++i) {
-          partial_sums[t] += (*data_)[i];
+          partial_sums[t] += (*_data)[i];
         }
       });
     }
@@ -745,8 +745,8 @@ std::shared_ptr<Tensor> Tensor::sum() const {
       total_sum += partial_sum;
     }
   }
-  if (result->data_ && !result->data_->empty()) {
-    (*result->data_)[0] = total_sum;
+  if (result->_data && !result->_data->empty()) {
+    (*result->_data)[0] = total_sum;
   }
 
   return result;
@@ -760,7 +760,7 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
   }
 
   std::shared_ptr<Tensor> output = Tensor::create(shape_);
-  const std::vector<float> &input_data = *data_;
+  const std::vector<float> &input_data = *_data;
   std::vector<float> &output_data = output->data_ref();
 
   size_t num_elements = shared_from_this()->num_elements();
@@ -840,9 +840,9 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output) {
   }
 
   // Accumulate the incoming gradient
-  if (grad_ && grad_output->data_) {
+  if (grad_ && grad_output->_data) {
     for (size_t i = 0; i < grad_->size(); ++i) {
-      (*grad_)[i] += (*grad_output->data_)[i];
+      (*grad_)[i] += (*grad_output->_data)[i];
     }
   }
 
@@ -913,7 +913,7 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
 
   if (grad_shape == parent_shape) {
     parent_grad = Tensor::create(parent_shape);
-    parent_grad->set_data(grad_output->data_);
+    parent_grad->set_data(grad_output->_data);
     return;
   }
 
@@ -977,7 +977,7 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
         }
 
         float sum_val = 0.0f;
-        if (grad_output->data_) {
+        if (grad_output->_data) {
           for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx) {
             size_t temp_g_idx = g_idx;
             for (int d = grad_shape.size() - 1; d >= 0; --d) {
@@ -1005,13 +1005,13 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
             }
 
             if (corresponds) {
-              sum_val += (*grad_output->data_)[g_idx];
+              sum_val += (*grad_output->_data)[g_idx];
             }
           }
         }
 
-        if (parent_grad->data_ && p_idx < parent_grad->data_->size()) {
-          (*parent_grad->data_)[p_idx] = sum_val;
+        if (parent_grad->_data && p_idx < parent_grad->_data->size()) {
+          (*parent_grad->_data)[p_idx] = sum_val;
         }
       }
     });
@@ -1075,7 +1075,7 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output) {
     // Need to propagate -grad_output
     std::shared_ptr<Tensor> neg_grad_output =
         Tensor::create(grad_output->get_shape());
-    if (neg_grad_output->data_ && grad_output->data_) {
+    if (neg_grad_output->_data && grad_output->_data) {
       std::shared_ptr<std::vector<float>> neg_data =
           std::make_shared<std::vector<float>>(grad_output->num_elements());
       const std::vector<float> &grad_output_data = grad_output->get_data();
@@ -1120,11 +1120,11 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output) {
         grad_output->broadcast_to(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_parent_b =
         parent_b->broadcast_to(intermediate_shape_a);
-    if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ &&
-        broadcasted_parent_b->data_) {
-      for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i) {
-        (*grad_a_intermediate_tensor->data_)[i] =
-            (*broadcasted_grad_a->data_)[i] * (*broadcasted_parent_b->data_)[i];
+    if (grad_a_intermediate_tensor->_data && broadcasted_grad_a->_data &&
+        broadcasted_parent_b->_data) {
+      for (size_t i = 0; i < grad_a_intermediate_tensor->_data->size(); ++i) {
+        (*grad_a_intermediate_tensor->_data)[i] =
+            (*broadcasted_grad_a->_data)[i] * (*broadcasted_parent_b->_data)[i];
       }
     } else { /* Handle missing data error */
       std::cerr << "Error: Missing data in backward_mul for parent A grad calc."
@@ -1145,11 +1145,11 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output) {
         grad_output->broadcast_to(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_parent_a =
         parent_a->broadcast_to(intermediate_shape_b);
-    if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ &&
-        broadcasted_parent_a->data_) {
-      for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i) {
-        (*grad_b_intermediate_tensor->data_)[i] =
-            (*broadcasted_grad_b->data_)[i] * (*broadcasted_parent_a->data_)[i];
+    if (grad_b_intermediate_tensor->_data && broadcasted_grad_b->_data &&
+        broadcasted_parent_a->_data) {
+      for (size_t i = 0; i < grad_b_intermediate_tensor->_data->size(); ++i) {
+        (*grad_b_intermediate_tensor->_data)[i] =
+            (*broadcasted_grad_b->_data)[i] * (*broadcasted_parent_a->_data)[i];
       }
     } else { /* Handle missing data error */
       std::cerr << "Error: Missing data in backward_mul for parent B grad calc."
@@ -1186,12 +1186,12 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output) {
         grad_output->broadcast_to(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_parent_b_for_a =
         parent_b->broadcast_to(intermediate_shape_a);
-    if (grad_a_intermediate_tensor->data_ && broadcasted_grad_a->data_ &&
-        broadcasted_parent_b_for_a->data_) {
-      for (size_t i = 0; i < grad_a_intermediate_tensor->data_->size(); ++i) {
-        float denom = (*broadcasted_parent_b_for_a->data_)[i];
-        (*grad_a_intermediate_tensor->data_)[i] =
-            (denom == 0.0f) ? 0.0f : ((*broadcasted_grad_a->data_)[i] / denom);
+    if (grad_a_intermediate_tensor->_data && broadcasted_grad_a->_data &&
+        broadcasted_parent_b_for_a->_data) {
+      for (size_t i = 0; i < grad_a_intermediate_tensor->_data->size(); ++i) {
+        float denom = (*broadcasted_parent_b_for_a->_data)[i];
+        (*grad_a_intermediate_tensor->_data)[i] =
+            (denom == 0.0f) ? 0.0f : ((*broadcasted_grad_a->_data)[i] / denom);
       }
     } else {
       std::cerr << "Error: Missing data in backward_div for parent A grad calc."
@@ -1216,17 +1216,17 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output) {
         parent_a->broadcast_to(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_parent_b_for_b =
         parent_b->broadcast_to(intermediate_shape_b);
-    if (grad_b_intermediate_tensor->data_ && broadcasted_grad_b->data_ &&
-        broadcasted_parent_a_for_b->data_ &&
-        broadcasted_parent_b_for_b->data_) {
-      for (size_t i = 0; i < grad_b_intermediate_tensor->data_->size(); ++i) {
-        float numer = (*broadcasted_parent_a_for_b->data_)[i];
-        float denom = (*broadcasted_parent_b_for_b->data_)[i];
+    if (grad_b_intermediate_tensor->_data && broadcasted_grad_b->_data &&
+        broadcasted_parent_a_for_b->_data &&
+        broadcasted_parent_b_for_b->_data) {
+      for (size_t i = 0; i < grad_b_intermediate_tensor->_data->size(); ++i) {
+        float numer = (*broadcasted_parent_a_for_b->_data)[i];
+        float denom = (*broadcasted_parent_b_for_b->_data)[i];
         float denom_sq = denom * denom;
-        (*grad_b_intermediate_tensor->data_)[i] =
+        (*grad_b_intermediate_tensor->_data)[i] =
             (denom_sq == 0.0f)
                 ? 0.0f
-                : ((*broadcasted_grad_b->data_)[i] * (-numer / denom_sq));
+                : ((*broadcasted_grad_b->_data)[i] * (-numer / denom_sq));
       }
     } else {
       std::cerr << "Error: Missing data in backward_div for parent B grad calc."
@@ -1388,8 +1388,8 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output) {
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, grad_value, start_idx, end_idx]() {
-        std::fill(grad_input_tensor->data_->begin() + start_idx,
-                  grad_input_tensor->data_->begin() + end_idx, grad_value);
+        std::fill(grad_input_tensor->_data->begin() + start_idx,
+                  grad_input_tensor->_data->begin() + end_idx, grad_value);
       });
     }
 
