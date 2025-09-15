@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(TransformerCPP)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -37,6 +37,7 @@ add_executable(neural_network
     src/utils/CharToIdGenerator.cpp
     src/utils/ThreadPool.cpp
     src/utils/ConfigParser.cpp
+    src/utils/TransformerConfig.cpp
 )
 
 target_precompile_headers(neural_network PRIVATE src/pch.h)

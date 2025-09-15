@@ -23,6 +23,7 @@
 #include <queue>
 #include <thread>
 #include <limits>
+#include <format>
 
 
 #include "utils/Tensor.h"

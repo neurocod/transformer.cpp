@@ -2,10 +2,7 @@
 
 class ConfigParser {
 public:
-  static ConfigParser &getInstance(const std::string &filename = "") {
-    static ConfigParser instance(filename);
-    return instance;
-  }
+  static ConfigParser& instance(const std::string& filename = "");
 
   // Delete copy constructor and assignment operator to prevent cloning
   ConfigParser(const ConfigParser &) = delete;
@@ -61,7 +58,7 @@ public:
     }
   }
 
-  template <typename T> T getValue(const std::string &key) const {
+  template <typename T> T value(const std::string &key) const {
     std::lock_guard<std::mutex> lock(mutex_);
     auto it = config_map_.find(key);
     if (it == config_map_.end()) {
@@ -100,4 +97,4 @@ private:
 };
 
 template <>
-std::string ConfigParser::getValue<std::string>(const std::string &key) const;
+std::string ConfigParser::value<std::string>(const std::string &key) const;

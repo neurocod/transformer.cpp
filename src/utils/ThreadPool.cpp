@@ -3,7 +3,7 @@
 
 ThreadPool &getThreadPool() {
   static ThreadPool pool([]() {
-    return ConfigParser::getInstance().getValue<int>("num_threads");
+    return ConfigParser::instance().value<int>("num_threads");
   }());
   return pool;
 }

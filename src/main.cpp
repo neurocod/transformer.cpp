@@ -1,5 +1,5 @@
 ﻿#include "models/Transformer.h"
-#include "utils/ConfigParser.h"
+#include "utils/TransformerConfig.h"
 #include "utils/DataLoader.h"
 #include "utils/Helpers.h"
 #include "utils/LossFunction.h"
@@ -56,41 +56,18 @@ int main() {
 
   auto t_init_start = clock::now();
 
-  ConfigParser& config = ConfigParser::getInstance("../config.ini");
-  const bool inference_mode = config.getValue<bool>("inference_mode");
-  const bool load_existing_weights = config.getValue<bool>("load_existing_weights");
-  const std::string weights_filename = config.getValue<std::string>("weights_filename");
-  const std::string data_filename = config.getValue<std::string>("data_filename");
+  TransformerConfig::init("../config.ini");
+  const TransformerConfig& cf = TransformerConfig::instance();
 
-  // Model Architecture
-  const int embed_dim = config.getValue<int>("embed_dim");
-  const int max_sequence_length = config.getValue<int>("max_sequence_length");
-  const int num_layers = config.getValue<int>("num_layers");
-  const int num_heads = config.getValue<int>("num_heads");
-  const int ff_hidden_dim = config.getValue<int>("ff_hidden_dim");
-  const float dropout_rate = config.getValue<float>("dropout_rate");
-  const float pad_token_id = config.getValue<float>("pad_token_id");
-
-  // Training Parameters
-  const float learning_rate = config.getValue<float>("learning_rate");
-  const int num_epochs = config.getValue<int>("num_epochs");
-  const int batch_size = config.getValue<int>("batch_size");
-  const int input_seq_length = config.getValue<int>("input_seq_length");
-  const int decoder_seq_length = config.getValue<int>("decoder_seq_length");
-
-  // Inference Parameters
-  int max_generate_length = config.getValue<int>("max_generate_length");
-  std::string initial_prompt = config.getValue<std::string>("initial_prompt");
-
-  DataLoader data_loader(input_seq_length, batch_size);
-  data_loader.readFile(data_filename);
+  DataLoader data_loader(cf.input_seq_length, cf.batch_size);
+  data_loader.readFile(cf.data_filename);
 
   int input_vocab_size = data_loader.get_vocab_size();
   int target_vocab_size = data_loader.get_vocab_size();
 
-  Transformer model(input_vocab_size, target_vocab_size, embed_dim,
-                    max_sequence_length, num_layers, num_heads, ff_hidden_dim,
-                    dropout_rate, pad_token_id);
+  Transformer model(input_vocab_size, target_vocab_size, cf.embed_dim,
+    cf.max_sequence_length, cf.num_layers, cf.num_heads, cf.ff_hidden_dim,
+    cf.dropout_rate, cf.pad_token_id);
 
   auto t_init_end = clock::now();
   auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
@@ -108,17 +85,17 @@ int main() {
 
   // Load Weights
   bool weights_loaded = false;
-  if ((load_existing_weights || inference_mode) &&
-      std::filesystem::exists(weights_filename)) {
+  if ((cf.load_existing_weights || cf.inference_mode) &&
+      std::filesystem::exists(cf.weights_filename)) {
     try {
-      std::cout << "Attempting to load weights from " << weights_filename
+      std::cout << "Attempting to load weights from " << cf.weights_filename
                 << "..." << std::endl;
-      model.load_weights(weights_filename);
+      model.load_weights(cf.weights_filename);
       std::cout << "Weights loaded successfully." << std::endl;
       weights_loaded = true;
     } catch (const std::exception &e) {
       std::cerr << "Failed to load weights: " << e.what() << std::endl;
-      if (inference_mode) {
+      if (cf.inference_mode) {
         std::cerr << "Cannot run inference without weights. Exiting."
                   << std::endl;
         return 1;
@@ -126,8 +103,8 @@ int main() {
       std::cerr << "Starting training from scratch." << std::endl;
     }
   } else {
-    if (inference_mode) {
-      std::cerr << "Weights file '" << weights_filename
+    if (cf.inference_mode) {
+      std::cerr << "Weights file '" << cf.weights_filename
                 << "' not found. Cannot run inference. Exiting." << std::endl;
       return 1;
     }
@@ -137,16 +114,16 @@ int main() {
   }
   // End Load Weights
 
-  if (!inference_mode) {
+  if (!cf.inference_mode) {
     // Training Mode
-    Adam optimizer(learning_rate);
+    Adam optimizer(cf.learning_rate);
     CrossEntropyLoss criterion;
 
     std::cout << "Starting Transformer training..." << std::endl;
 
     auto t_train_start = clock::now();
 
-    for (int epoch = 0; epoch < num_epochs; ++epoch) {
+    for (int epoch = 0; epoch < cf.num_epochs; ++epoch) {
       auto epoch_start = std::chrono::high_resolution_clock::now();
 
       optimizer.zero_grad();
@@ -162,13 +139,13 @@ int main() {
 
       // Reshape logits
       std::shared_ptr<Tensor> reshaped_logits =
-          logits->reshape({batch_size * decoder_seq_length, target_vocab_size});
+          logits->reshape({ cf.batch_size * cf.decoder_seq_length, target_vocab_size});
 
       // Compute loss
       std::shared_ptr<Tensor> loss =
           criterion.compute_loss(reshaped_logits, target_output_ids);
 
-      std::cout << "Epoch [" << (epoch + 1) << "/" << num_epochs
+      std::cout << "Epoch [" << (epoch + 1) << "/" << cf.num_epochs
                 << "], Loss: " << vector_to_string(loss->get_data())
                 << std::endl;
 
@@ -189,9 +166,9 @@ int main() {
 
     // Save weights after training
     try {
-      std::cout << "Saving final weights to " << weights_filename << "..."
+      std::cout << "Saving final weights to " << cf.weights_filename << "..."
                 << std::endl;
-      model.save_weights(weights_filename);
+      model.save_weights(cf.weights_filename);
       std::cout << "Weights saved successfully." << std::endl;
     } catch (const std::exception &e) {
       std::cerr << "Failed to save weights: " << e.what() << std::endl;
@@ -207,13 +184,13 @@ int main() {
     }
 
     std::cout << "\n--- Running Inference ---" << std::endl;
-    std::cout << "Initial prompt: \"" << initial_prompt << "\"" << std::endl;
+    std::cout << "Initial prompt: \"" << cf.initial_prompt << "\"" << std::endl;
 
-    int current_seq_len = input_seq_length;
+    int current_seq_len = cf.input_seq_length;
 
     // Tokenize the initial prompt
     std::shared_ptr<Tensor> current_input_ids =
-        string_to_tensor(initial_prompt, data_loader, current_seq_len);
+        string_to_tensor(cf.initial_prompt, data_loader, current_seq_len);
     std::vector<float> generated_ids = current_input_ids->get_data();
 
     // Remove padding from initial prompt display if any was added by
@@ -230,7 +207,7 @@ int main() {
     }
     std::cout << std::flush;
 
-    for (int i = 0; i < max_generate_length; ++i) {
+    for (int i = 0; i < cf.max_generate_length; ++i) {
       std::vector<float> step_input_vec;
       int start_idx = std::max(0, current_total_len - current_seq_len);
       for (int k = start_idx; k < current_total_len; ++k) {
@@ -238,7 +215,7 @@ int main() {
       }
       // Pad if the current sequence is shorter than model's input length
       while (step_input_vec.size() < current_seq_len) {
-        step_input_vec.push_back(pad_token_id);
+        step_input_vec.push_back(cf.pad_token_id);
       }
 
       // Create tensor for this step (batch size 1)
@@ -304,7 +281,7 @@ int main() {
       std::cout << next_char << std::flush;
     }
 
-    std::cout << "\n--- Generation Complete ---" << std::endl;
+    std::cout << "\n--- Generation Complete ---\n";
   }
   pressEnterToContinue();
 
