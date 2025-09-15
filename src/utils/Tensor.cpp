@@ -1,5 +1,5 @@
 #include "utils/Tensor.h"
-#include "utils/ConfigParser.h"
+#include "utils/TransformerConfig.h"
 #include "utils/ThreadPool.h"
 #include <iostream>
 
@@ -209,7 +209,7 @@ Tensor::operator+(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = ConfigParser::instance().value<int>("num_threads");
+  size_t num_threads = TransformerConfig::instance().num_threads;
   if (total_elements < num_threads)
     num_threads = total_elements;
   size_t elements_per_thread = total_elements / num_threads;
@@ -248,7 +248,7 @@ Tensor::operator-(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = ConfigParser::instance().value<int>("num_threads");
+  size_t num_threads = TransformerConfig::instance().num_threads;
   if (total_elements < num_threads)
     num_threads = total_elements;
   size_t elements_per_thread = total_elements / num_threads;
@@ -286,7 +286,7 @@ Tensor::operator*(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = ConfigParser::instance().value<int>("num_threads");
+  size_t num_threads = TransformerConfig::instance().num_threads;
   if (total_elements < num_threads)
     num_threads = total_elements;
   size_t elements_per_thread = total_elements / num_threads;
@@ -324,7 +324,7 @@ Tensor::operator/(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);                        // denominator
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = ConfigParser::instance().value<int>("num_threads");
+  size_t num_threads = TransformerConfig::instance().num_threads;
   if (total_elements < num_threads)
     num_threads = total_elements;
   size_t elements_per_thread = total_elements / num_threads;
@@ -609,8 +609,7 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
     size_t total_output_elements =
         total_batches * num_output_elements_per_batch;
 
-    size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+    size_t num_threads = TransformerConfig::instance().num_threads;
     if (total_output_elements < num_threads)
       num_threads = total_output_elements;
     size_t elements_per_thread = total_output_elements / num_threads;
@@ -718,8 +717,7 @@ std::shared_ptr<Tensor> Tensor::sum() const {
   float total_sum = 0.0f;
   if (_data && !_data->empty()) {
     size_t num_elements = _data->size();
-    size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+    size_t num_threads = TransformerConfig::instance().num_threads;
     if (num_elements < num_threads)
       num_threads = num_elements;
     size_t elements_per_thread = num_elements / num_threads;
@@ -777,7 +775,7 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
   }
   size_t dim_size = shape_[actual_dim];
 
-  size_t num_threads = ConfigParser::instance().value<int>("num_threads");
+  size_t num_threads = TransformerConfig::instance().num_threads;
   if (outer_size * inner_size < num_threads)
     num_threads = outer_size * inner_size;
   size_t work_per_thread = (outer_size * inner_size) / num_threads;
@@ -944,7 +942,7 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
   std::vector<size_t> parent_strides = calculate_strides(parent_shape);
   std::vector<size_t> grad_strides = calculate_strides(grad_shape);
 
-  size_t num_threads = ConfigParser::instance().value<int>("num_threads");
+  size_t num_threads = TransformerConfig::instance().num_threads;
   if (parent_total_elements < num_threads)
     num_threads = parent_total_elements;
   size_t elements_per_thread = parent_total_elements / num_threads;
@@ -1376,7 +1374,7 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output) {
 
     size_t total_elements = grad_input_tensor->num_elements();
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (total_elements < num_threads)
       num_threads = total_elements;
     size_t elements_per_thread = total_elements / num_threads;
@@ -1412,7 +1410,7 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output) {
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (total_elements < num_threads)
       num_threads = total_elements;
     size_t elements_per_thread = total_elements / num_threads;
@@ -1455,7 +1453,7 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output) {
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (total_elements < num_threads)
       num_threads = total_elements;
     size_t elements_per_thread = total_elements / num_threads;
@@ -1500,7 +1498,7 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output) {
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (total_elements < num_threads)
       num_threads = total_elements;
     size_t elements_per_thread = total_elements / num_threads;
@@ -1539,7 +1537,7 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output) {
 
     size_t total_elements = parent_data.size();
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (total_elements < num_threads)
       num_threads = total_elements;
     size_t elements_per_thread = total_elements / num_threads;
@@ -1591,7 +1589,7 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output) {
     size_t outer_dims_elements = num_elements / last_dim_size;
 
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (outer_dims_elements < num_threads)
       num_threads = outer_dims_elements;
     size_t slices_per_thread = outer_dims_elements / num_threads;
@@ -1743,7 +1741,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
       }
 
       size_t num_threads =
-          ConfigParser::instance().value<int>("num_threads");
+          TransformerConfig::instance().num_threads;
       if (outer_dims_elements < num_threads)
         num_threads = outer_dims_elements;
       size_t slices_per_thread = outer_dims_elements / num_threads;
@@ -1898,7 +1896,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
     }
 
     size_t num_threads =
-        ConfigParser::instance().value<int>("num_threads");
+        TransformerConfig::instance().num_threads;
     if (num_slices_to_process < num_threads)
       num_threads = num_slices_to_process;
     size_t slices_per_thread = num_slices_to_process / num_threads;
@@ -2021,7 +2019,7 @@ void Tensor::backward_embedding_lookup(
 
       size_t total_indices = batch_size * sequence_length;
       size_t num_threads =
-          ConfigParser::instance().value<int>("num_threads");
+          TransformerConfig::instance().num_threads;
       if (total_indices < num_threads)
         num_threads = total_indices;
       size_t indices_per_thread = total_indices / num_threads;

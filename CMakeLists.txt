@@ -54,6 +54,7 @@ add_executable(test_tensor
     src/layers/Linear.cpp
     src/utils/ThreadPool.cpp
     src/utils/ConfigParser.cpp
+    src/utils/TransformerConfig.cpp
 )
 
 target_precompile_headers(test_tensor PRIVATE src/pch.h)

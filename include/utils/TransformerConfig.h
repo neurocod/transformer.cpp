@@ -8,6 +8,7 @@ public:
 
   std::string modelFileNameByParameters() const;
 
+  size_t num_threads;
   bool inference_mode;
   bool load_existing_weights;
   std::string weights_filename;
