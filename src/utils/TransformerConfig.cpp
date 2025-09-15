@@ -40,6 +40,10 @@ void TransformerConfig::init(const ConfigParser& config) {
   // Inference Parameters
   max_generate_length = config.value<int>("max_generate_length");
   initial_prompt = config.value<std::string>("initial_prompt");
+
+  if (weights_filename == "auto") {
+    weights_filename = std::format("weigth-{}-{}-{}.bin", num_layers, ff_hidden_dim, num_heads);
+  }
 }
 
 std::string TransformerConfig::modelFileNameByParameters() const {
