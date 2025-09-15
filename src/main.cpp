@@ -34,6 +34,12 @@ std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
                         std::make_shared<std::vector<float>>(ids));
 }
 
+void pressEnterToContinue() {
+  std::cout << "\nPress Enter twice to continue...";
+  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
+  std::cin.get(); // Wait for a character (Enter key)
+}
+
 int main() {
 #ifdef NDEBUG
   std::cout << "[LOG] Build type: RELEASE" << std::endl;
@@ -300,6 +306,7 @@ int main() {
 
     std::cout << "\n--- Generation Complete ---" << std::endl;
   }
+  pressEnterToContinue();
 
   return 0;
 }

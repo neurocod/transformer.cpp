@@ -34,6 +34,7 @@ add_executable(neural_network
     src/models/Decoder.cpp
     src/models/Transformer.cpp
     src/utils/DataLoader.cpp
+    src/utils/CharToIdGenerator.cpp
     src/utils/ThreadPool.cpp
     src/utils/ConfigParser.cpp
 )

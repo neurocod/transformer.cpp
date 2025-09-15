@@ -1,5 +1,6 @@
 #pragma once
 #include "Tensor.h"
+#include "CharToIdGenerator.h"
 
 class DataLoader {
 public:
@@ -15,9 +16,11 @@ public:
   const std::unordered_map<char, int> &get_char_to_id_map() const;
   const std::unordered_map<int, char> &get_id_to_char_map() const;
   void printStatistics() const;
+  void fillGeneratedText();
 private:
   const int _sequenceLength;
   const int _batchSize;
+  CharToIdTextGenerator _textGenerator;
 
   std::vector<char> _chars;
   std::unordered_map<char, int> _charToId;

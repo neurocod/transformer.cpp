@@ -47,15 +47,21 @@ void DataLoader::readFile(const std::string& filename) {
   if (!_data.empty())
     throw std::runtime_error("file already read");
 
-  std::cout << "Loading data from: " << filename << std::endl;
-  std::ifstream file(filename, std::ios::binary | std::ios::ate);
-  if (!file)
-    throw std::runtime_error("Could not open data file: " + filename);
-
   std::string text;
-  text.resize(static_cast<std::size_t>(file.tellg()));
-  file.seekg(0);
-  file.read(text.data(), text.size());
+  if (const bool generat = true) {
+    const size_t target = _sequenceLength * _batchSize;
+    while (text.size() < target)
+      text += _textGenerator.generateSimple();
+  } else {
+    std::cout << "Loading data from: " << filename << std::endl;
+    std::ifstream file(filename, std::ios::binary | std::ios::ate);
+    if (!file)
+      throw std::runtime_error("Could not open data file: " + filename);
+
+    text.resize(static_cast<std::size_t>(file.tellg()));
+    file.seekg(0);
+    file.read(text.data(), text.size());
+  }
 
   // Build Vocabulary
   std::unordered_set<char> unique_chars(text.begin(), text.end());
@@ -102,10 +108,10 @@ std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> DataLoader::randBatc
   std::vector<float> targetBatchVec(_batchSize * _sequenceLength);
 
   // Extract data for the batch
-  for (int inBatch = 0; inBatch < _batchSize; ++inBatch) {
-    const size_t sequenceStart = inBatch * _sequenceLength + startIndex;
+  for (int j = 0; j < _batchSize; ++j) {
+    const size_t sequenceStart = j * _sequenceLength + startIndex;
     for (int i = 0; i < _sequenceLength; ++i) {
-      const int pos = inBatch * _sequenceLength + i;
+      const int pos = j * _sequenceLength + i;
       // Input is the current character
       inputBatchVec[pos] = static_cast<float>(_data[sequenceStart + i]);
 
