@@ -71,7 +71,7 @@ int main() {
 
   auto t_init_end = clock::now();
   auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
-  std::cout << "[LOG] Model initialization took " << init_ms << " ms." << std::endl;
+  std::cout << std::format("[LOG] Model initialization took {} ms.\n", init_ms);
 
   // Print model parameters count
   size_t total_params = 0;
@@ -81,15 +81,14 @@ int main() {
       total_params += param->num_elements();
     }
   }
-  std::cout << "Total optimizable parameters: " << total_params << std::endl;
+  std::cout << std::format("Total optimizable parameters: {}\n", total_params);
 
   // Load Weights
   bool weights_loaded = false;
   if ((cf.load_existing_weights || cf.inference_mode) &&
       std::filesystem::exists(cf.weights_filename)) {
     try {
-      std::cout << "Attempting to load weights from " << cf.weights_filename
-                << "..." << std::endl;
+      std::cout << std::format("Attempting to load weights from {}...\n", cf.weights_filename);
       model.load_weights(cf.weights_filename);
       std::cout << "Weights loaded successfully." << std::endl;
       weights_loaded = true;
@@ -104,8 +103,7 @@ int main() {
     }
   } else {
     if (cf.inference_mode) {
-      std::cerr << "Weights file '" << cf.weights_filename
-                << "' not found. Cannot run inference. Exiting." << std::endl;
+      std::cerr << std::format("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weights_filename);
       return 1;
     }
     std::cout << "No existing weights file found or loading disabled. Starting "
@@ -145,9 +143,7 @@ int main() {
       std::shared_ptr<Tensor> loss =
           criterion.compute_loss(reshaped_logits, target_output_ids);
 
-      std::cout << "Epoch [" << (epoch + 1) << "/" << cf.num_epochs
-                << "], Loss: " << vector_to_string(loss->get_data())
-                << std::endl;
+      std::cout << std::format("Epoch [{}/{}], Loss: {}\n", (epoch + 1), cf.num_epochs, vector_to_string(loss->get_data()));
 
       // Backward pass
       criterion.backward(loss);
@@ -155,19 +151,18 @@ int main() {
 
       auto epoch_end = std::chrono::high_resolution_clock::now();
       auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count();
-      std::cout << "[LOG] Epoch " << (epoch + 1) << " took " << epoch_ms << " ms." << std::endl;
+      std::cout << std::format("[LOG] Epoch {} took {} ms.\n", (epoch + 1), epoch_ms);
     }
 
     auto t_train_end = clock::now();
     auto train_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_train_end - t_train_start).count();
-    std::cout << "[LOG] Model training took " << train_ms << " ms." << std::endl;
+    std::cout << std::format("[LOG] Model training took {} ms.\n", train_ms);
 
     std::cout << "\nTransformer training finished." << std::endl;
 
     // Save weights after training
     try {
-      std::cout << "Saving final weights to " << cf.weights_filename << "..."
-                << std::endl;
+      std::cout << std::format("Saving final weights to {}...\n", cf.weights_filename);
       model.save_weights(cf.weights_filename);
       std::cout << "Weights saved successfully." << std::endl;
     } catch (const std::exception &e) {
@@ -184,7 +179,7 @@ int main() {
     }
 
     std::cout << "\n--- Running Inference ---" << std::endl;
-    std::cout << "Initial prompt: \"" << cf.initial_prompt << "\"" << std::endl;
+    std::cout << std::format("Initial prompt: \"{}\"\n", cf.initial_prompt);
 
     int current_seq_len = cf.input_seq_length;
 
@@ -235,10 +230,7 @@ int main() {
 
       int last_token_index = std::min(current_total_len, current_seq_len) - 1;
       if (last_token_index < 0) {
-        std::cerr << "\nError: last_token_index is negative ("
-                  << last_token_index
-                  << "). current_total_len=" << current_total_len
-                  << ". Breaking." << std::endl;
+        std::cerr << std::format("\nError: last_token_index is negative ({}). current_total_len={}. Breaking.\n", last_token_index, current_total_len);
         break;
       }
 
@@ -249,11 +241,8 @@ int main() {
       float max_logit = -std::numeric_limits<float>::infinity();
       int predicted_id = -1;
       if (logits_offset + target_vocab_size > logits_data.size()) {
-        std::cerr << "\nError: Logits offset (" << logits_offset
-                  << ") + vocab_size (" << target_vocab_size
-                  << ") exceeds logits_data size (" << logits_data.size()
-                  << "). last_token_index=" << last_token_index << ". Breaking."
-                  << std::endl;
+        std::cerr << std::format("\nError: Logits offset ({}) + vocab_size ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.\n",
+                                 logits_offset, target_vocab_size, logits_data.size(), last_token_index);
         break;
       }
 
@@ -283,7 +272,6 @@ int main() {
 
     std::cout << "\n--- Generation Complete ---\n";
   }
-  pressEnterToContinue();
 
   return 0;
 }
