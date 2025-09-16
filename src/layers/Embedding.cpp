@@ -3,7 +3,7 @@
 Embedding::Embedding(int vocab_size, int embed_dim)
     : vocab_size_(vocab_size), embed_dim_(embed_dim) {
   // Embedding matrix shape: (vocab_size, embed_dim)
-  weights_ = Tensor::create(std::vector<int>{vocab_size_, embed_dim_}, true);
+  weights_ = Tensor::create(std::vector<int>{vocab_size_, embed_dim_}, "embed.w");
 
   std::random_device rd;
   std::mt19937 gen(rd());

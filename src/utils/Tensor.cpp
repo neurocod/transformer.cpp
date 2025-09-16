@@ -9,21 +9,25 @@ std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 Tensor::Tensor()
     : shape_{{}}, _data(std::make_shared<std::vector<float>>()),
       grad_(std::make_shared<std::vector<float>>()),
-      creator_op_(OperationType::None), parents_{}, is_optimizable_{false} {}
+      creator_op_(OperationType::None), parents_{}, _isOptimizable{false} {}
 
-Tensor::Tensor(const std::vector<int> &shape, bool is_optimizable)
-    : shape_{shape}, creator_op_(OperationType::None), parents_{},
-      is_optimizable_{is_optimizable} {
+Tensor::Tensor(const std::vector<int> &shape, const char* name):
+  shape_{shape}, creator_op_(OperationType::None), parents_{},
+  _name(name),
+  _isOptimizable{name != nullptr} {
+{}
+  if (_isOptimizable)
+    int t = 3;
   size_t total_elements = num_elements();
   _data = std::make_shared<std::vector<float>>(total_elements, 0.0f);
   grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
 Tensor::Tensor(const std::vector<int> &shape,
-               const std::shared_ptr<std::vector<float>> &data,
-               bool is_optimizable)
-    : shape_{shape}, creator_op_(OperationType::None), parents_{},
-      is_optimizable_{is_optimizable} {
+               const std::shared_ptr<std::vector<float>> &data, const char* name):
+  shape_{shape}, creator_op_(OperationType::None), parents_{}, _name(name),
+  _isOptimizable{name != nullptr}
+{
   size_t total_elements = num_elements();
   if (data->size() != total_elements) {
     throw std::runtime_error(
@@ -37,25 +41,20 @@ Tensor::Tensor(const std::vector<int> &shape,
 std::shared_ptr<Tensor> Tensor::create() { return std::make_shared<Tensor>(); }
 
 // Factory method with shape
-std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
-                                       bool is_optimizable) {
-  std::shared_ptr<Tensor> tensor =
-      std::make_shared<Tensor>(shape, is_optimizable);
-  if (is_optimizable) {
+std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape, const char* name) {
+  std::shared_ptr<Tensor> tensor = std::make_shared<Tensor>(shape, name);
+  if (tensor->_isOptimizable)
     optimizable_tensors_.push_back(tensor);
-  }
   return tensor;
 }
 
 // Factory method with shape and data
 std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
-               const std::shared_ptr<std::vector<float>> &data,
-               bool is_optimizable) {
+               const std::shared_ptr<std::vector<float>> &data, const char* name) {
   std::shared_ptr<Tensor> tensor =
-      std::make_shared<Tensor>(shape, data, is_optimizable);
-  if (is_optimizable) {
+      std::make_shared<Tensor>(shape, data, name);
+  if (tensor->_isOptimizable)
     optimizable_tensors_.push_back(tensor);
-  }
   return tensor;
 }
 
@@ -524,7 +523,7 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
     // Result is a scalar (1D tensor with size 1)
     std::shared_ptr<Tensor> result = Tensor::create(
         std::vector<int>{1},
-        std::make_shared<std::vector<float>>(std::vector<float>{0.0f}), false);
+        std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
     result->creator_op_ = OperationType::Dot;
     result->parents_.push_back(
         std::const_pointer_cast<Tensor>(shared_from_this()));
@@ -1031,7 +1030,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> parent_a = parents_[0];
     std::shared_ptr<Tensor> parent_b = parents_[1];
 
-    bool a_needs_grad = parent_a->is_optimizable_ ||
+    bool a_needs_grad = parent_a->_isOptimizable ||
                         parent_a->creator_op_ != OperationType::None;
 
     if (a_needs_grad) {
@@ -1040,7 +1039,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
       parent_a->backward(grad_a_propagated);
     }
 
-    bool b_needs_grad = parent_b->is_optimizable_ ||
+    bool b_needs_grad = parent_b->_isOptimizable ||
                         parent_b->creator_op_ != OperationType::None;
 
     if (b_needs_grad) {

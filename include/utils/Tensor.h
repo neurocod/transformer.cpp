@@ -25,10 +25,11 @@ enum class OperationType {
 class Tensor : public std::enable_shared_from_this<Tensor> {
 public:
   Tensor();
-  Tensor(const std::vector<int> &shape, bool is_optimizable = false);
+  // if name is provided, it means _isOptimizable == true
+  Tensor(const std::vector<int>& shape, const char* name = 0);
   Tensor(const std::vector<int> &shape,
          const std::shared_ptr<std::vector<float>> &data,
-         bool is_optimizable = false);
+         const char* name = 0);
   ~Tensor() {}
 
   // Intermediate values for different functions
@@ -69,7 +70,7 @@ public:
   float get(const std::vector<int> &indices) const;
   // Set element by multi-dimensional index
   void set(const std::vector<int> &indices, float value);
-  bool is_optimizable() const { return is_optimizable_; }
+  bool is_optimizable() const { return _isOptimizable; }
 
   // Basic tensor operations
   std::shared_ptr<Tensor> operator+(const std::shared_ptr<Tensor> &other) const;
@@ -97,12 +98,11 @@ public:
   }
 
   static std::shared_ptr<Tensor> create();
-  static std::shared_ptr<Tensor> create(const std::vector<int> &shape,
-                                        bool is_optimizable = false);
+  static std::shared_ptr<Tensor> create(const std::vector<int> &shape, const char* name = 0);
   static std::shared_ptr<Tensor>
   create(const std::vector<int> &shape,
          const std::shared_ptr<std::vector<float>> &data,
-         bool is_optimizable = false);
+         const char* name = 0);
 
 private:
   static std::vector<std::shared_ptr<Tensor>> optimizable_tensors_;
@@ -112,7 +112,8 @@ private:
   std::shared_ptr<std::vector<float>> grad_;
   // allows to track the computation graph, enabling correct gradient calculation and backpropagation
   std::vector<std::shared_ptr<Tensor>> parents_;
-  bool is_optimizable_ = false;
+  const char* _name = 0;
+  bool _isOptimizable = false;
 
   OperationType creator_op_ = OperationType::None;
 

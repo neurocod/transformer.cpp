@@ -226,11 +226,11 @@ void test_backward_pass()
 {
     std::cout << "\nTest Case: Backward Pass through a Chain of Operations" << std::endl;
 
-    auto A = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f}), true);
-    auto B = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{0.5f, 1.0f, 1.5f, 2.0f}), true);
-    auto C = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{2.0f, 1.0f, 1.0f, 2.0f}), true);
-    auto D = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 0.0f, 0.0f, 1.0f}), true);
-    auto E = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{10.0f}), true);
+    auto A = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f}), "A");
+    auto B = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{0.5f, 1.0f, 1.5f, 2.0f}), "B");
+    auto C = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{2.0f, 1.0f, 1.0f, 2.0f}), "C");
+    auto D = Tensor::create(std::vector<int>{2, 2}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 0.0f, 0.0f, 1.0f}), "D");
+    auto E = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{10.0f}), "E");
 
     auto T1 = (*A) + B;
     auto T2 = (*T1) * C;
@@ -271,11 +271,11 @@ void test_backward_pass_with_broadcasting_operations()
 {
     std::cout << "\nTest Case: Backward Pass with Broadcasting" << std::endl;
 
-    auto A = Tensor::create(std::vector<int>{2, 3}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}), true);
-    auto B = Tensor::create(std::vector<int>{3}, std::make_shared<std::vector<float>>(std::vector<float>{0.5f, 1.0f, 1.5f}), true);
-    auto C = Tensor::create(std::vector<int>{2, 1}, std::make_shared<std::vector<float>>(std::vector<float>{2.0f, 3.0f}), true);
-    auto D = Tensor::create(std::vector<int>{1, 3}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f}), true);
-    auto E = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{10.0f}), true);
+    auto A = Tensor::create(std::vector<int>{2, 3}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f}), "A");
+    auto B = Tensor::create(std::vector<int>{3}, std::make_shared<std::vector<float>>(std::vector<float>{0.5f, 1.0f, 1.5f}), "B");
+    auto C = Tensor::create(std::vector<int>{2, 1}, std::make_shared<std::vector<float>>(std::vector<float>{2.0f, 3.0f}), "C");
+    auto D = Tensor::create(std::vector<int>{1, 3}, std::make_shared<std::vector<float>>(std::vector<float>{1.0f, 2.0f, 3.0f}), "D");
+    auto E = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{10.0f}), "E");
 
     auto T1 = (*A) + B;
     auto T2 = (*T1) - D;

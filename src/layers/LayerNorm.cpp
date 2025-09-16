@@ -3,8 +3,8 @@
 LayerNorm::LayerNorm(int normalized_shape, float epsilon)
     : normalized_shape_(normalized_shape), epsilon_(epsilon) {
   // Gamma and Beta are learnable parameters, shape is {normalized_shape_}
-  gamma_ = Tensor::create(std::vector<int>{normalized_shape_}, true);
-  beta_ = Tensor::create(std::vector<int>{normalized_shape_}, true);
+  gamma_ = Tensor::create(std::vector<int>{normalized_shape_}, "norm.k");
+  beta_ = Tensor::create(std::vector<int>{normalized_shape_}, "norm.bias");
 
   // Initialize gamma to ones and beta to zeros
   std::shared_ptr<std::vector<float>> gamma_data =

@@ -3,9 +3,9 @@
 Linear::Linear(int input_dim, int output_dim)
     : input_dim_(input_dim), output_dim_(output_dim) {
   // Weights shape: (input_dim, output_dim)
-  weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, true);
+  weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, "linear.k");
   // Biases shape: (output_dim)
-  biases_ = Tensor::create(std::vector<int>{output_dim_}, true);
+  biases_ = Tensor::create(std::vector<int>{output_dim_}, "linear.b");
 
   // Initialize weights and biases with random values
   std::random_device rd;
