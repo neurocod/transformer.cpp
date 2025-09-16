@@ -1,7 +1,4 @@
 #include "layers/MultiHeadAttention.h"
-#include <cmath>
-#include <iostream>
-#include <stdexcept>
 
 MultiHeadAttention::MultiHeadAttention(int embed_dim, int num_heads)
     : embed_dim_(embed_dim), num_heads_(num_heads),

@@ -141,14 +141,11 @@ void Transformer::save_weights(const std::string &filename) const {
   outfile.write(reinterpret_cast<const char *>(&num_tensors),
                 sizeof(num_tensors));
 
-  std::cout << "Saving " << num_tensors << " optimizable tensors to "
-            << filename << "..." << std::endl;
+  std::cout << std::format("Saving {} optimizable tensors to {}...\n", num_tensors, filename);
 
   for (const auto &tensor_ptr : optimizable_tensors) {
     if (!tensor_ptr) {
-      std::cerr
-          << "Warning: Encountered null tensor pointer while saving weights."
-          << std::endl;
+      std::cerr << "Warning: Encountered null tensor pointer while saving weights.\n";
       continue;
     }
     const std::vector<int> &shape = tensor_ptr->get_shape();
@@ -175,7 +172,7 @@ void Transformer::save_weights(const std::string &filename) const {
                                filename);
     }
   }
-  std::cout << "Weights saved successfully." << std::endl;
+  std::cout << "Weights saved successfully.\n";
   outfile.close();
 }
 
@@ -196,15 +193,12 @@ void Transformer::load_weights(const std::string &filename) {
 
   auto &optimizable_tensors = Tensor::get_optimizable_tensors();
   if (num_tensors_in_file != optimizable_tensors.size()) {
-    throw std::runtime_error("Mismatch between number of tensors in file (" +
-                             std::to_string(num_tensors_in_file) +
-                             ") and model (" +
-                             std::to_string(optimizable_tensors.size()) +
-                             "). Model architecture may have changed.");
+    throw std::runtime_error(std::format(
+        "Mismatch between number of tensors in file ({}) and model ({}). Model architecture may have changed.",
+        num_tensors_in_file, optimizable_tensors.size()));
   }
 
-  std::cout << "Loading " << num_tensors_in_file << " optimizable tensors from "
-            << filename << "..." << std::endl;
+  std::cout << std::format("Loading {} optimizable tensors from {}...\n", num_tensors_in_file, filename);
 
   for (size_t i = 0; i < num_tensors_in_file; ++i) {
     std::shared_ptr<Tensor> &tensor_ptr = optimizable_tensors[i];
@@ -255,12 +249,10 @@ void Transformer::load_weights(const std::string &filename) {
 
     if (file_shape != model_shape || file_num_elements != model_num_elements) {
       infile.close();
-      throw std::runtime_error(
-          "Mismatch in shape or size for tensor index " + std::to_string(i) +
-          ". File shape: " + vector_to_string(file_shape) +
-          ", Model shape: " + vector_to_string(model_shape) +
-          ". File elements: " + std::to_string(file_num_elements) +
-          ", Model elements: " + std::to_string(model_num_elements));
+      throw std::runtime_error(std::format(
+          "Mismatch in shape or size for tensor index {}. File shape: {}, Model shape: {}. File elements: {}, Model elements: {}",
+          i, vector_to_string(file_shape), vector_to_string(model_shape),
+          file_num_elements, model_num_elements));
     }
 
     // Read data into a temporary buffer, then set it in the tensor
@@ -270,9 +262,8 @@ void Transformer::load_weights(const std::string &filename) {
       infile.read(reinterpret_cast<char *>(data_buffer->data()),
                   model_num_elements * sizeof(float));
       if (!infile) {
-        throw std::runtime_error(
-            "Error reading tensor data from file for tensor index " +
-            std::to_string(i));
+        throw std::runtime_error(std::format(
+            "Error reading tensor data from file for tensor index {}", i));
       }
       tensor_ptr->set_data(data_buffer);
     } else {

@@ -40,7 +40,7 @@ void pressEnterToContinue() {
   std::cin.get(); // Wait for a character (Enter key)
 }
 
-int main() {
+int mainExcept() {
 #ifdef NDEBUG
   std::cout << "[LOG] Build type: RELEASE" << std::endl;
 #else
@@ -178,7 +178,7 @@ int main() {
       return 1;
     }
 
-    std::cout << "\n--- Running Inference ---" << std::endl;
+    std::cout << "\n--- Running Inference ---\n";
     std::cout << std::format("Initial prompt: \"{}\"\n", cf.initial_prompt);
 
     int current_seq_len = cf.input_seq_length;
@@ -274,4 +274,14 @@ int main() {
   }
 
   return 0;
+}
+
+int main() {
+  try {
+    return mainExcept();
+  }
+  catch(const std::exception& ex) {
+    std::cerr << "\n\n===\nUncaught exception: " << ex.what();
+    return 1;
+  }
 }
