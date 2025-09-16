@@ -5,28 +5,26 @@
 
 std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
-// Default constructor
-Tensor::Tensor()
-    : shape_{{}}, _data(std::make_shared<std::vector<float>>()),
-      grad_(std::make_shared<std::vector<float>>()),
-      creator_op_(OperationType::None), parents_{}, _isOptimizable{false} {}
+Tensor::Tensor():
+  _data(std::make_shared<std::vector<float>>()),
+  _grad(std::make_shared<std::vector<float>>())
+{
+}
 
-Tensor::Tensor(const std::vector<int> &shape, const char* name):
-  shape_{shape}, creator_op_(OperationType::None), parents_{},
+Tensor::Tensor(const std::vector<int> &shape, const std::string& name):
+  shape_{shape}, parents_{},
   _name(name),
-  _isOptimizable{name != nullptr} {
-{}
-  if (_isOptimizable)
-    int t = 3;
+  _isOptimizable{!name.empty()}
+{
   size_t total_elements = num_elements();
   _data = std::make_shared<std::vector<float>>(total_elements, 0.0f);
-  grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+  _grad = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
 Tensor::Tensor(const std::vector<int> &shape,
-               const std::shared_ptr<std::vector<float>> &data, const char* name):
-  shape_{shape}, creator_op_(OperationType::None), parents_{}, _name(name),
-  _isOptimizable{name != nullptr}
+               const std::shared_ptr<std::vector<float>> &data, const std::string& name):
+  shape_{shape}, _name(name),
+  _isOptimizable{ !name.empty() }
 {
   size_t total_elements = num_elements();
   if (data->size() != total_elements) {
@@ -34,23 +32,20 @@ Tensor::Tensor(const std::vector<int> &shape,
         "Data size does not match the specified shape in constructor.");
   }
   _data = data;
-  grad_ = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+  _grad = std::make_shared<std::vector<float>>(total_elements, 0.0f);
 }
 
-// Default factory
 std::shared_ptr<Tensor> Tensor::create() { return std::make_shared<Tensor>(); }
 
-// Factory method with shape
-std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape, const char* name) {
+std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape, const std::string& name) {
   std::shared_ptr<Tensor> tensor = std::make_shared<Tensor>(shape, name);
   if (tensor->_isOptimizable)
     optimizable_tensors_.push_back(tensor);
   return tensor;
 }
 
-// Factory method with shape and data
 std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
-               const std::shared_ptr<std::vector<float>> &data, const char* name) {
+               const std::shared_ptr<std::vector<float>> &data, const std::string& name) {
   std::shared_ptr<Tensor> tensor =
       std::make_shared<Tensor>(shape, data, name);
   if (tensor->_isOptimizable)
@@ -65,7 +60,7 @@ void Tensor::set_data(const std::shared_ptr<std::vector<float>> &data) {
     throw std::runtime_error("Data size mismatch in set_data.");
   }
   _data = data;
-  grad_->assign(total_elements, 0.0f);
+  _grad->assign(total_elements, 0.0f);
   // When data is explicitly set, this tensor is a leaf node, not derived from
   // an operation.
   creator_op_ = OperationType::None;
@@ -498,7 +493,7 @@ Tensor::reshape(const std::vector<int> &new_shape) const {
   // For reshape, share the underlying _data with the original tensor
   std::shared_ptr<Tensor> result = Tensor::create(actual_new_shape);
   result->_data = shared_from_this()->_data;
-  result->grad_ = std::make_shared<std::vector<float>>(new_num_elements, 0.0f);
+  result->_grad = std::make_shared<std::vector<float>>(new_num_elements, 0.0f);
 
   result->creator_op_ = OperationType::Reshape;
   result->parents_.push_back(
@@ -826,8 +821,8 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
 
 // Gradient handling
 void Tensor::zero_grad() {
-  if (grad_) {
-    grad_->assign(num_elements(), 0.0f);
+  if (_grad) {
+    _grad->assign(num_elements(), 0.0f);
   }
 }
 
@@ -837,9 +832,9 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output) {
   }
 
   // Accumulate the incoming gradient
-  if (grad_ && grad_output->_data) {
-    for (size_t i = 0; i < grad_->size(); ++i) {
-      (*grad_)[i] += (*grad_output->_data)[i];
+  if (_grad && grad_output->_data) {
+    for (size_t i = 0; i < _grad->size(); ++i) {
+      (*_grad)[i] += (*grad_output->_data)[i];
     }
   }
 
@@ -1048,8 +1043,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
       parent_b->backward(grad_b_propagated);
     }
   } else {
-    std::cerr << "Error: Add operation expected 2 parents, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Add operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1082,8 +1076,7 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output) {
       neg_grad_output->set_data(neg_data);
 
       std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-      reduce_gradient(neg_grad_output, grad_b_propagated,
-                      parent_b->get_shape());
+      reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
       parent_b->backward(grad_b_propagated);
     } else {
       std::cerr
@@ -1092,8 +1085,7 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output) {
       // Consider throwing an exception or handling more robustly
     }
   } else {
-    std::cerr << "Error: Sub operation expected 2 parents, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Sub operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1158,8 +1150,7 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output) {
                     parent_b->get_shape());
     parent_b->backward(grad_b_propagated);
   } else {
-    std::cerr << "Error: Mul operation expected 2 parents, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Mul operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1235,8 +1226,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output) {
                     parent_b->get_shape());
     parent_b->backward(grad_b_propagated);
   } else {
-    std::cerr << "Error: Division operation expected 2 parents, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Division operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1265,8 +1255,7 @@ void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output) {
         std::make_shared<std::vector<float>>(grad_input->get_data()));
     parent->backward(grad_input_tensor);
   } else {
-    std::cerr << "Error: Transpose operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Transpose operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1296,8 +1285,7 @@ void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output) {
 
     parent->backward(grad_input_reshaped_tensor);
   } else {
-    std::cerr << "Error: Reshape operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Reshape operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1353,8 +1341,7 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output) {
                     parent_b->get_shape());
     parent_b->backward(grad_b_propagated);
   } else {
-    std::cerr << "Error: Dot operation expected 2 parents, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Dot operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1394,8 +1381,7 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output) {
 
     parent->backward(grad_input_tensor);
   } else {
-    std::cerr << "Error: Sum operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Sum operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1434,8 +1420,7 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output) {
     getThreadPool().run_batch(std::move(tasks));
     parent->backward(grad_input);
   } else {
-    std::cerr << "Error: ReLU operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: ReLU operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1482,8 +1467,7 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output) {
 
     parent->backward(grad_input);
   } else {
-    std::cerr << "Error: GELU operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: GELU operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1521,8 +1505,7 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output) {
 
     parent->backward(grad_input);
   } else {
-    std::cerr << "Error: Sigmoid operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Sigmoid operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1559,8 +1542,7 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output) {
 
     parent->backward(grad_input);
   } else {
-    std::cerr << "Error: Tanh operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Tanh operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1626,8 +1608,7 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output) {
                     parent->get_shape());
     parent->backward(grad_input_propagated);
   } else {
-    std::cerr << "Error: LogSoftmax operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: LogSoftmax operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1695,9 +1676,7 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output) {
                     log_probs->get_shape());
     log_probs->backward(grad_input_propagated);
   } else {
-    std::cerr << "Error: NegativeLogLikelihood operation expected 2 parents, "
-                 "but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: NegativeLogLikelihood operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1729,7 +1708,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
       return;
     }
 
-    if (gamma->grad_ && beta->grad_) {
+    if (gamma->_grad && beta->_grad) {
       std::vector<float> &gamma_grad_data = gamma->grad_ref();
       std::vector<float> &beta_grad_data = beta->grad_ref();
 
@@ -1846,9 +1825,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
                     input_parent->get_shape());
     input_parent->backward(grad_input_propagated);
   } else {
-    std::cerr
-        << "Error: LayerNorm operation expected 1 input parent, but found "
-        << parents_.size() << std::endl;
+    std::cerr << std::format("Error: LayerNorm operation expected 1 input parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1864,15 +1841,15 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
     const std::vector<int> &shape = this->get_shape();
     int dim = -1; // Need to figure out the dimension softmax was applied on.
                   // Assuming last dimension for now.
-    if (!shape.empty()) {
-      dim = shape.size() - 1;
-    } else {
+    if (shape.empty()) {
       // Handle scalar or empty tensor case if necessary.
       std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
       reduce_gradient(grad_input_intermediate, grad_input_propagated,
                       parent->get_shape());
       parent->backward(grad_input_propagated);
       return;
+    } else {
+      dim = shape.size() - 1;
     }
 
     size_t outer_size = 1;
@@ -1943,8 +1920,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
                     parent->get_shape());
     parent->backward(grad_input_propagated);
   } else {
-    std::cerr << "Error: Softmax operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Softmax operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1980,13 +1956,11 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output) {
                     parent->get_shape());
     parent->backward(grad_input_propagated);
   } else {
-    std::cerr << "Error: Dropout operation expected 1 parent, but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: Dropout operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
-void Tensor::backward_embedding_lookup(
-    const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> weights_parent = parents_[0];
     const std::vector<float> &grad_output_data = grad_output->get_data();
@@ -2012,7 +1986,7 @@ void Tensor::backward_embedding_lookup(
           "Gradient output shape mismatch in EmbeddingLookup backward.");
     }
 
-    if (weights_parent->grad_) {
+    if (weights_parent->_grad) {
       std::vector<float> &weights_grad_data = weights_parent->grad_ref();
       size_t vocab_size = weights_parent->get_shape()[0];
 
@@ -2062,8 +2036,6 @@ void Tensor::backward_embedding_lookup(
       }
     }
   } else {
-    std::cerr << "Error: EmbeddingLookup operation expected 1 parent "
-                 "(weights), but found "
-              << parents_.size() << std::endl;
+    std::cerr << std::format("Error: EmbeddingLookup operation expected 1 parent (weights), but found {}\n", parents_.size());
   }
 }

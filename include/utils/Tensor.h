@@ -26,10 +26,8 @@ class Tensor : public std::enable_shared_from_this<Tensor> {
 public:
   Tensor();
   // if name is provided, it means _isOptimizable == true
-  Tensor(const std::vector<int>& shape, const char* name = 0);
-  Tensor(const std::vector<int> &shape,
-         const std::shared_ptr<std::vector<float>> &data,
-         const char* name = 0);
+  Tensor(const std::vector<int>& shape, const std::string& name = {});
+  Tensor(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data, const std::string& name = {});
   ~Tensor() {}
 
   // Intermediate values for different functions
@@ -53,9 +51,9 @@ public:
   // Getters for shape, data, and gradient
   const std::vector<int> &get_shape() const { return shape_; };
   const std::vector<float> &get_data() const { return *_data; };
-  const std::vector<float> &get_grad() const { return *grad_; };
+  const std::vector<float> &get_grad() const { return *_grad; };
   std::vector<float> &data_ref() { return *_data; }
-  std::vector<float> &grad_ref() { return *grad_; }
+  std::vector<float> &grad_ref() { return *_grad; }
 
   void set_data(const std::shared_ptr<std::vector<float>> &data);
   void set_parents(const std::vector<std::shared_ptr<Tensor>> &parents) {
@@ -98,22 +96,22 @@ public:
   }
 
   static std::shared_ptr<Tensor> create();
-  static std::shared_ptr<Tensor> create(const std::vector<int> &shape, const char* name = 0);
+  static std::shared_ptr<Tensor> create(const std::vector<int>& shape, const std::string& name = {});
   static std::shared_ptr<Tensor>
   create(const std::vector<int> &shape,
          const std::shared_ptr<std::vector<float>> &data,
-         const char* name = 0);
+         const std::string& name = {});
 
 private:
   static std::vector<std::shared_ptr<Tensor>> optimizable_tensors_;
 
   std::vector<int> shape_;
   std::shared_ptr<std::vector<float>> _data;
-  std::shared_ptr<std::vector<float>> grad_;
+  std::shared_ptr<std::vector<float>> _grad;
   // allows to track the computation graph, enabling correct gradient calculation and backpropagation
   std::vector<std::shared_ptr<Tensor>> parents_;
-  const char* _name = 0;
-  bool _isOptimizable = false;
+  const std::string _name;
+  const bool _isOptimizable = false;
 
   OperationType creator_op_ = OperationType::None;
 
