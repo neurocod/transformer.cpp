@@ -12,7 +12,7 @@ Tensor::Tensor():
 }
 
 Tensor::Tensor(const std::vector<int> &shape, const std::string& name):
-  shape_{shape}, parents_{},
+  _shape{shape}, parents_{},
   _name(name),
   _isOptimizable{!name.empty()}
 {
@@ -23,7 +23,7 @@ Tensor::Tensor(const std::vector<int> &shape, const std::string& name):
 
 Tensor::Tensor(const std::vector<int> &shape,
                const std::shared_ptr<std::vector<float>> &data, const std::string& name):
-  shape_{shape}, _name(name),
+  _shape{shape}, _name(name),
   _isOptimizable{ !name.empty() }
 {
   size_t total_elements = num_elements();
@@ -82,22 +82,22 @@ void Tensor::set(const std::vector<int> &indices, float value) {
 }
 
 size_t Tensor::num_elements() const {
-  if (shape_.empty())
+  if (_shape.empty())
     return 0;
-  return std::accumulate(shape_.begin(), shape_.end(), 1,
+  return std::accumulate(_shape.begin(), _shape.end(), 1,
                          std::multiplies<size_t>());
 }
 
 // Helper to calculate the linear index from multi-dimensional indices
 size_t Tensor::get_linear_index(const std::vector<int> &indices) const {
-  if (indices.size() != shape_.size()) {
+  if (indices.size() != _shape.size()) {
     throw std::runtime_error("Number of indices must match tensor dimensions.");
   }
   size_t linear_index = 0;
-  const std::vector<size_t> &strides = calculate_strides(shape_);
+  const std::vector<size_t> &strides = calculate_strides(_shape);
 
-  for (size_t i = 0; i < shape_.size(); ++i) {
-    if (indices[i] < 0 || indices[i] >= shape_[i]) {
+  for (size_t i = 0; i < _shape.size(); ++i) {
+    if (indices[i] < 0 || indices[i] >= _shape[i]) {
       throw std::runtime_error("Index out of bounds.");
     }
     linear_index += indices[i] * strides[i];
@@ -158,12 +158,12 @@ Tensor::calculate_broadcast_shape(const std::vector<int> &shape1,
 
 std::shared_ptr<Tensor>
 Tensor::broadcast_to(const std::vector<int> &new_shape) const {
-  if (!is_broadcastable(shape_, new_shape)) {
+  if (!is_broadcastable(_shape, new_shape)) {
     throw std::runtime_error("Cannot broadcast to target shape");
   }
 
   std::shared_ptr<Tensor> result = Tensor::create(new_shape);
-  std::vector<int> input_idx(shape_.size());
+  std::vector<int> input_idx(_shape.size());
   std::vector<int> output_idx(new_shape.size());
 
   // Iterate through all elements in the result tensor
@@ -177,9 +177,9 @@ Tensor::broadcast_to(const std::vector<int> &new_shape) const {
     }
 
     // Calculate corresponding input indices
-    for (int d = 0; d < shape_.size(); ++d) {
-      int offset = new_shape.size() - shape_.size();
-      input_idx[d] = shape_[d] == 1 ? 0 : output_idx[d + offset];
+    for (int d = 0; d < _shape.size(); ++d) {
+      int offset = new_shape.size() - _shape.size();
+      input_idx[d] = _shape[d] == 1 ? 0 : output_idx[d + offset];
     }
 
     result->set(output_idx, get(input_idx));
@@ -192,7 +192,7 @@ Tensor::broadcast_to(const std::vector<int> &new_shape) const {
 std::shared_ptr<Tensor>
 Tensor::operator+(const std::shared_ptr<Tensor> &other) const {
   std::vector<int> result_shape =
-      calculate_broadcast_shape(shape_, other->shape_);
+      calculate_broadcast_shape(_shape, other->_shape);
   std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
   std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
@@ -231,7 +231,7 @@ Tensor::operator+(const std::shared_ptr<Tensor> &other) const {
 std::shared_ptr<Tensor>
 Tensor::operator-(const std::shared_ptr<Tensor> &other) const {
   std::vector<int> result_shape =
-      calculate_broadcast_shape(shape_, other->shape_);
+      calculate_broadcast_shape(_shape, other->_shape);
   std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
   std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
@@ -269,7 +269,7 @@ Tensor::operator-(const std::shared_ptr<Tensor> &other) const {
 std::shared_ptr<Tensor>
 Tensor::operator*(const std::shared_ptr<Tensor> &other) const {
   std::vector<int> result_shape =
-      calculate_broadcast_shape(shape_, other->shape_);
+      calculate_broadcast_shape(_shape, other->_shape);
   std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
   std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
@@ -307,7 +307,7 @@ Tensor::operator*(const std::shared_ptr<Tensor> &other) const {
 std::shared_ptr<Tensor>
 Tensor::operator/(const std::shared_ptr<Tensor> &other) const {
   std::vector<int> result_shape =
-      calculate_broadcast_shape(shape_, other->shape_);
+      calculate_broadcast_shape(_shape, other->_shape);
   std::shared_ptr<Tensor> broadcasted_a = broadcast_to(result_shape);
   std::shared_ptr<Tensor> broadcasted_b = other->broadcast_to(result_shape);
 
@@ -348,17 +348,17 @@ Tensor::operator/(const std::shared_ptr<Tensor> &other) const {
 
 std::shared_ptr<Tensor>
 Tensor::transpose(const std::vector<int> &permutation) const {
-  if (permutation.size() != shape_.size()) {
+  if (permutation.size() != _shape.size()) {
     throw std::runtime_error("Permutation size (" +
                              std::to_string(permutation.size()) +
                              ") must match tensor dimension (" +
-                             std::to_string(shape_.size()) + ").");
+                             std::to_string(_shape.size()) + ").");
   }
   // Check if permutation is valid
   std::vector<int> sorted_permutation = permutation;
   std::sort(sorted_permutation.begin(), sorted_permutation.end());
   bool valid_perm = true;
-  if (shape_.size() > 0) {
+  if (_shape.size() > 0) {
     for (size_t i = 0; i < sorted_permutation.size(); ++i) {
       if (sorted_permutation[i] != static_cast<int>(i)) {
         valid_perm = false;
@@ -379,9 +379,9 @@ Tensor::transpose(const std::vector<int> &permutation) const {
                              " for transpose.");
   }
 
-  std::vector<int> new_shape(shape_.size());
-  for (size_t i = 0; i < shape_.size(); ++i) {
-    new_shape[i] = shape_[permutation[i]];
+  std::vector<int> new_shape(_shape.size());
+  for (size_t i = 0; i < _shape.size(); ++i) {
+    new_shape[i] = _shape[permutation[i]];
   }
 
   std::shared_ptr<Tensor> result = Tensor::create(new_shape);
@@ -394,22 +394,22 @@ Tensor::transpose(const std::vector<int> &permutation) const {
   if (num_elements() == 0)
     return result;
 
-  std::vector<size_t> old_strides(shape_.size());
+  std::vector<size_t> old_strides(_shape.size());
   std::vector<size_t> new_strides(new_shape.size());
   old_strides.back() = 1;
   new_strides.back() = 1;
-  for (int i = shape_.size() - 2; i >= 0; --i)
-    old_strides[i] = old_strides[i + 1] * shape_[i + 1];
+  for (int i = _shape.size() - 2; i >= 0; --i)
+    old_strides[i] = old_strides[i + 1] * _shape[i + 1];
   for (int i = new_shape.size() - 2; i >= 0; --i)
     new_strides[i] = new_strides[i + 1] * new_shape[i + 1];
 
-  std::vector<int> current_indices(shape_.size());
+  std::vector<int> current_indices(_shape.size());
   size_t total_elements = num_elements();
 
   for (size_t i = 0; i < total_elements; ++i) {
     // Calculate original multi-dimensional indices from linear index i
     size_t temp_linear_idx = i;
-    for (size_t d = 0; d < shape_.size(); ++d) {
+    for (size_t d = 0; d < _shape.size(); ++d) {
       if (old_strides[d] == 0)
         continue;
       current_indices[d] = temp_linear_idx / old_strides[d];
@@ -473,9 +473,9 @@ Tensor::reshape(const std::vector<int> &new_shape) const {
 
   if (current_elements != new_num_elements) {
     std::string old_shape_str = "[";
-    for (size_t k = 0; k < shape_.size(); ++k)
+    for (size_t k = 0; k < _shape.size(); ++k)
       old_shape_str +=
-          std::to_string(shape_[k]) + (k == shape_.size() - 1 ? "" : ", ");
+          std::to_string(_shape[k]) + (k == _shape.size() - 1 ? "" : ", ");
     old_shape_str += "]";
     std::string new_shape_str = "[";
     for (size_t k = 0; k < new_shape.size(); ++k)
@@ -498,20 +498,20 @@ Tensor::reshape(const std::vector<int> &new_shape) const {
   result->creator_op_ = OperationType::Reshape;
   result->parents_.push_back(
       std::const_pointer_cast<Tensor>(shared_from_this()));
-  result->original_shape_before_reshape_ = shared_from_this()->shape_;
+  result->original_shape_before_reshape_ = shared_from_this()->_shape;
 
   return result;
 }
 
 std::shared_ptr<Tensor>
 Tensor::dot(const std::shared_ptr<Tensor> &other) const {
-  if (shape_.size() < 1 || other->shape_.size() < 1) {
+  if (_shape.size() < 1 || other->_shape.size() < 1) {
     throw std::runtime_error(
         "Dot product requires tensors with at least 1 dimension.");
   }
   // Vector dot product
-  if (shape_.size() == 1 && other->shape_.size() == 1) {
-    if (shape_[0] != other->shape_[0]) {
+  if (_shape.size() == 1 && other->_shape.size() == 1) {
+    if (_shape[0] != other->_shape[0]) {
       throw std::runtime_error(
           "Vector dot product requires vectors of the same size.");
     }
@@ -524,22 +524,22 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
         std::const_pointer_cast<Tensor>(shared_from_this()));
     result->parents_.push_back(other);
 
-    for (size_t i = 0; i < shape_[0]; ++i) {
+    for (size_t i = 0; i < _shape[0]; ++i) {
       (*result->_data)[0] += (*_data)[i] * (*other->_data)[i];
     }
     return result;
   }
   // Matrix-vector product
-  else if (shape_.size() >= 2 && other->shape_.size() == 1) {
-    int cols_a = shape_.back();
-    int vec_size = other->shape_[0];
+  else if (_shape.size() >= 2 && other->_shape.size() == 1) {
+    int cols_a = _shape.back();
+    int vec_size = other->_shape[0];
     if (cols_a != vec_size) {
       throw std::runtime_error(
           "Matrix-vector product: Inner dimensions must match (" +
           std::to_string(cols_a) + " vs " + std::to_string(vec_size) + ").");
     }
     // Result shape is the matrix shape excluding the last dimension
-    std::vector<int> result_shape(shape_.begin(), shape_.end() - 1);
+    std::vector<int> result_shape(_shape.begin(), _shape.end() - 1);
     std::shared_ptr<Tensor> result = Tensor::create(result_shape);
     result->creator_op_ = OperationType::Dot;
     result->parents_.push_back(
@@ -560,11 +560,11 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
     return result;
   }
   // Matrix-matrix product (batched)
-  else if (shape_.size() >= 2 && other->shape_.size() >= 2) {
-    int rows_a = shape_[shape_.size() - 2];
-    int cols_a = shape_[shape_.size() - 1];
-    int rows_b = other->shape_[other->shape_.size() - 2];
-    int cols_b = other->shape_[other->shape_.size() - 1];
+  else if (_shape.size() >= 2 && other->_shape.size() >= 2) {
+    int rows_a = _shape[_shape.size() - 2];
+    int cols_a = _shape[_shape.size() - 1];
+    int rows_b = other->_shape[other->_shape.size() - 2];
+    int cols_b = other->_shape[other->_shape.size() - 1];
 
     if (cols_a != rows_b) {
       throw std::runtime_error(
@@ -572,9 +572,9 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
           std::to_string(cols_a) + " vs " + std::to_string(rows_b) + ").");
     }
 
-    std::vector<int> batch_dims_a(shape_.begin(), shape_.end() - 2);
-    std::vector<int> batch_dims_b(other->shape_.begin(),
-                                  other->shape_.end() - 2);
+    std::vector<int> batch_dims_a(_shape.begin(), _shape.end() - 2);
+    std::vector<int> batch_dims_b(other->_shape.begin(),
+                                  other->_shape.end() - 2);
     std::vector<int> batch_shape =
         calculate_broadcast_shape(batch_dims_a, batch_dims_b);
 
@@ -588,8 +588,8 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
         std::const_pointer_cast<Tensor>(shared_from_this()));
     result->parents_.push_back(other);
 
-    std::vector<size_t> stride_a = calculate_strides(shape_);
-    std::vector<size_t> stride_b = calculate_strides(other->shape_);
+    std::vector<size_t> stride_a = calculate_strides(_shape);
+    std::vector<size_t> stride_b = calculate_strides(other->_shape);
     std::vector<size_t> stride_result = calculate_strides(result_shape);
 
     size_t total_batches =
@@ -651,7 +651,7 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
               offset_a +=
                   (batch_dims_a[d - batch_offset_a] == 1 ? 0 : batch_idx[d]) *
                   stride_a[d - batch_offset_a];
-            } else if (batch_dims_a.empty() && shape_.size() >= 2) {
+            } else if (batch_dims_a.empty() && _shape.size() >= 2) {
               offset_a = 0;
             }
 
@@ -659,7 +659,7 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
               offset_b +=
                   (batch_dims_b[d - batch_offset_b] == 1 ? 0 : batch_idx[d]) *
                   stride_b[d - batch_offset_b];
-            } else if (batch_dims_b.empty() && other->shape_.size() >= 2) {
+            } else if (batch_dims_b.empty() && other->_shape.size() >= 2) {
               offset_b = 0;
             }
             if (!batch_shape.empty() && d < stride_result.size()) {
@@ -671,10 +671,10 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
 
           float sum = 0.0f;
           for (int k = 0; k < cols_a; ++k) {
-            size_t idx_a = offset_a + i * stride_a[shape_.size() - 2] +
-                           k * stride_a[shape_.size() - 1];
-            size_t idx_b = offset_b + k * stride_b[other->shape_.size() - 2] +
-                           j * stride_b[other->shape_.size() - 1];
+            size_t idx_a = offset_a + i * stride_a[_shape.size() - 2] +
+                           k * stride_a[_shape.size() - 1];
+            size_t idx_b = offset_b + k * stride_b[other->_shape.size() - 2] +
+                           j * stride_b[other->_shape.size() - 1];
 
             if (idx_a >= _data->size() || idx_b >= other->_data->size()) {
               throw std::runtime_error(
@@ -745,13 +745,13 @@ std::shared_ptr<Tensor> Tensor::sum() const {
 }
 
 std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
-  int actual_dim = (dim == -1) ? shape_.size() - 1 : dim;
+  int actual_dim = (dim == -1) ? _shape.size() - 1 : dim;
 
-  if (actual_dim < 0 || actual_dim >= static_cast<int>(shape_.size())) {
+  if (actual_dim < 0 || actual_dim >= static_cast<int>(_shape.size())) {
     throw std::runtime_error("Softmax dimension out of bounds.");
   }
 
-  std::shared_ptr<Tensor> output = Tensor::create(shape_);
+  std::shared_ptr<Tensor> output = Tensor::create(_shape);
   const std::vector<float> &input_data = *_data;
   std::vector<float> &output_data = output->data_ref();
 
@@ -761,13 +761,13 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
 
   size_t outer_size = 1;
   for (int i = 0; i < actual_dim; ++i) {
-    outer_size *= shape_[i];
+    outer_size *= _shape[i];
   }
   size_t inner_size = 1;
-  for (size_t i = actual_dim + 1; i < shape_.size(); ++i) {
-    inner_size *= shape_[i];
+  for (size_t i = actual_dim + 1; i < _shape.size(); ++i) {
+    inner_size *= _shape[i];
   }
-  size_t dim_size = shape_[actual_dim];
+  size_t dim_size = _shape[actual_dim];
 
   size_t num_threads = TransformerConfig::instance().num_threads;
   if (outer_size * inner_size < num_threads)
@@ -827,7 +827,7 @@ void Tensor::zero_grad() {
 }
 
 void Tensor::backward(const std::shared_ptr<Tensor> &grad_output) {
-  if (shape_ != grad_output->get_shape()) {
+  if (_shape != grad_output->get_shape()) {
     throw std::runtime_error("Gradient shape mismatch in backward.");
   }
 

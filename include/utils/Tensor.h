@@ -49,7 +49,7 @@ public:
   std::shared_ptr<Tensor> embedding_indices_;
 
   // Getters for shape, data, and gradient
-  const std::vector<int> &get_shape() const { return shape_; };
+  const std::vector<int> &get_shape() const { return _shape; };
   const std::vector<float> &get_data() const { return *_data; };
   const std::vector<float> &get_grad() const { return *_grad; };
   std::vector<float> &data_ref() { return *_data; }
@@ -105,7 +105,7 @@ public:
 private:
   static std::vector<std::shared_ptr<Tensor>> optimizable_tensors_;
 
-  std::vector<int> shape_;
+  std::vector<int> _shape;
   std::shared_ptr<std::vector<float>> _data;
   std::shared_ptr<std::vector<float>> _grad;
   // allows to track the computation graph, enabling correct gradient calculation and backpropagation
@@ -125,7 +125,7 @@ private:
   static bool is_broadcastable(const std::vector<int> &shape1,
                                const std::vector<int> &shape2);
   bool are_shapes_compatible(const Tensor &other) const {
-    return shape_ == other.shape_;
+    return _shape == other._shape;
   }
 
   void reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
