@@ -4,7 +4,7 @@ class BinaryWriter {
 private:
 		std::ofstream& _stream;
 		
-		void write_bytes(std::span<const std::byte> bytes) {
+		void writeBytes(std::span<const std::byte> bytes) {
 			_stream.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 		}
 public:
@@ -14,23 +14,31 @@ public:
 		template<typename T>
 		requires std::is_trivially_copyable_v<T>
 		void write(const T& value) {
-				write_bytes(std::as_bytes(std::span(&value, 1)));
+				writeBytes(std::as_bytes(std::span(&value, 1)));
 		}
 		
 		// Write span of trivially copyable data
 		template<typename T>
 		requires std::is_trivially_copyable_v<T>
-		void write_span(std::span<const T> data) {
-				write_bytes(std::as_bytes(data));
+		void writeSpan(std::span<const T> data) {
+				writeBytes(std::as_bytes(data));
 		}
 		
 		// Write vector of trivially copyable data
 		template<typename T>
 		requires std::is_trivially_copyable_v<T>
-		void write_vector(const std::vector<T>& data) {
-				write_span(std::span(data));
+		void writeVector(const std::vector<T>& data) {
+				writeSpan(std::span(data));
 		}
-		
+
+		void write(const std::string& str) {
+			const uint32_t length = static_cast<uint32_t>(str.size());
+			write(length);
+			if (length > 0) {
+				_stream.write(str.data(), length);
+			}
+		}
+			
 		// Check stream state
 		bool good() const { return _stream.good(); }
 };
