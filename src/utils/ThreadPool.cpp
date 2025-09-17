@@ -3,18 +3,18 @@
 
 ThreadPool &getThreadPool() {
   static ThreadPool pool([]() {
-    return ConfigParser::instance().value<int>("num_threads");
+    return ConfigParser::instance().value<int>("numThreads");
   }());
   return pool;
 }
 
-ThreadPool::ThreadPool(size_t num_threads) : stop_(false) {
-  if (num_threads == 0) {
-    num_threads = 1;
+ThreadPool::ThreadPool(size_t numThreads) : stop_(false) {
+  if (numThreads == 0) {
+    numThreads = 1;
     std::cerr << "Warning: ThreadPool created with 0 threads, defaulting to 1."
               << std::endl;
   }
-  for (size_t i = 0; i < num_threads; ++i) {
+  for (size_t i = 0; i < numThreads; ++i) {
     workers_.emplace_back([this] {
       while (true) {
         std::function<void()> task;
@@ -54,8 +54,8 @@ ThreadPool::~ThreadPool() {
 }
 
 void ThreadPool::run_batch(std::vector<std::function<void()>> tasks) {
-  size_t batch_size = tasks.size();
-  if (batch_size == 0)
+  size_t batchSize = tasks.size();
+  if (batchSize == 0)
     return;
 
   {
@@ -66,7 +66,7 @@ void ThreadPool::run_batch(std::vector<std::function<void()>> tasks) {
     for (auto &task : tasks) {
       tasks_.push(std::move(task));
     }
-    expected_tasks_ += batch_size;
+    expected_tasks_ += batchSize;
   }
 
   condition_.notify_all();

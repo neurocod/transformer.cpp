@@ -6,10 +6,10 @@ public:
   virtual ~LossFunction() = default;
 
   virtual std::shared_ptr<Tensor>
-  compute_loss(std::shared_ptr<Tensor> &predictions,
+  computeLoss(std::shared_ptr<Tensor> &predictions,
                std::shared_ptr<Tensor> &targets) = 0;
 
-  // This assumes compute_loss returns a shared_ptr to a Tensor that has its
+  // This assumes computeLoss returns a shared_ptr to a Tensor that has its
   // computation graph set up.
   void backward(std::shared_ptr<Tensor> &loss);
 };
@@ -22,7 +22,7 @@ public:
 
   // MSE = mean((predictions - targets)^2)
   std::shared_ptr<Tensor>
-  compute_loss(std::shared_ptr<Tensor> &predictions,
+  computeLoss(std::shared_ptr<Tensor> &predictions,
                std::shared_ptr<Tensor> &targets) override;
 };
 
@@ -33,6 +33,6 @@ public:
 
   // Computes the Cross-Entropy Loss
   std::shared_ptr<Tensor>
-  compute_loss(std::shared_ptr<Tensor> &predictions,
+  computeLoss(std::shared_ptr<Tensor> &predictions,
                std::shared_ptr<Tensor> &targets) override;
 };

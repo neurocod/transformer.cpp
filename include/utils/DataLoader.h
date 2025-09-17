@@ -4,7 +4,7 @@
 
 class DataLoader {
 public:
-  DataLoader(int sequence_length, int batch_size);
+  DataLoader(int sequence_length, int batchSize);
 
   void readFile(const std::string& filename);
   std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> randBatch();

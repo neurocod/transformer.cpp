@@ -3,7 +3,7 @@
 
 class MultiHeadAttention {
 public:
-  MultiHeadAttention(const std::string& name, int embed_dim, int num_heads);
+  MultiHeadAttention(const std::string& name, int embedDim, int numHeads);
   ~MultiHeadAttention() = default;
 
   // Forward pass

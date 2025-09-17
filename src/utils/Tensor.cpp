@@ -295,15 +295,15 @@ Tensor::operator+(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = TransformerConfig::instance().num_threads;
-  if (total_elements < num_threads)
-    num_threads = total_elements;
-  size_t elements_per_thread = total_elements / num_threads;
+  size_t numThreads = TransformerConfig::instance().numThreads;
+  if (total_elements < numThreads)
+    numThreads = total_elements;
+  size_t elements_per_thread = total_elements / numThreads;
 
   std::vector<std::function<void()>> tasks;
-  for (size_t t = 0; t < num_threads; ++t) {
+  for (size_t t = 0; t < numThreads; ++t) {
     size_t start_idx = t * elements_per_thread;
-    size_t end_idx = (t == num_threads - 1) ? total_elements
+    size_t end_idx = (t == numThreads - 1) ? total_elements
                                             : start_idx + elements_per_thread;
 
     // A lambda task for each chunk of work
@@ -334,15 +334,15 @@ Tensor::operator-(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = TransformerConfig::instance().num_threads;
-  if (total_elements < num_threads)
-    num_threads = total_elements;
-  size_t elements_per_thread = total_elements / num_threads;
+  size_t numThreads = TransformerConfig::instance().numThreads;
+  if (total_elements < numThreads)
+    numThreads = total_elements;
+  size_t elements_per_thread = total_elements / numThreads;
 
   std::vector<std::function<void()>> tasks;
-  for (size_t t = 0; t < num_threads; ++t) {
+  for (size_t t = 0; t < numThreads; ++t) {
     size_t start_idx = t * elements_per_thread;
-    size_t end_idx = (t == num_threads - 1) ? total_elements
+    size_t end_idx = (t == numThreads - 1) ? total_elements
                                             : start_idx + elements_per_thread;
 
     tasks.emplace_back([&, start_idx, end_idx]() {
@@ -372,15 +372,15 @@ Tensor::operator*(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = TransformerConfig::instance().num_threads;
-  if (total_elements < num_threads)
-    num_threads = total_elements;
-  size_t elements_per_thread = total_elements / num_threads;
+  size_t numThreads = TransformerConfig::instance().numThreads;
+  if (total_elements < numThreads)
+    numThreads = total_elements;
+  size_t elements_per_thread = total_elements / numThreads;
 
   std::vector<std::function<void()>> tasks;
-  for (size_t t = 0; t < num_threads; ++t) {
+  for (size_t t = 0; t < numThreads; ++t) {
     size_t start_idx = t * elements_per_thread;
-    size_t end_idx = (t == num_threads - 1) ? total_elements
+    size_t end_idx = (t == numThreads - 1) ? total_elements
                                             : start_idx + elements_per_thread;
 
     tasks.emplace_back([&, start_idx, end_idx]() {
@@ -410,15 +410,15 @@ Tensor::operator/(const std::shared_ptr<Tensor> &other) const {
   result->parents_.push_back(other);                        // denominator
 
   size_t total_elements = result->_data->size();
-  size_t num_threads = TransformerConfig::instance().num_threads;
-  if (total_elements < num_threads)
-    num_threads = total_elements;
-  size_t elements_per_thread = total_elements / num_threads;
+  size_t numThreads = TransformerConfig::instance().numThreads;
+  if (total_elements < numThreads)
+    numThreads = total_elements;
+  size_t elements_per_thread = total_elements / numThreads;
 
   std::vector<std::function<void()>> tasks;
-  for (size_t t = 0; t < num_threads; ++t) {
+  for (size_t t = 0; t < numThreads; ++t) {
     size_t start_idx = t * elements_per_thread;
-    size_t end_idx = (t == num_threads - 1) ? total_elements
+    size_t end_idx = (t == numThreads - 1) ? total_elements
                                             : start_idx + elements_per_thread;
 
     tasks.emplace_back([&, start_idx, end_idx]() {
@@ -695,15 +695,15 @@ Tensor::dot(const std::shared_ptr<Tensor> &other) const {
     size_t total_output_elements =
         total_batches * num_output_elements_per_batch;
 
-    size_t num_threads = TransformerConfig::instance().num_threads;
-    if (total_output_elements < num_threads)
-      num_threads = total_output_elements;
-    size_t elements_per_thread = total_output_elements / num_threads;
+    size_t numThreads = TransformerConfig::instance().numThreads;
+    if (total_output_elements < numThreads)
+      numThreads = total_output_elements;
+    size_t elements_per_thread = total_output_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_linear_idx = t * elements_per_thread;
-      size_t end_linear_idx = (t == num_threads - 1)
+      size_t end_linear_idx = (t == numThreads - 1)
                                   ? total_output_elements
                                   : start_linear_idx + elements_per_thread;
 
@@ -803,17 +803,17 @@ std::shared_ptr<Tensor> Tensor::sum() const {
   float total_sum = 0.0f;
   if (_data && !_data->empty()) {
     size_t num_elements = _data->size();
-    size_t num_threads = TransformerConfig::instance().num_threads;
-    if (num_elements < num_threads)
-      num_threads = num_elements;
-    size_t elements_per_thread = num_elements / num_threads;
+    size_t numThreads = TransformerConfig::instance().numThreads;
+    if (num_elements < numThreads)
+      numThreads = num_elements;
+    size_t elements_per_thread = num_elements / numThreads;
 
-    std::vector<float> partial_sums(num_threads, 0.0f);
+    std::vector<float> partial_sums(numThreads, 0.0f);
     std::vector<std::function<void()>> tasks;
 
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_idx = t * elements_per_thread;
-      size_t end_idx = (t == num_threads - 1) ? num_elements
+      size_t end_idx = (t == numThreads - 1) ? num_elements
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, t, start_idx, end_idx]() {
@@ -861,16 +861,16 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
   }
   size_t dim_size = _shape[actual_dim];
 
-  size_t num_threads = TransformerConfig::instance().num_threads;
-  if (outer_size * inner_size < num_threads)
-    num_threads = outer_size * inner_size;
-  size_t work_per_thread = (outer_size * inner_size) / num_threads;
+  size_t numThreads = TransformerConfig::instance().numThreads;
+  if (outer_size * inner_size < numThreads)
+    numThreads = outer_size * inner_size;
+  size_t work_per_thread = (outer_size * inner_size) / numThreads;
 
   std::vector<std::function<void()>> tasks;
 
-  for (size_t t = 0; t < num_threads; ++t) {
+  for (size_t t = 0; t < numThreads; ++t) {
     size_t start_work_idx = t * work_per_thread;
-    size_t end_work_idx = (t == num_threads - 1)
+    size_t end_work_idx = (t == numThreads - 1)
                               ? (outer_size * inner_size)
                               : start_work_idx + work_per_thread;
 
@@ -1028,16 +1028,16 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
   std::vector<size_t> parent_strides = calculate_strides(parent_shape);
   std::vector<size_t> grad_strides = calculate_strides(grad_shape);
 
-  size_t num_threads = TransformerConfig::instance().num_threads;
-  if (parent_total_elements < num_threads)
-    num_threads = parent_total_elements;
-  size_t elements_per_thread = parent_total_elements / num_threads;
+  size_t numThreads = TransformerConfig::instance().numThreads;
+  if (parent_total_elements < numThreads)
+    numThreads = parent_total_elements;
+  size_t elements_per_thread = parent_total_elements / numThreads;
 
   std::vector<std::function<void()>> tasks;
 
-  for (size_t t = 0; t < num_threads; ++t) {
+  for (size_t t = 0; t < numThreads; ++t) {
     size_t start_p_idx = t * elements_per_thread;
-    size_t end_p_idx = (t == num_threads - 1)
+    size_t end_p_idx = (t == numThreads - 1)
                            ? parent_total_elements
                            : start_p_idx + elements_per_thread;
 
@@ -1451,16 +1451,16 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output) {
         Tensor::create(parent->get_shape());
 
     size_t total_elements = grad_input_tensor->num_elements();
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (total_elements < num_threads)
-      num_threads = total_elements;
-    size_t elements_per_thread = total_elements / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (total_elements < numThreads)
+      numThreads = total_elements;
+    size_t elements_per_thread = total_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_idx = t * elements_per_thread;
-      size_t end_idx = (t == num_threads - 1) ? total_elements
+      size_t end_idx = (t == numThreads - 1) ? total_elements
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, grad_value, start_idx, end_idx]() {
@@ -1486,16 +1486,16 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output) {
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (total_elements < num_threads)
-      num_threads = total_elements;
-    size_t elements_per_thread = total_elements / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (total_elements < numThreads)
+      numThreads = total_elements;
+    size_t elements_per_thread = total_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_idx = t * elements_per_thread;
-      size_t end_idx = (t == num_threads - 1) ? total_elements
+      size_t end_idx = (t == numThreads - 1) ? total_elements
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, start_idx, end_idx]() {
@@ -1528,16 +1528,16 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output) {
     const float GELU_CONSTANT = 0.044715f;
 
     size_t total_elements = parent_data.size();
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (total_elements < num_threads)
-      num_threads = total_elements;
-    size_t elements_per_thread = total_elements / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (total_elements < numThreads)
+      numThreads = total_elements;
+    size_t elements_per_thread = total_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_idx = t * elements_per_thread;
-      size_t end_idx = (t == num_threads - 1) ? total_elements
+      size_t end_idx = (t == numThreads - 1) ? total_elements
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, start_idx, end_idx]() {
@@ -1572,16 +1572,16 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output) {
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (total_elements < num_threads)
-      num_threads = total_elements;
-    size_t elements_per_thread = total_elements / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (total_elements < numThreads)
+      numThreads = total_elements;
+    size_t elements_per_thread = total_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_idx = t * elements_per_thread;
-      size_t end_idx = (t == num_threads - 1) ? total_elements
+      size_t end_idx = (t == numThreads - 1) ? total_elements
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, start_idx, end_idx]() {
@@ -1610,16 +1610,16 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output) {
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (total_elements < num_threads)
-      num_threads = total_elements;
-    size_t elements_per_thread = total_elements / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (total_elements < numThreads)
+      numThreads = total_elements;
+    size_t elements_per_thread = total_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_idx = t * elements_per_thread;
-      size_t end_idx = (t == num_threads - 1) ? total_elements
+      size_t end_idx = (t == numThreads - 1) ? total_elements
                                               : start_idx + elements_per_thread;
 
       tasks.emplace_back([&, start_idx, end_idx]() {
@@ -1661,17 +1661,17 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output) {
 
     size_t outer_dims_elements = num_elements / last_dim_size;
 
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (outer_dims_elements < num_threads)
-      num_threads = outer_dims_elements;
-    size_t slices_per_thread = outer_dims_elements / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (outer_dims_elements < numThreads)
+      numThreads = outer_dims_elements;
+    size_t slices_per_thread = outer_dims_elements / numThreads;
 
     std::vector<std::function<void()>> tasks;
 
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_slice_idx = t * slices_per_thread;
-      size_t end_slice_idx = (t == num_threads - 1)
+      size_t end_slice_idx = (t == numThreads - 1)
                                  ? outer_dims_elements
                                  : start_slice_idx + slices_per_thread;
 
@@ -1810,21 +1810,21 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
             "Gamma or Beta gradient size mismatch in LayerNorm backward.");
       }
 
-      size_t num_threads =
-          TransformerConfig::instance().num_threads;
-      if (outer_dims_elements < num_threads)
-        num_threads = outer_dims_elements;
-      size_t slices_per_thread = outer_dims_elements / num_threads;
+      size_t numThreads =
+          TransformerConfig::instance().numThreads;
+      if (outer_dims_elements < numThreads)
+        numThreads = outer_dims_elements;
+      size_t slices_per_thread = outer_dims_elements / numThreads;
 
       std::vector<std::vector<float>> thread_gamma_grads(
-          num_threads, std::vector<float>(last_dim_size, 0.0f));
+          numThreads, std::vector<float>(last_dim_size, 0.0f));
       std::vector<std::vector<float>> thread_beta_grads(
-          num_threads, std::vector<float>(last_dim_size, 0.0f));
+          numThreads, std::vector<float>(last_dim_size, 0.0f));
       std::vector<std::function<void()>> tasks_gamma_beta;
 
-      for (size_t t = 0; t < num_threads; ++t) {
+      for (size_t t = 0; t < numThreads; ++t) {
         size_t start_slice_idx = t * slices_per_thread;
-        size_t end_slice_idx = (t == num_threads - 1)
+        size_t end_slice_idx = (t == numThreads - 1)
                                    ? outer_dims_elements
                                    : start_slice_idx + slices_per_thread;
 
@@ -1845,7 +1845,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
 
       getThreadPool().run_batch(std::move(tasks_gamma_beta));
 
-      for (size_t t = 0; t < num_threads; ++t) {
+      for (size_t t = 0; t < numThreads; ++t) {
         for (size_t j = 0; j < last_dim_size; ++j) {
           gamma_grad_data[j] += thread_gamma_grads[t][j];
           beta_grad_data[j] += thread_beta_grads[t][j];
@@ -1963,18 +1963,18 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
       return;
     }
 
-    size_t num_threads =
-        TransformerConfig::instance().num_threads;
-    if (num_slices_to_process < num_threads)
-      num_threads = num_slices_to_process;
-    size_t slices_per_thread = num_slices_to_process / num_threads;
+    size_t numThreads =
+        TransformerConfig::instance().numThreads;
+    if (num_slices_to_process < numThreads)
+      numThreads = num_slices_to_process;
+    size_t slices_per_thread = num_slices_to_process / numThreads;
 
     std::vector<std::function<void()>> tasks;
 
-    for (size_t t = 0; t < num_threads; ++t) {
+    for (size_t t = 0; t < numThreads; ++t) {
       size_t start_slice_work_idx = t * slices_per_thread;
       size_t end_slice_work_idx =
-          (t == num_threads - 1) ? num_slices_to_process
+          (t == numThreads - 1) ? num_slices_to_process
                                  : start_slice_work_idx + slices_per_thread;
 
       tasks.emplace_back([&, start_slice_work_idx, end_slice_work_idx,
@@ -2067,13 +2067,13 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
     const std::vector<float> &input_ids_data = input_ids->get_data();
     const std::vector<int> &input_ids_shape = input_ids->get_shape();
 
-    size_t batch_size = input_ids_shape[0];
+    size_t batchSize = input_ids_shape[0];
     size_t sequence_length = input_ids_shape[1];
-    size_t embed_dim = grad_output->get_shape().back();
+    size_t embedDim = grad_output->get_shape().back();
 
-    if (grad_output->get_shape() != std::vector<int>{(int)batch_size,
+    if (grad_output->get_shape() != std::vector<int>{(int)batchSize,
                                                      (int)sequence_length,
-                                                     (int)embed_dim}) {
+                                                     (int)embedDim}) {
       throw std::runtime_error(
           "Gradient output shape mismatch in EmbeddingLookup backward.");
     }
@@ -2082,24 +2082,24 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
       std::vector<float> &weights_grad_data = weights_parent->grad_ref();
       size_t vocab_size = weights_parent->get_shape()[0];
 
-      size_t total_indices = batch_size * sequence_length;
-      size_t num_threads =
-          TransformerConfig::instance().num_threads;
-      if (total_indices < num_threads)
-        num_threads = total_indices;
-      size_t indices_per_thread = total_indices / num_threads;
+      size_t total_indices = batchSize * sequence_length;
+      size_t numThreads =
+          TransformerConfig::instance().numThreads;
+      if (total_indices < numThreads)
+        numThreads = total_indices;
+      size_t indices_per_thread = total_indices / numThreads;
 
       std::vector<std::vector<float>> thread_local_grads(
-          num_threads, std::vector<float>(vocab_size * embed_dim, 0.0f));
+          numThreads, std::vector<float>(vocab_size * embedDim, 0.0f));
       std::vector<std::function<void()>> tasks;
 
-      for (size_t t = 0; t < num_threads; ++t) {
+      for (size_t t = 0; t < numThreads; ++t) {
         size_t start_idx = t * indices_per_thread;
-        size_t end_idx = (t == num_threads - 1)
+        size_t end_idx = (t == numThreads - 1)
                              ? total_indices
                              : start_idx + indices_per_thread;
 
-        tasks.emplace_back([&, t, start_idx, end_idx, vocab_size, embed_dim]() {
+        tasks.emplace_back([&, t, start_idx, end_idx, vocab_size, embedDim]() {
           for (size_t i = start_idx; i < end_idx; ++i) {
             float token_id_float = input_ids_data[i];
             if (token_id_float < 0 || token_id_float >= vocab_size ||
@@ -2108,10 +2108,10 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
             }
             int token_id = static_cast<int>(token_id_float);
 
-            size_t grad_output_start_idx = i * embed_dim;
-            size_t weights_grad_start_idx = token_id * embed_dim;
+            size_t grad_output_start_idx = i * embedDim;
+            size_t weights_grad_start_idx = token_id * embedDim;
 
-            for (size_t j = 0; j < embed_dim; ++j) {
+            for (size_t j = 0; j < embedDim; ++j) {
               thread_local_grads[t][weights_grad_start_idx + j] +=
                   grad_output_data[grad_output_start_idx + j];
             }
@@ -2121,8 +2121,8 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
 
       getThreadPool().run_batch(std::move(tasks));
 
-      for (size_t t = 0; t < num_threads; ++t) {
-        for (size_t i = 0; i < vocab_size * embed_dim; ++i) {
+      for (size_t t = 0; t < numThreads; ++t) {
+        for (size_t i = 0; i < vocab_size * embedDim; ++i) {
           weights_grad_data[i] += thread_local_grads[t][i];
         }
       }

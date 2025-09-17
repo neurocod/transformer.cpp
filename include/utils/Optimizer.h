@@ -27,7 +27,7 @@ protected:
 
 class SGD : public Optimizer {
 public:
-  SGD(float learning_rate) : learning_rate_(learning_rate) {}
+  SGD(float learningRate) : learning_rate_(learningRate) {}
   ~SGD() override = default;
 
   // Implements the SGD optimization step
@@ -39,7 +39,7 @@ private:
 
 class Adam : public Optimizer {
 public:
-  Adam(float learning_rate = 0.001f, float beta1 = 0.9f, float beta2 = 0.999f,
+  Adam(float learningRate = 0.001f, float beta1 = 0.9f, float beta2 = 0.999f,
        float epsilon = 1e-8f);
   ~Adam() override = default;
 

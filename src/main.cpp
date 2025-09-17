@@ -41,7 +41,7 @@ void pressEnterToContinue() {
 }
 
 void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dataLoader) {
-  Adam optimizer(cf.learning_rate);
+  Adam optimizer(cf.learningRate);
   CrossEntropyLoss criterion;
 
   std::cout << "Starting Transformer training..." << std::endl;
@@ -49,7 +49,7 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
 
   auto t_train_start = clock::now();
 
-  for (int epoch = 0; epoch < cf.num_epochs; ++epoch) {
+  for (int epoch = 0; epoch < cf.numEpochs; ++epoch) {
     auto epoch_start = std::chrono::high_resolution_clock::now();
 
     optimizer.zero_grad();
@@ -65,13 +65,13 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
 
     // Reshape logits
     std::shared_ptr<Tensor> reshaped_logits =
-      logits->reshape({ cf.batch_size * cf.decoder_seq_length, dataLoader.get_vocab_size() });
+      logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader.get_vocab_size() });
 
     // Compute loss
     std::shared_ptr<Tensor> loss =
-      criterion.compute_loss(reshaped_logits, target_output_ids);
+      criterion.computeLoss(reshaped_logits, target_output_ids);
 
-    std::cout << std::format("Epoch [{}/{}], Loss: {}\n", (epoch + 1), cf.num_epochs, vector_to_string(loss->get_data()));
+    std::cout << std::format("Epoch [{}/{}], Loss: {}\n", (epoch + 1), cf.numEpochs, vector_to_string(loss->get_data()));
 
     // Backward pass
     criterion.backward(loss);
@@ -89,8 +89,8 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
   std::cout << "\nTransformer training finished." << std::endl;
 
   try {
-    std::cout << std::format("Saving final weights to {}\n", cf.weights_filename);
-    model.save_weights(cf.weights_filename);
+    std::cout << std::format("Saving final weights to {}\n", cf.weightsFilename);
+    model.save_weights(cf.weightsFilename);
     std::cout << "Weights saved successfully." << std::endl;
   }
   catch (const std::exception& e) {
@@ -100,13 +100,13 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
 
 void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& dataLoader) {
   std::cout << "\n--- Running Inference ---\n";
-  std::cout << std::format("Initial prompt: \"{}\"\n", cf.initial_prompt);
+  std::cout << std::format("Initial prompt: \"{}\"\n", cf.initialPrompt);
 
-  int current_seq_len = cf.input_seq_length;
+  int current_seq_len = cf.inputSeqLength;
 
   // Tokenize the initial prompt
   std::shared_ptr<Tensor> current_input_ids =
-    string_to_tensor(cf.initial_prompt, dataLoader, current_seq_len);
+    string_to_tensor(cf.initialPrompt, dataLoader, current_seq_len);
   std::vector<float> generated_ids = current_input_ids->get_data();
 
   // Remove padding from initial prompt display if any was added by
@@ -123,7 +123,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
   }
   std::cout << std::flush;
 
-  for (int i = 0; i < cf.max_generate_length; ++i) {
+  for (int i = 0; i < cf.maxGenerateLength; ++i) {
     std::vector<float> step_input_vec;
     int start_idx = std::max(0, current_total_len - current_seq_len);
     for (int k = start_idx; k < current_total_len; ++k) {
@@ -131,7 +131,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     }
     // Pad if the current sequence is shorter than model's input length
     while (step_input_vec.size() < current_seq_len) {
-      step_input_vec.push_back(cf.pad_token_id);
+      step_input_vec.push_back(cf.padTokenId);
     }
 
     // Create tensor for this step (batch size 1)
@@ -213,15 +213,15 @@ int mainExcept() {
   TransformerConfig::init("../config.ini");
   const TransformerConfig& cf = TransformerConfig::instance();
 
-  DataLoader dataLoader(cf.input_seq_length, cf.batch_size);
-  dataLoader.readFile(cf.data_filename);
+  DataLoader dataLoader(cf.inputSeqLength, cf.batchSize);
+  dataLoader.readFile(cf.dataFilename);
 
   const int input_vocab_size = dataLoader.get_vocab_size();
   const int target_vocab_size = dataLoader.get_vocab_size();
 
-  Transformer model(input_vocab_size, target_vocab_size, cf.embed_dim,
-    cf.max_sequence_length, cf.num_layers, cf.num_heads, cf.ff_hidden_dim,
-    cf.dropout_rate, cf.pad_token_id);
+  Transformer model(input_vocab_size, target_vocab_size, cf.embedDim,
+    cf.maxSequenceLength, cf.numLayers, cf.numHeads, cf.ffHiddenDim,
+    cf.dropoutRate, cf.padTokenId);
 
   auto t_init_end = clock::now();
   auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
@@ -237,18 +237,18 @@ int mainExcept() {
   }
   std::cout << std::format("Total optimizable parameters: {}\n", total_params);
 
-  if (cf.inference_mode) {
-    if (!std::filesystem::exists(cf.weights_filename)) {
-      std::cerr << std::format("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weights_filename);
+  if (cf.inferenceMode) {
+    if (!std::filesystem::exists(cf.weightsFilename)) {
+      std::cerr << std::format("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weightsFilename);
       return 1;
     }
     try {
-      std::cout << std::format("Attempting to load weights from {}...\n", cf.weights_filename);
-      model.load_weights(cf.weights_filename);
+      std::cout << std::format("Attempting to load weights from {}...\n", cf.weightsFilename);
+      model.load_weights(cf.weightsFilename);
       std::cout << "Weights loaded successfully." << std::endl;
     } catch (const std::exception& e) {
       std::cerr << "Failed to load weights: " << e.what() << std::endl;
-      if (cf.inference_mode) {
+      if (cf.inferenceMode) {
         std::cerr << "Cannot run inference without weights. Exiting."
           << std::endl;
         return 1;

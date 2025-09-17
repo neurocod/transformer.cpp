@@ -2,7 +2,7 @@
 
 class ThreadPool {
 public:
-  explicit ThreadPool(size_t num_threads);
+  explicit ThreadPool(size_t numThreads);
   ~ThreadPool();
 
   void run_batch(std::vector<std::function<void()>> tasks);

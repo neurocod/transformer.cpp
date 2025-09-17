@@ -3,7 +3,7 @@
 
 class PositionalEncoding {
 public:
-  PositionalEncoding(int max_sequence_length, int embed_dim);
+  PositionalEncoding(int maxSequenceLength, int embedDim);
   ~PositionalEncoding() = default;
 
   // Forward pass

@@ -1,8 +1,8 @@
 #include "layers/Embedding.h"
 
-Embedding::Embedding(int vocab_size, int embed_dim)
-    : vocab_size_(vocab_size), embed_dim_(embed_dim) {
-  // Embedding matrix shape: (vocab_size, embed_dim)
+Embedding::Embedding(int vocab_size, int embedDim)
+    : vocab_size_(vocab_size), embed_dim_(embedDim) {
+  // Embedding matrix shape: (vocab_size, embedDim)
   weights_ = Tensor::create(std::vector<int>{vocab_size_, embed_dim_}, "embed.w");
 
   std::random_device rd;
@@ -19,26 +19,26 @@ Embedding::Embedding(int vocab_size, int embed_dim)
 
 std::shared_ptr<Tensor>
 Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
-  // input_ids shape: (batch_size, sequence_length)
-  // Output shape: (batch_size, sequence_length, embed_dim)
+  // input_ids shape: (batchSize, sequence_length)
+  // Output shape: (batchSize, sequence_length, embedDim)
 
   const std::vector<int> &input_shape = input_ids->get_shape();
   if (input_shape.size() != 2) {
     throw std::runtime_error("Embedding layer input must be a 2D tensor "
-                             "(batch_size, sequence_length).");
+                             "(batchSize, sequence_length).");
   }
 
-  size_t batch_size = input_shape[0];
+  size_t batchSize = input_shape[0];
   size_t sequence_length = input_shape[1];
 
   std::shared_ptr<Tensor> output =
-      Tensor::create({(int)batch_size, (int)sequence_length, embed_dim_});
+      Tensor::create({(int)batchSize, (int)sequence_length, embed_dim_});
   std::vector<float> &output_data = output->data_ref();
 
   const std::vector<float> &input_ids_data = input_ids->get_data();
   const std::vector<float> &weights_data = weights_->get_data();
 
-  for (size_t i = 0; i < batch_size * sequence_length; ++i) {
+  for (size_t i = 0; i < batchSize * sequence_length; ++i) {
     float token_id_float = input_ids_data[i];
     if (token_id_float < 0 || token_id_float >= vocab_size_ ||
         std::fmod(token_id_float, 1.0f) != 0.0f) {

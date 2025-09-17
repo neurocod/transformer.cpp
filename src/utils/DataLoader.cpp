@@ -3,9 +3,9 @@
 static std::mt19937 g_randBatch(
   std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-DataLoader::DataLoader(int sequence_length, int batch_size):
+DataLoader::DataLoader(int sequence_length, int batchSize):
   _sequenceLength(sequence_length),
-  _batchSize(batch_size)
+  _batchSize(batchSize)
 {
 }
 

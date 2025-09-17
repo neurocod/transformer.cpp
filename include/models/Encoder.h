@@ -3,8 +3,8 @@
 
 class Encoder {
 public:
-  Encoder(int num_layers, int embed_dim, int num_heads, int ff_hidden_dim,
-          float dropout_rate);
+  Encoder(int numLayers, int embedDim, int numHeads, int ffHiddenDim,
+          float dropoutRate);
   ~Encoder() = default;
 
   // Forward pass

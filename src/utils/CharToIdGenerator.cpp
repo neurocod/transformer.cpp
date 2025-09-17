@@ -23,10 +23,10 @@ std::string CharToIdTextGenerator::generateSimple() {
     std::string ret;
     for (int i = 0; i < 50; ++i) {
         ret += randTrash();
-        if (_rand() % 2)
-            ret += "1A";
+        if (_rand() % 2 ==0)
+            ret += "1ABC";
         else
-            ret += "2B";
+            ret += "2DCE";
     }
     return ret;
 }

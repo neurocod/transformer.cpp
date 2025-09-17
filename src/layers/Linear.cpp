@@ -6,6 +6,8 @@ Linear::Linear(int input_dim, int output_dim, const std::string& name)
   weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, name + ".Linear::k");
   // Biases shape: (output_dim)
   biases_ = Tensor::create(std::vector<int>{output_dim_}, name + ".Linear::b");
+  if (output_dim_ == 32)
+    int t = 3;
 
   // Initialize weights and biases with random values
   std::random_device rd;

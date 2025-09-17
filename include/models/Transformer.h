@@ -8,9 +8,9 @@
 
 class Transformer {
 public:
-  Transformer(int input_vocab_size, int target_vocab_size, int embed_dim,
-              int max_sequence_length, int num_layers, int num_heads,
-              int ff_hidden_dim, float dropout_rate, float pad_token_id = 0.0f);
+  Transformer(int input_vocab_size, int target_vocab_size, int embedDim,
+              int maxSequenceLength, int numLayers, int numHeads,
+              int ffHiddenDim, float dropoutRate, float padTokenId = 0.0f);
 
   std::shared_ptr<Tensor>
   forward(const std::shared_ptr<Tensor> &encoder_input_ids,

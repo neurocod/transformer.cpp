@@ -6,8 +6,8 @@
 
 class EncoderLayer {
 public:
-  EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim,
-               float dropout_rate = 0.1f);
+  EncoderLayer(int embedDim, int numHeads, int ffHiddenDim,
+               float dropoutRate = 0.1f);
   ~EncoderLayer() = default;
 
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input,

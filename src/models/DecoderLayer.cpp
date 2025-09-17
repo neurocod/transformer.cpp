@@ -1,17 +1,17 @@
 #include "models/DecoderLayer.h"
 
-DecoderLayer::DecoderLayer(int embed_dim, int num_heads, int ff_hidden_dim,
-	float dropout_rate) :
-	masked_self_attention_("decoder-masked-", embed_dim, num_heads),
-  layernorm1_("Decoder.1", embed_dim),
-	dropout1_(dropout_rate),
-  cross_attention_("Decoder-cross-", embed_dim, num_heads),
-	layernorm2_("Decoder.2", embed_dim),
-  dropout2_(dropout_rate),
-	feed_forward_(embed_dim, ff_hidden_dim),
-  layernorm3_("Decoder.3", embed_dim),
-	dropout3_(dropout_rate),
-  dropout_rate_(dropout_rate) {
+DecoderLayer::DecoderLayer(int embedDim, int numHeads, int ffHiddenDim,
+	float dropoutRate) :
+	masked_self_attention_("decoder-masked-", embedDim, numHeads),
+  layernorm1_("Decoder.1", embedDim),
+	dropout1_(dropoutRate),
+  cross_attention_("Decoder-cross-", embedDim, numHeads),
+	layernorm2_("Decoder.2", embedDim),
+  dropout2_(dropoutRate),
+	feed_forward_(embedDim, ffHiddenDim),
+  layernorm3_("Decoder.3", embedDim),
+	dropout3_(dropoutRate),
+  dropout_rate_(dropoutRate) {
 }
 
 std::shared_ptr<Tensor>
@@ -19,8 +19,8 @@ DecoderLayer::forward(std::shared_ptr<Tensor> &target_input,
                       std::shared_ptr<Tensor> &encoder_output,
                       std::shared_ptr<Tensor> &look_ahead_mask,
                       std::shared_ptr<Tensor> &padding_mask, bool is_training) {
-  // target_input shape: (batch_size, target_sequence_length, embed_dim)
-  // encoder_output shape: (batch_size, input_sequence_length, embed_dim)
+  // target_input shape: (batchSize, target_sequence_length, embedDim)
+  // encoder_output shape: (batchSize, input_sequence_length, embedDim)
 
   std::shared_ptr<Tensor> masked_attention_output =
       masked_self_attention_.forward(target_input, target_input, target_input,

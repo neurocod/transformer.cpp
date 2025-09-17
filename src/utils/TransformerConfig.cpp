@@ -15,33 +15,33 @@ void TransformerConfig::init(const std::string& filename) {
 }
 
 void TransformerConfig::init(const ConfigParser& config) {
-  num_threads = config.value<int>("num_threads");
-  inference_mode = config.value<bool>("inference_mode");
-  weights_filename = config.value<std::string>("weights_filename");
-  data_filename = config.value<std::string>("data_filename");
+  numThreads = config.value<int>("numThreads");
+  inferenceMode = config.value<bool>("inferenceMode");
+  weightsFilename = config.value<std::string>("weightsFilename");
+  dataFilename = config.value<std::string>("dataFilename");
 
   // Model Architecture
-  embed_dim = config.value<int>("embed_dim");
-  max_sequence_length = config.value<int>("max_sequence_length");
-  num_layers = config.value<int>("num_layers");
-  num_heads = config.value<int>("num_heads");
-  ff_hidden_dim = config.value<int>("ff_hidden_dim");
-  dropout_rate = config.value<float>("dropout_rate");
-  pad_token_id = config.value<float>("pad_token_id");
+  embedDim = config.value<int>("embedDim");
+  maxSequenceLength = config.value<int>("maxSequenceLength");
+  numLayers = config.value<int>("numLayers");
+  numHeads = config.value<int>("numHeads");
+  ffHiddenDim = config.value<int>("ffHiddenDim");
+  dropoutRate = config.value<float>("dropoutRate");
+  padTokenId = config.value<float>("padTokenId");
 
   // Training Parameters
-  learning_rate = config.value<float>("learning_rate");
-  num_epochs = config.value<int>("num_epochs");
-  batch_size = config.value<int>("batch_size");
-  input_seq_length = config.value<int>("input_seq_length");
-  decoder_seq_length = config.value<int>("decoder_seq_length");
+  learningRate = config.value<float>("learningRate");
+  numEpochs = config.value<int>("numEpochs");
+  batchSize = config.value<int>("batchSize");
+  inputSeqLength = config.value<int>("inputSeqLength");
+  decoderSeqLength = config.value<int>("decoderSeqLength");
 
   // Inference Parameters
-  max_generate_length = config.value<int>("max_generate_length");
-  initial_prompt = config.value<std::string>("initial_prompt");
+  maxGenerateLength = config.value<int>("maxGenerateLength");
+  initialPrompt = config.value<std::string>("initialPrompt");
 
-  if (weights_filename == "auto") {
-    weights_filename = std::format("weigth-{}-{}-{}.bin", num_layers, ff_hidden_dim, num_heads);
+  if (weightsFilename == "auto") {
+    weightsFilename = std::format("weigth-{}-{}-{}.bin", numLayers, ffHiddenDim, numHeads);
   }
 }
 

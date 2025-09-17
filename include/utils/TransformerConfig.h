@@ -8,30 +8,30 @@ public:
 
   std::string modelFileNameByParameters() const;
 
-  size_t num_threads;
-  bool inference_mode;
-  std::string weights_filename;
-  std::string data_filename;
+  size_t numThreads;
+  bool inferenceMode;
+  std::string weightsFilename;
+  std::string dataFilename;
 
   // Model Architecture
-  int embed_dim;
-  int max_sequence_length;
-  int num_layers;
-  int num_heads;
-  int ff_hidden_dim;
-  float dropout_rate;
-  float pad_token_id;
+  int embedDim;
+  int maxSequenceLength;
+  int numLayers;
+  int numHeads;
+  int ffHiddenDim;
+  float dropoutRate;
+  float padTokenId;
 
   // Training Parameters
-  float learning_rate;
-  int num_epochs;
-  int batch_size;
-  int input_seq_length;
-  int decoder_seq_length;
+  float learningRate;
+  int numEpochs;
+  int batchSize;
+  int inputSeqLength;
+  int decoderSeqLength;
 
   // Inference Parameters
-  int max_generate_length;
-  std::string initial_prompt;
+  int maxGenerateLength;
+  std::string initialPrompt;
 private:
   static TransformerConfig& mutableInstance();
   void init(const ConfigParser& config);

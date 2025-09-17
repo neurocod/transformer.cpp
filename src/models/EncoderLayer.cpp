@@ -1,19 +1,19 @@
 #include "models/EncoderLayer.h"
 
-EncoderLayer::EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim, float dropout_rate):
-	self_attention_("encoder-self-", embed_dim, num_heads),
-	layernorm1_("encoder.1", embed_dim),
-	dropout1_(dropout_rate),
-	feed_forward_(embed_dim, ff_hidden_dim),
-	layernorm2_("encoder.2", embed_dim),
-	dropout2_(dropout_rate),
-	dropout_rate_(dropout_rate) {
+EncoderLayer::EncoderLayer(int embedDim, int numHeads, int ffHiddenDim, float dropoutRate):
+	self_attention_("encoder-self-", embedDim, numHeads),
+	layernorm1_("encoder.1", embedDim),
+	dropout1_(dropoutRate),
+	feed_forward_(embedDim, ffHiddenDim),
+	layernorm2_("encoder.2", embedDim),
+	dropout2_(dropoutRate),
+	dropout_rate_(dropoutRate) {
 }
 
 std::shared_ptr<Tensor>
 EncoderLayer::forward(std::shared_ptr<Tensor> &input,
 											std::shared_ptr<Tensor> &padding_mask, bool is_training) {
-	// Input shape: (batch_size, sequence_length, embed_dim)
+	// Input shape: (batchSize, sequence_length, embedDim)
 
 	std::shared_ptr<Tensor> attention_output =
 			self_attention_.forward(input, input, input, padding_mask);

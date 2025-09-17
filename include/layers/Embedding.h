@@ -3,11 +3,11 @@
 
 class Embedding {
 public:
-  Embedding(int vocab_size, int embed_dim);
+  Embedding(int vocab_size, int embedDim);
   ~Embedding() = default;
 
-  // Input shape: (batch_size, sequence_length)
-  // Output shape: (batch_size, sequence_length, embed_dim)
+  // Input shape: (batchSize, sequence_length)
+  // Output shape: (batchSize, sequence_length, embedDim)
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input_ids);
 
 

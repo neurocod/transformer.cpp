@@ -3,21 +3,21 @@
 #include "utils/BinaryReader.h"
 
 Transformer::Transformer(int input_vocab_size, int target_vocab_size,
-                         int embed_dim, int max_sequence_length, int num_layers,
-                         int num_heads, int ff_hidden_dim, float dropout_rate,
-                         float pad_token_id)
+                         int embedDim, int maxSequenceLength, int numLayers,
+                         int numHeads, int ffHiddenDim, float dropoutRate,
+                         float padTokenId)
     : input_vocab_size_(input_vocab_size),
-      target_vocab_size_(target_vocab_size), embed_dim_(embed_dim),
-      max_sequence_length_(max_sequence_length), num_layers_(num_layers),
-      num_heads_(num_heads), ff_hidden_dim_(ff_hidden_dim),
-      dropout_rate_(dropout_rate), pad_token_id_(pad_token_id),
-      encoder_embedding_(input_vocab_size, embed_dim),
-      encoder_positional_encoding_(max_sequence_length, embed_dim),
-      encoder_(num_layers, embed_dim, num_heads, ff_hidden_dim, dropout_rate),
-      decoder_embedding_(target_vocab_size, embed_dim),
-      decoder_positional_encoding_(max_sequence_length, embed_dim),
-      decoder_(num_layers, embed_dim, num_heads, ff_hidden_dim, dropout_rate),
-      final_linear_(embed_dim, target_vocab_size, "final") {
+      target_vocab_size_(target_vocab_size), embed_dim_(embedDim),
+      max_sequence_length_(maxSequenceLength), num_layers_(numLayers),
+      num_heads_(numHeads), ff_hidden_dim_(ffHiddenDim),
+      dropout_rate_(dropoutRate), pad_token_id_(padTokenId),
+      encoder_embedding_(input_vocab_size, embedDim),
+      encoder_positional_encoding_(maxSequenceLength, embedDim),
+      encoder_(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
+      decoder_embedding_(target_vocab_size, embedDim),
+      decoder_positional_encoding_(maxSequenceLength, embedDim),
+      decoder_(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
+      final_linear_(embedDim, target_vocab_size, "final") {
   if (embed_dim_ % num_heads_ != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");
@@ -36,7 +36,7 @@ std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
     throw std::runtime_error(
         "Decoder input for self-attention mask must be 2D (batch, seq_len).");
   }
-  int batch_size = decoder_shape[0];
+  int batchSize = decoder_shape[0];
   int sequence_length = decoder_shape[1];
 
   std::shared_ptr<Tensor> look_ahead_mask =
@@ -49,12 +49,12 @@ std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
 
   if (look_ahead_shape !=
           std::vector<int>{1, 1, sequence_length, sequence_length} ||
-      padding_shape != std::vector<int>{batch_size, 1, 1, sequence_length}) {
+      padding_shape != std::vector<int>{batchSize, 1, 1, sequence_length}) {
     throw std::runtime_error("Unexpected shapes for look-ahead or padding "
                              "masks during combination.");
   }
 
-  std::vector<int> combined_mask_shape = {batch_size, 1, sequence_length,
+  std::vector<int> combined_mask_shape = {batchSize, 1, sequence_length,
                                           sequence_length};
   std::shared_ptr<Tensor> combined_mask = Tensor::create(combined_mask_shape);
   std::vector<float> &combined_mask_data = combined_mask->data_ref();
@@ -62,7 +62,7 @@ std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
   const std::vector<float> &look_ahead_data = look_ahead_mask->get_data();
   const std::vector<float> &padding_data = padding_mask->get_data();
 
-  for (int b = 0; b < batch_size; ++b) {
+  for (int b = 0; b < batchSize; ++b) {
     for (int tq = 0; tq < sequence_length; ++tq) {
       for (int tk = 0; tk < sequence_length; ++tk) {
         size_t look_ahead_idx = tq * sequence_length + tk;
@@ -92,7 +92,7 @@ Transformer::forward(const std::shared_ptr<Tensor> &encoder_input_ids,
 
   if (enc_input_shape.size() != 2 || dec_input_shape.size() != 2) {
     throw std::runtime_error("Encoder and decoder input IDs must be 2D tensors "
-                             "(batch_size, sequence_length).");
+                             "(batchSize, sequence_length).");
   }
 
   std::shared_ptr<Tensor> encoder_padding_mask =

@@ -1,7 +1,7 @@
 #include "layers/PositionalEncoding.h"
 
-PositionalEncoding::PositionalEncoding(int max_sequence_length, int embed_dim)
-    : max_sequence_length_(max_sequence_length), embed_dim_(embed_dim) {
+PositionalEncoding::PositionalEncoding(int maxSequenceLength, int embedDim)
+    : max_sequence_length_(maxSequenceLength), embed_dim_(embedDim) {
   // Pre-calculate the positional encodings matrix
   positional_encodings_ = Tensor::create({max_sequence_length_, embed_dim_});
   std::vector<float> &encodings_data = positional_encodings_->data_ref();
@@ -26,21 +26,21 @@ PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
   const std::vector<int> &input_shape = input->get_shape();
   if (input_shape.size() != 3) {
     throw std::runtime_error("Positional Encoding input must be a 3D tensor "
-                             "(batch_size, sequence_length, embed_dim).");
+                             "(batchSize, sequence_length, embedDim).");
   }
 
-  size_t batch_size = input_shape[0];
+  size_t batchSize = input_shape[0];
   size_t sequence_length = input_shape[1];
-  size_t embed_dim = input_shape[2];
+  size_t embedDim = input_shape[2];
 
-  if (embed_dim != embed_dim_) {
+  if (embedDim != embed_dim_) {
     throw std::runtime_error(
         "Input embedding dimension mismatch in Positional Encoding.");
   }
 
   if (sequence_length > max_sequence_length_) {
     throw std::runtime_error("Input sequence length exceeds "
-                             "max_sequence_length in Positional Encoding.");
+                             "maxSequenceLength in Positional Encoding.");
   }
 
   // Add the pre-calculated positional encodings to the input tensor.
@@ -49,12 +49,12 @@ PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
   std::vector<float> &output_data = output->data_ref();
   const std::vector<float> &encoding_data = positional_encodings_->get_data();
 
-  for (size_t b = 0; b < batch_size; ++b) {
+  for (size_t b = 0; b < batchSize; ++b) {
     for (size_t s = 0; s < sequence_length; ++s) {
-      size_t input_start_idx = (b * sequence_length + s) * embed_dim;
-      size_t encoding_start_idx = s * embed_dim;
+      size_t input_start_idx = (b * sequence_length + s) * embedDim;
+      size_t encoding_start_idx = s * embedDim;
 
-      for (size_t d = 0; d < embed_dim; ++d) {
+      for (size_t d = 0; d < embedDim; ++d) {
         output_data[input_start_idx + d] =
             input_data[input_start_idx + d] +
             encoding_data[encoding_start_idx + d];

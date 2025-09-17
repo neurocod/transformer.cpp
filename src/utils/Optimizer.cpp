@@ -18,7 +18,7 @@ void SGD::step() {
             "Parameter data and gradient size mismatch in SGD step.");
       }
 
-      // param_data = param_data - learning_rate * param_grad
+      // param_data = param_data - learningRate * param_grad
       for (size_t i = 0; i < param_data.size(); ++i) {
         param_data[i] -= learning_rate_ * param_grad[i];
       }
@@ -26,8 +26,8 @@ void SGD::step() {
   }
 }
 
-Adam::Adam(float learning_rate, float beta1, float beta2, float epsilon)
-    : learning_rate_(learning_rate), beta1_(beta1), beta2_(beta2),
+Adam::Adam(float learningRate, float beta1, float beta2, float epsilon)
+    : learning_rate_(learningRate), beta1_(beta1), beta2_(beta2),
       epsilon_(epsilon), t_(0) {
   // Initialize moments m and v for each optimizable parameter
   for (const auto &param : parameters_) {
@@ -39,8 +39,8 @@ Adam::Adam(float learning_rate, float beta1, float beta2, float epsilon)
 void Adam::step() {
   t_++;
 
-  float beta1_t = std::pow(beta1_, t_);
-  float beta2_t = std::pow(beta2_, t_);
+  float beta1_t = std::pow(beta1_, (float)t_);
+  float beta2_t = std::pow(beta2_, (float)t_);
 
   // Gradient Clipping
   float total_norm_sq = 0.0f;

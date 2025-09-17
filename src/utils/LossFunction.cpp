@@ -12,7 +12,7 @@ void LossFunction::backward(std::shared_ptr<Tensor> &loss) {
 }
 
 std::shared_ptr<Tensor>
-MeanSquaredErrorLoss::compute_loss(std::shared_ptr<Tensor> &predictions,
+MeanSquaredErrorLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
                                    std::shared_ptr<Tensor> &targets) {
   if (predictions->get_shape() != targets->get_shape()) {
     throw std::runtime_error(
@@ -142,7 +142,7 @@ nll_loss(const std::shared_ptr<Tensor> &log_probabilities,
 }
 
 std::shared_ptr<Tensor>
-CrossEntropyLoss::compute_loss(std::shared_ptr<Tensor> &predictions,
+CrossEntropyLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
                                std::shared_ptr<Tensor> &targets) {
   // Apply LogSoftmax to predictions
   std::shared_ptr<Tensor> log_probs = log_softmax(predictions);
