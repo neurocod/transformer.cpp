@@ -3,7 +3,7 @@
 
 class LayerNorm {
 public:
-  LayerNorm(int normalized_shape, float epsilon = 1e-5f);
+  LayerNorm(const std::string& name, int normalized_shape, float epsilon = 1e-5f);
   ~LayerNorm() = default;
 
   // Forward pass

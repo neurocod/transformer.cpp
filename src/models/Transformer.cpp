@@ -17,7 +17,7 @@ Transformer::Transformer(int input_vocab_size, int target_vocab_size,
       decoder_embedding_(target_vocab_size, embed_dim),
       decoder_positional_encoding_(max_sequence_length, embed_dim),
       decoder_(num_layers, embed_dim, num_heads, ff_hidden_dim, dropout_rate),
-      final_linear_(embed_dim, target_vocab_size) {
+      final_linear_(embed_dim, target_vocab_size, "final.") {
   if (embed_dim_ % num_heads_ != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");
@@ -186,7 +186,4 @@ void Transformer::load_weights(const std::string& filename) {
     }
     tensor_ptr->read(reader);
   }
-
-  std::cout << "Weights loaded successfully." << std::endl;
-  infile.close();
 }

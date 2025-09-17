@@ -1,11 +1,11 @@
 #include "layers/Linear.h"
 
-Linear::Linear(int input_dim, int output_dim)
+Linear::Linear(int input_dim, int output_dim, const std::string& name)
     : input_dim_(input_dim), output_dim_(output_dim) {
   // Weights shape: (input_dim, output_dim)
-  weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, "linear.k");
+  weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, name + ".Linear::k");
   // Biases shape: (output_dim)
-  biases_ = Tensor::create(std::vector<int>{output_dim_}, "linear.b");
+  biases_ = Tensor::create(std::vector<int>{output_dim_}, name + ".Linear::b");
 
   // Initialize weights and biases with random values
   std::random_device rd;

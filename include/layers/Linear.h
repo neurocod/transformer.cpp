@@ -3,7 +3,7 @@
 
 class Linear {
 public:
-  Linear(int input_dim, int output_dim);
+  Linear(int input_dim, int output_dim, const std::string& name);
   ~Linear() {}
 
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);

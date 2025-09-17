@@ -1,8 +1,10 @@
 #include "layers/PositionwiseFeedForward.h"
 
-PositionwiseFeedForward::PositionwiseFeedForward(int input_dim, int hidden_dim)
-    : fc1_(input_dim, hidden_dim), fc2_(hidden_dim, input_dim),
-      input_dim_(input_dim), hidden_dim_(hidden_dim) {}
+PositionwiseFeedForward::PositionwiseFeedForward(int input_dim, int hidden_dim):
+  fc1_(input_dim, hidden_dim, "pos.fc1"),
+  fc2_(hidden_dim, input_dim, "pos.fc2"),
+  input_dim_(input_dim),
+  hidden_dim_(hidden_dim) {}
 
 std::shared_ptr<Tensor>
 PositionwiseFeedForward::forward(std::shared_ptr<Tensor> &input) {
