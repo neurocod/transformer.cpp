@@ -24,6 +24,7 @@
 #include <thread>
 #include <limits>
 #include <format>
+#include <span>
 
 
 #include "utils/Tensor.h"
