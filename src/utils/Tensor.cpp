@@ -55,6 +55,14 @@ std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
 }
 
 void Tensor::write(BinaryWriter& writer)const {
+  std::string str;
+  for (auto dim : _shape) {
+    if (!str.empty())
+      str += " * ";
+    str += std::to_string(dim);
+  }
+  std::cout << std::format("writing tensor {}, {}\n", _name, str);
+
   writer.write(_name);
 
   const uint32_t rank = static_cast<uint32_t>(_shape.size());
@@ -79,7 +87,7 @@ void Tensor::read(BinaryReader& reader) {
     throw std::ios_base::failure("Failed to read tensor name");
   if (name != _name)
     throw std::invalid_argument(std::format("Tensor names mismatch: read {} != {} expected", name, _name));
-  std::cout << std::format("reading tensor {}\n", _name);
+  //std::cout << std::format("reading tensor {}\n", _name);
 
   // Read rank
   const uint32_t rank = reader.read<uint32_t>();

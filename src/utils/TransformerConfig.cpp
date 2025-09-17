@@ -17,7 +17,6 @@ void TransformerConfig::init(const std::string& filename) {
 void TransformerConfig::init(const ConfigParser& config) {
   num_threads = config.value<int>("num_threads");
   inference_mode = config.value<bool>("inference_mode");
-  load_existing_weights = config.value<bool>("load_existing_weights");
   weights_filename = config.value<std::string>("weights_filename");
   data_filename = config.value<std::string>("data_filename");
 

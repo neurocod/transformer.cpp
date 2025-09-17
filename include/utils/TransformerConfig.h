@@ -10,7 +10,6 @@ public:
 
   size_t num_threads;
   bool inference_mode;
-  bool load_existing_weights;
   std::string weights_filename;
   std::string data_filename;
 

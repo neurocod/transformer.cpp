@@ -1,7 +1,7 @@
 #include "models/EncoderLayer.h"
 
 EncoderLayer::EncoderLayer(int embed_dim, int num_heads, int ff_hidden_dim, float dropout_rate):
-	self_attention_(embed_dim, num_heads),
+	self_attention_("encoder-self-", embed_dim, num_heads),
 	layernorm1_("encoder.1", embed_dim),
 	dropout1_(dropout_rate),
 	feed_forward_(embed_dim, ff_hidden_dim),

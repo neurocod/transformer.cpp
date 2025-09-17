@@ -2,10 +2,10 @@
 
 DecoderLayer::DecoderLayer(int embed_dim, int num_heads, int ff_hidden_dim,
 	float dropout_rate) :
-	masked_self_attention_(embed_dim, num_heads),
+	masked_self_attention_("decoder-masked-", embed_dim, num_heads),
   layernorm1_("Decoder.1", embed_dim),
 	dropout1_(dropout_rate),
-  cross_attention_(embed_dim, num_heads),
+  cross_attention_("Decoder-cross-", embed_dim, num_heads),
 	layernorm2_("Decoder.2", embed_dim),
   dropout2_(dropout_rate),
 	feed_forward_(embed_dim, ff_hidden_dim),

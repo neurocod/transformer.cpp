@@ -1,12 +1,12 @@
 #include "layers/MultiHeadAttention.h"
 
-MultiHeadAttention::MultiHeadAttention(int embed_dim, int num_heads):
+MultiHeadAttention::MultiHeadAttention(const std::string& name, int embed_dim, int num_heads):
   embed_dim_(embed_dim), num_heads_(num_heads),
   head_dim_(embed_dim / num_heads),
-  query_proj_(embed_dim, embed_dim, "query"),
-  key_proj_(embed_dim, embed_dim, "key"),
-  value_proj_(embed_dim, embed_dim, "value"),
-  output_proj_(embed_dim, embed_dim, "out") {
+  query_proj_(embed_dim, embed_dim, name + "attention.query"),
+  key_proj_(embed_dim, embed_dim, name + "attention.key"),
+  value_proj_(embed_dim, embed_dim, name + "attention.value"),
+  output_proj_(embed_dim, embed_dim, name + "attention.out") {
   if (embed_dim_ % num_heads_ != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");

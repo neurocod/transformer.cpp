@@ -237,39 +237,22 @@ int mainExcept() {
   }
   std::cout << std::format("Total optimizable parameters: {}\n", total_params);
 
-  // Load Weights
-  bool weights_loaded = false;
-  if ((cf.load_existing_weights || cf.inference_mode) &&
-      std::filesystem::exists(cf.weights_filename)) {
+  if (cf.inference_mode) {
+    if (!std::filesystem::exists(cf.weights_filename)) {
+      std::cerr << std::format("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weights_filename);
+      return 1;
+    }
     try {
       std::cout << std::format("Attempting to load weights from {}...\n", cf.weights_filename);
       model.load_weights(cf.weights_filename);
       std::cout << "Weights loaded successfully." << std::endl;
-      weights_loaded = true;
-    } catch (const std::exception &e) {
+    } catch (const std::exception& e) {
       std::cerr << "Failed to load weights: " << e.what() << std::endl;
       if (cf.inference_mode) {
         std::cerr << "Cannot run inference without weights. Exiting."
-                  << std::endl;
+          << std::endl;
         return 1;
       }
-      std::cerr << "Starting training from scratch." << std::endl;
-    }
-  } else {
-    if (cf.inference_mode) {
-      std::cerr << std::format("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weights_filename);
-      return 1;
-    }
-    std::cout << "No existing weights file found or loading disabled. Starting "
-                 "training from scratch."
-              << std::endl;
-  }
-  // End Load Weights
-
-  if (cf.inference_mode) {
-    if (!weights_loaded) {
-      std::cerr << "Weights were not loaded (or failed to load). Cannot run inference. Exiting.\n";
-      return 1;
     }
     inferenceMode(model, cf, dataLoader);
   } else {
