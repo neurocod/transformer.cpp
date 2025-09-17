@@ -1,7 +1,8 @@
 #include "utils/Tensor.h"
 #include "utils/TransformerConfig.h"
 #include "utils/ThreadPool.h"
-#include <iostream>
+#include "utils/BinaryWriter.h"
+#include "utils/BinaryReader.h"
 
 std::vector<std::shared_ptr<Tensor>> Tensor::optimizable_tensors_;
 
@@ -51,6 +52,81 @@ std::shared_ptr<Tensor> Tensor::create(const std::vector<int> &shape,
   if (tensor->_isOptimizable)
     optimizable_tensors_.push_back(tensor);
   return tensor;
+}
+
+void Tensor::write(BinaryWriter& writer)const {
+  const uint32_t rank = static_cast<uint32_t>(_shape.size());
+  writer.write(rank);
+
+  for (int dim_size : _shape) {
+    const uint32_t size = static_cast<uint32_t>(dim_size);
+    writer.write(size);
+  }
+
+  const uint64_t num_elements = _data->size();
+  writer.write(num_elements);
+
+  if (num_elements > 0) {
+    writer.write_vector(*_data);
+  }
+}
+
+void Tensor::read(BinaryReader& reader) {
+  // Read rank
+  const uint32_t rank = reader.read<uint32_t>();
+  if (!reader.good()) {
+    throw std::ios_base::failure("Failed to read tensor rank");
+  }
+
+  // Read shape
+  _shape.clear();
+  _shape.reserve(rank);
+
+  for (uint32_t i = 0; i < rank; ++i) {
+    const uint32_t dim_size = reader.read<uint32_t>();
+    if (!reader.good()) {
+      throw std::ios_base::failure("Failed to read tensor shape dimension");
+    }
+    _shape.push_back(static_cast<int>(dim_size));
+  }
+
+  // Read number of elements
+  const uint64_t num_elements = reader.read<uint64_t>();
+  if (!reader.good()) {
+    throw std::ios_base::failure("Failed to read tensor element count");
+  }
+
+  // Validate element count matches shape
+  uint64_t expected_elements = 1;
+  for (int dim : _shape) {
+    if (dim <= 0) {
+      throw std::invalid_argument("Invalid tensor dimension: " + std::to_string(dim));
+    }
+    expected_elements *= static_cast<uint64_t>(dim);
+  }
+
+  if (num_elements != expected_elements) {
+    throw std::invalid_argument(
+      std::format("Element count mismatch: expected {}, got {}",
+        expected_elements, num_elements));
+  }
+
+  // Read data
+  if (!_data) {
+    _data = std::make_shared<std::vector<float>>();
+  }
+
+  reader.read_vector(*_data, num_elements);
+  if (!reader.good()) {
+    throw std::ios_base::failure("Failed to read tensor data");
+  }
+
+  // Initialize gradient vector if needed
+  if (_grad) {
+    _grad->assign(num_elements, 0.0f);
+  } else {
+    _grad = std::make_shared<std::vector<float>>(num_elements, 0.0f);
+  }
 }
 
 // Setter for data
