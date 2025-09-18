@@ -43,20 +43,19 @@ inline bool are_tensors_equal(const std::shared_ptr<Tensor> &t1,
   if (!t1 || !t2)
     return false;
   if (t1->get_shape() != t2->get_shape()) {
-    std::cerr << "Shape mismatch!" << std::endl;
+    spdlog::error("Shape mismatch!");
     return false;
   }
   const auto &data1 = t1->get_data();
   const auto &data2 = t2->get_data();
   if (data1.size() != data2.size()) {
-    std::cerr << "Data size mismatch!" << std::endl;
+    spdlog::error("Data size mismatch!");
     return false;
   }
 
   for (size_t i = 0; i < data1.size(); ++i) {
     if (std::abs(data1[i] - data2[i]) > tolerance) {
-      std::cerr << "Data mismatch at index " << i << ": " << data1[i] << " vs "
-                << data2[i] << std::endl;
+      spdlog::error("Data mismatch at index {}: {} vs {}", i, data1[i], data2[i]);
       return false;
     }
   }

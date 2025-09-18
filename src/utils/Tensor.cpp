@@ -1135,7 +1135,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &gradOutput) {
       parent_b->backward(grad_b_propagated);
     }
   } else {
-    std::cerr << std::format("Error: Add operation expected 2 parents, but found {}\n", parents_.size());
+    spdlog::error("Error: Add operation expected 2 parents, but found {}", parents_.size());
   }
 }
 
@@ -1171,13 +1171,11 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &gradOutput) {
       reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
       parent_b->backward(grad_b_propagated);
     } else {
-      std::cerr
-          << "Error: Data vector missing in backward_sub gradient calculation."
-          << std::endl;
+      spdlog::error("Error: Data vector missing in backward_sub gradient calculation.");
       // Consider throwing an exception or handling more robustly
     }
   } else {
-    std::cerr << std::format("Error: Sub operation expected 2 parents, but found {}\n", parents_.size());
+    spdlog::error("Error: Sub operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1208,8 +1206,7 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
             (*broadcasted_grad_a->_data)[i] * (*broadcasted_parent_b->_data)[i];
       }
     } else { /* Handle missing data error */
-      std::cerr << "Error: Missing data in backward_mul for parent A grad calc."
-                << std::endl;
+      spdlog::error("Error: Missing data in backward_mul for parent A grad calc.");
     }
 
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
@@ -1233,8 +1230,7 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
             (*broadcasted_grad_b->_data)[i] * (*broadcasted_parent_a->_data)[i];
       }
     } else { /* Handle missing data error */
-      std::cerr << "Error: Missing data in backward_mul for parent B grad calc."
-                << std::endl;
+      spdlog::error("Error: Missing data in backward_mul for parent B grad calc.");
     }
 
     std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
@@ -1242,7 +1238,7 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
                     parent_b->get_shape());
     parent_b->backward(grad_b_propagated);
   } else {
-    std::cerr << std::format("Error: Mul operation expected 2 parents, but found {}\n", parents_.size());
+    spdlog::error("Error: Mul operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1274,8 +1270,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
             (denom == 0.0f) ? 0.0f : ((*broadcasted_grad_a->_data)[i] / denom);
       }
     } else {
-      std::cerr << "Error: Missing data in backward_div for parent A grad calc."
-                << std::endl;
+      spdlog::error("Error: Missing data in backward_div for parent A grad calc.");
     }
 
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
@@ -1309,8 +1304,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
                 : ((*broadcasted_grad_b->_data)[i] * (-numer / denom_sq));
       }
     } else {
-      std::cerr << "Error: Missing data in backward_div for parent B grad calc."
-                << std::endl;
+      spdlog::error("Error: Missing data in backward_div for parent B grad calc.");
     }
 
     std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
@@ -1318,7 +1312,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
                     parent_b->get_shape());
     parent_b->backward(grad_b_propagated);
   } else {
-    std::cerr << std::format("Error: Division operation expected 2 parents, but found {}\n", parents_.size());
+    spdlog::error("Error: Division operation expected 2 parents, but found {}\n", parents_.size());
   }
 }
 
@@ -1347,7 +1341,7 @@ void Tensor::backward_transpose(const std::shared_ptr<Tensor> &gradOutput) {
         std::make_shared<std::vector<float>>(grad_input->get_data()));
     parent->backward(grad_input_tensor);
   } else {
-    std::cerr << std::format("Error: Transpose operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Transpose operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1377,7 +1371,7 @@ void Tensor::backward_reshape(const std::shared_ptr<Tensor> &gradOutput) {
 
     parent->backward(grad_input_reshaped_tensor);
   } else {
-    std::cerr << std::format("Error: Reshape operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Reshape operation expected 1 parent, but found {}\n", parents_.size());
   }
 }
 
@@ -1433,7 +1427,7 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &gradOutput) {
                     parent_b->get_shape());
     parent_b->backward(grad_b_propagated);
   } else {
-    std::cerr << std::format("Error: Dot operation expected 2 parents, but found {}\n", parents_.size());
+    spdlog::error("Error: Dot operation expected 2 parents, but found {}", parents_.size());
   }
 }
 
@@ -1473,7 +1467,7 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &gradOutput) {
 
     parent->backward(grad_input_tensor);
   } else {
-    std::cerr << std::format("Error: Sum operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Sum operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -1512,7 +1506,7 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &gradOutput) {
     getThreadPool().run_batch(std::move(tasks));
     parent->backward(grad_input);
   } else {
-    std::cerr << std::format("Error: ReLU operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: ReLU operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -1559,7 +1553,7 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &gradOutput) {
 
     parent->backward(grad_input);
   } else {
-    std::cerr << std::format("Error: GELU operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: GELU operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -1597,7 +1591,7 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &gradOutput) {
 
     parent->backward(grad_input);
   } else {
-    std::cerr << std::format("Error: Sigmoid operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Sigmoid operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -1634,7 +1628,7 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &gradOutput) {
 
     parent->backward(grad_input);
   } else {
-    std::cerr << std::format("Error: Tanh operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Tanh operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -1700,7 +1694,7 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &gradOutput) {
                     parent->get_shape());
     parent->backward(grad_input_propagated);
   } else {
-    std::cerr << std::format("Error: LogSoftmax operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: LogSoftmax operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -1768,7 +1762,7 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &gradOutput) {
                     log_probs->get_shape());
     log_probs->backward(grad_input_propagated);
   } else {
-    std::cerr << std::format("Error: NegativeLogLikelihood operation expected 2 parents, but found {}\n", parents_.size());
+    spdlog::error("Error: NegativeLogLikelihood operation expected 2 parents, but found {}", parents_.size());
   }
 }
 
@@ -1917,7 +1911,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &gradOutput) {
                     input_parent->get_shape());
     input_parent->backward(grad_input_propagated);
   } else {
-    std::cerr << std::format("Error: LayerNorm operation expected 1 input parent, but found {}\n", parents_.size());
+    spdlog::error("Error: LayerNorm operation expected 1 input parent, but found {}", parents_.size());
   }
 }
 
@@ -2012,7 +2006,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &gradOutput) {
                     parent->get_shape());
     parent->backward(grad_input_propagated);
   } else {
-    std::cerr << std::format("Error: Softmax operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Softmax operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -2048,7 +2042,7 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &gradOutput) {
                     parent->get_shape());
     parent->backward(grad_input_propagated);
   } else {
-    std::cerr << std::format("Error: Dropout operation expected 1 parent, but found {}\n", parents_.size());
+    spdlog::error("Error: Dropout operation expected 1 parent, but found {}", parents_.size());
   }
 }
 
@@ -2128,6 +2122,6 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &gradOutput
       }
     }
   } else {
-    std::cerr << std::format("Error: EmbeddingLookup operation expected 1 parent (weights), but found {}\n", parents_.size());
+    spdlog::error("Error: EmbeddingLookup operation expected 1 parent (weights), but found {}", parents_.size());
   }
 }

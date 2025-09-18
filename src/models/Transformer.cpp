@@ -141,7 +141,7 @@ void Transformer::saveWeights(const std::string& filename) const {
 
   for (const auto& tensor_ptr : optimizable_tensors) {
     if (!tensor_ptr) {
-      std::cerr << "Warning: Encountered null tensor pointer while saving weights.\n";
+      spdlog::error("Warning: Encountered null tensor pointer while saving weights.");
       continue;
     }
 

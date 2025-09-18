@@ -11,8 +11,7 @@ ThreadPool &getThreadPool() {
 ThreadPool::ThreadPool(size_t numThreads) : stop_(false) {
   if (numThreads == 0) {
     numThreads = 1;
-    std::cerr << "Warning: ThreadPool created with 0 threads, defaulting to 1."
-              << std::endl;
+    spdlog::error("Warning: ThreadPool created with 0 threads, defaulting to 1.");
   }
   for (size_t i = 0; i < numThreads; ++i) {
     workers_.emplace_back([this] {
