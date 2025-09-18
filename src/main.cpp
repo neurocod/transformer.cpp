@@ -35,7 +35,7 @@ std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
 }
 
 void pressEnterToContinue() {
-  std::cout << "\nPress Enter twice to continue...";
+  spdlog::info("\nPress Enter twice to continue...");
   std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
   std::cin.get(); // Wait for a character (Enter key)
 }
@@ -71,7 +71,7 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
     std::shared_ptr<Tensor> loss =
       criterion.computeLoss(reshaped_logits, target_output_ids);
 
-    std::cout << std::format("Epoch [{}/{}], Loss: {}\n", (epoch + 1), cf.numEpochs, vector_to_string(loss->get_data()));
+    spdlog::info("Epoch [{}/{}], Loss: {}", (epoch + 1), cf.numEpochs, vector_to_string(loss->get_data()));
 
     // Backward pass
     criterion.backward(loss);
@@ -79,28 +79,28 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
 
     auto epoch_end = std::chrono::high_resolution_clock::now();
     auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count();
-    std::cout << std::format("[LOG] Epoch {} took {} ms.\n", (epoch + 1), epoch_ms);
+    spdlog::info("[LOG] Epoch {} took {} ms.", (epoch + 1), epoch_ms);
   }
 
   auto t_train_end = clock::now();
   auto train_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_train_end - t_train_start).count();
-  std::cout << std::format("[LOG] Model training took {} ms.\n", train_ms);
+  spdlog::info("[LOG] Model training took {} ms.", train_ms);
 
-  std::cout << "\nTransformer training finished." << std::endl;
+  spdlog::info("\nTransformer training finished.");
 
   try {
-    std::cout << std::format("Saving final weights to {}\n", cf.weightsFilename);
+    spdlog::info("Saving final weights to {}", cf.weightsFilename);
     model.saveWeights(cf.weightsFilename);
-    std::cout << "Weights saved successfully." << std::endl;
+    spdlog::info("Weights saved successfully.");
   }
   catch (const std::exception& e) {
-    std::cerr << "Failed to save weights: " << e.what() << std::endl;
+    spdlog::error("Failed to save weights: {}", e.what());
   }
 }
 
 void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& dataLoader) {
-  std::cout << "\n--- Running Inference ---\n";
-  std::cout << std::format("Initial prompt: \"{}\"\n", cf.initialPrompt);
+  spdlog::info("\n--- Running Inference ---");
+  spdlog::info("Initial prompt: \"{}\"", cf.initialPrompt);
 
   int current_seq_len = cf.inputSeqLength;
 
@@ -151,7 +151,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
 
     int last_token_index = std::min(current_total_len, current_seq_len) - 1;
     if (last_token_index < 0) {
-      std::cerr << std::format("\nError: last_token_index is negative ({}). current_total_len={}. Breaking.\n", last_token_index, current_total_len);
+      spdlog::error("\nError: last_token_index is negative ({}). current_total_len={}. Breaking.\n", last_token_index, current_total_len);
       break;
     }
 
@@ -162,7 +162,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     float max_logit = -std::numeric_limits<float>::infinity();
     int predicted_id = -1;
     if (logits_offset + target_vocab_size > logits_data.size()) {
-      std::cerr << std::format("\nError: Logits offset ({}) + vocabSize ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.\n",
+      spdlog::error("\nError: Logits offset ({}) + vocabSize ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.\n",
         logits_offset, target_vocab_size, logits_data.size(), last_token_index);
       break;
     }
@@ -175,9 +175,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     }
 
     if (predicted_id == -1) {
-      std::cerr << "\nError: No valid predicted_id found (argmax failed?). "
-        "Breaking."
-        << std::endl;
+      spdlog::error("\nError: No valid predicted_id found (argmax failed?). Breaking.");
       break;
     }
 
@@ -238,18 +236,17 @@ int mainExcept() {
 
   if (cf.inferenceMode) {
     if (!std::filesystem::exists(cf.weightsFilename)) {
-      std::cerr << std::format("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weightsFilename);
+      spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weightsFilename);
       return 1;
     }
     try {
       std::cout << std::format("Attempting to load weights from {}...\n", cf.weightsFilename);
       model.loadWeights(cf.weightsFilename);
-      std::cout << "Weights loaded successfully." << std::endl;
+      spdlog::info("Weights loaded successfully.");
     } catch (const std::exception& e) {
-      std::cerr << "Failed to load weights: " << e.what() << std::endl;
+      spdlog::error("Failed to load weights: {}", e.what());
       if (cf.inferenceMode) {
-        std::cerr << "Cannot run inference without weights. Exiting."
-          << std::endl;
+        spdlog::error("Cannot run inference without weights. Exiting.");
         return 1;
       }
     }
@@ -266,7 +263,7 @@ int main() {
     return mainExcept();
   }
   catch(const std::exception& ex) {
-    std::cerr << "\n\n===\nUncaught exception: " << ex.what();
+    spdlog::error("\n===\nUncaught exception: {}", ex.what());
     return 1;
   }
 }
