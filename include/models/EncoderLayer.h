@@ -12,7 +12,7 @@ public:
 
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input,
                                   std::shared_ptr<Tensor> &padding_mask,
-                                  bool is_training);
+                                  bool isTraining);
 
 private:
   MultiHeadAttention self_attention_;
@@ -22,5 +22,5 @@ private:
   LayerNorm layernorm2_;
   Dropout dropout2_;
 
-  float dropout_rate_;
+  float _dropoutRate;
 };

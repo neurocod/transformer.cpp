@@ -20,8 +20,8 @@ private:
   Linear value_proj_;
   Linear output_proj_;
 
-  int embed_dim_;
-  int num_heads_;
+  int _embedDim;
+  int _numHeads;
   int head_dim_;
 
   // Helper function to calculate scaled dot-product attention

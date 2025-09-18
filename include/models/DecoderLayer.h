@@ -15,7 +15,7 @@ public:
                                   std::shared_ptr<Tensor> &encoder_output,
                                   std::shared_ptr<Tensor> &look_ahead_mask,
                                   std::shared_ptr<Tensor> &padding_mask,
-                                  bool is_training);
+                                  bool isTraining);
 
 private:
   MultiHeadAttention masked_self_attention_;
@@ -28,5 +28,5 @@ private:
   LayerNorm layernorm3_;
   Dropout dropout3_;
 
-  float dropout_rate_;
+  float _dropoutRate;
 };

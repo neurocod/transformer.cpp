@@ -3,18 +3,16 @@
 
 class Embedding {
 public:
-  Embedding(int vocab_size, int embedDim);
-  ~Embedding() = default;
+  Embedding(int vocabSize, int embedDim);
+  ~Embedding() {}
 
   // Input shape: (batchSize, sequence_length)
   // Output shape: (batchSize, sequence_length, embedDim)
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input_ids);
-
-
-  std::shared_ptr<Tensor> get_weights();
+  std::shared_ptr<Tensor> weights();
 private:
-  std::shared_ptr<Tensor> weights_;
+  std::shared_ptr<Tensor> _weights;
 
-  int vocab_size_;
-  int embed_dim_;
+  int _vocabSize;
+  int _embedDim;
 };

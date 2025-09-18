@@ -9,10 +9,9 @@ public:
   // Forward pass
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
 
-
 private:
   std::shared_ptr<Tensor> positional_encodings_; // Pre-calculated
 
-  int max_sequence_length_;
-  int embed_dim_;
+  int _maxSequenceLength;
+  int _embedDim;
 };

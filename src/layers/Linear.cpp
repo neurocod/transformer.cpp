@@ -1,50 +1,50 @@
 #include "layers/Linear.h"
 
-Linear::Linear(int input_dim, int output_dim, const std::string& name)
-    : input_dim_(input_dim), output_dim_(output_dim) {
-  // Weights shape: (input_dim, output_dim)
-  weights_ = Tensor::create(std::vector<int>{input_dim, output_dim}, name + ".Linear::k");
-  // Biases shape: (output_dim)
-  biases_ = Tensor::create(std::vector<int>{output_dim_}, name + ".Linear::b");
-  if (output_dim_ == 32)
+Linear::Linear(int inputDim, int outputDim, const std::string& name)
+    : _inputDim(inputDim), _outputDim(outputDim) {
+  // Weights shape: (inputDim, outputDim)
+  _weights = Tensor::create(std::vector<int>{inputDim, outputDim}, name + ".Linear::k");
+  // Biases shape: (outputDim)
+  _biases = Tensor::create(std::vector<int>{_outputDim}, name + ".Linear::b");
+  if (_outputDim == 32)
     int t = 3;
 
   // Initialize weights and biases with random values
   std::random_device rd;
   std::mt19937 gen(rd());
-  float std_dev = std::sqrt(2.0f / input_dim_);
+  float std_dev = std::sqrt(2.0f / _inputDim);
   std::normal_distribution<float> d(0, std_dev);
 
   // Initialize weights data
   std::shared_ptr<std::vector<float>> weights_data =
-      std::make_shared<std::vector<float>>(input_dim_ * output_dim_);
+      std::make_shared<std::vector<float>>(_inputDim * _outputDim);
   for (size_t i = 0; i < weights_data->size(); ++i) {
     (*weights_data)[i] = d(gen);
   }
-  weights_->set_data(weights_data);
+  _weights->set_data(weights_data);
 
   std::shared_ptr<std::vector<float>> biases_data =
-      std::make_shared<std::vector<float>>(output_dim_);
+      std::make_shared<std::vector<float>>(_outputDim);
   std::fill(biases_data->begin(), biases_data->end(), 0.0f);
-  biases_->set_data(biases_data);
+  _biases->set_data(biases_data);
 }
 
 std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> &input) {
-  // Input shape is (..., input_dim)
-  // Weights shape is (input_dim, output_dim)
+  // Input shape is (..., inputDim)
+  // Weights shape is (inputDim, outputDim)
   // output = input * weights + biases
 
-  if (input->get_shape().empty() || input->get_shape().back() != input_dim_) {
+  if (input->get_shape().empty() || input->get_shape().back() != _inputDim) {
     throw std::runtime_error("Input tensor's last dimension is incompatible "
                              "with Linear layer input dimension.");
   }
 
-  std::shared_ptr<Tensor> product = input->dot(weights_);
-  std::shared_ptr<Tensor> output = *product + biases_;
+  std::shared_ptr<Tensor> product = input->dot(_weights);
+  std::shared_ptr<Tensor> output = *product + _biases;
 
   return output;
 }
 
-std::shared_ptr<Tensor> Linear::get_weights() { return weights_; }
+std::shared_ptr<Tensor> Linear::weights() { return _weights; }
 
-std::shared_ptr<Tensor> Linear::get_biases() { return biases_; }
+std::shared_ptr<Tensor> Linear::biases() { return _biases; }

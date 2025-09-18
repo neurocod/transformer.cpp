@@ -1,21 +1,21 @@
 #include "layers/PositionalEncoding.h"
 
 PositionalEncoding::PositionalEncoding(int maxSequenceLength, int embedDim)
-    : max_sequence_length_(maxSequenceLength), embed_dim_(embedDim) {
+    : _maxSequenceLength(maxSequenceLength), _embedDim(embedDim) {
   // Pre-calculate the positional encodings matrix
-  positional_encodings_ = Tensor::create({max_sequence_length_, embed_dim_});
+  positional_encodings_ = Tensor::create({_maxSequenceLength, _embedDim});
   std::vector<float> &encodings_data = positional_encodings_->data_ref();
 
-  for (int pos = 0; pos < max_sequence_length_; ++pos) {
-    for (int i = 0; i < embed_dim_; ++i) {
+  for (int pos = 0; pos < _maxSequenceLength; ++pos) {
+    for (int i = 0; i < _embedDim; ++i) {
       if (i % 2 == 0) {
         // Sine for even dimensions
-        encodings_data[pos * embed_dim_ + i] = std::sin(
-            pos / std::pow(10000.0f, static_cast<float>(i) / embed_dim_));
+        encodings_data[pos * _embedDim + i] = std::sin(
+            pos / std::pow(10000.0f, static_cast<float>(i) / _embedDim));
       } else {
         // Cosine for odd dimensions
-        encodings_data[pos * embed_dim_ + i] = std::cos(
-            pos / std::pow(10000.0f, static_cast<float>(i - 1) / embed_dim_));
+        encodings_data[pos * _embedDim + i] = std::cos(
+            pos / std::pow(10000.0f, static_cast<float>(i - 1) / _embedDim));
       }
     }
   }
@@ -33,12 +33,12 @@ PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
   size_t sequence_length = input_shape[1];
   size_t embedDim = input_shape[2];
 
-  if (embedDim != embed_dim_) {
+  if (embedDim != _embedDim) {
     throw std::runtime_error(
         "Input embedding dimension mismatch in Positional Encoding.");
   }
 
-  if (sequence_length > max_sequence_length_) {
+  if (sequence_length > _maxSequenceLength) {
     throw std::runtime_error("Input sequence length exceeds "
                              "maxSequenceLength in Positional Encoding.");
   }

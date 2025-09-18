@@ -3,16 +3,16 @@
 
 class Linear {
 public:
-  Linear(int input_dim, int output_dim, const std::string& name);
+  Linear(int inputDim, int outputDim, const std::string& name);
   ~Linear() {}
 
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
-  std::shared_ptr<Tensor> get_weights();
-  std::shared_ptr<Tensor> get_biases();
+  std::shared_ptr<Tensor> weights();
+  std::shared_ptr<Tensor> biases();
 private:
-  std::shared_ptr<Tensor> weights_; // Weight matrix (input_dim, output_dim)
-  std::shared_ptr<Tensor> biases_;  // Bias vector (1, output_dim)
+  std::shared_ptr<Tensor> _weights; // Weight matrix (inputDim, outputDim)
+  std::shared_ptr<Tensor> _biases;  // Bias vector (1, outputDim)
 
-  int input_dim_;
-  int output_dim_;
+  int _inputDim;
+  int _outputDim;
 };

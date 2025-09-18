@@ -11,10 +11,10 @@ public:
   virtual void step() = 0;
 
   // Zeros the gradients of all parameters managed by this optimizer
-  void zero_grad() {
+  void zeroGrad() {
     for (std::shared_ptr<Tensor> &param : parameters_) {
       if (param) {
-        param->zero_grad();
+        param->zeroGrad();
       }
     }
   }

@@ -8,7 +8,7 @@ public:
 
   // Forward pass
   std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input,
-                                  bool is_training);
+                                  bool isTraining);
 private:
   float rate_; // Dropout rate
 

@@ -12,14 +12,14 @@ public:
                                   std::shared_ptr<Tensor> &encoder_output,
                                   std::shared_ptr<Tensor> &look_ahead_mask,
                                   std::shared_ptr<Tensor> &padding_mask,
-                                  bool is_training);
+                                  bool isTraining);
 
 private:
   std::vector<DecoderLayer> layers_;
 
-  int num_layers_;
-  int embed_dim_;
-  int num_heads_;
-  int ff_hidden_dim_;
-  float dropout_rate_;
+  int _numLayers;
+  int _embedDim;
+  int _numHeads;
+  int _ffHiddenDim;
+  float _dropoutRate;
 };

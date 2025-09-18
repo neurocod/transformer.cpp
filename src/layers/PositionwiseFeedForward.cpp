@@ -1,14 +1,14 @@
 #include "layers/PositionwiseFeedForward.h"
 
-PositionwiseFeedForward::PositionwiseFeedForward(int input_dim, int hidden_dim):
-  fc1_(input_dim, hidden_dim, "pos.fc1"),
-  fc2_(hidden_dim, input_dim, "pos.fc2"),
-  input_dim_(input_dim),
+PositionwiseFeedForward::PositionwiseFeedForward(int inputDim, int hidden_dim):
+  fc1_(inputDim, hidden_dim, "pos.fc1"),
+  fc2_(hidden_dim, inputDim, "pos.fc2"),
+  _inputDim(inputDim),
   hidden_dim_(hidden_dim) {}
 
 std::shared_ptr<Tensor>
 PositionwiseFeedForward::forward(std::shared_ptr<Tensor> &input) {
-  // The feed-forward network is applied to the last dimension (input_dim)
+  // The feed-forward network is applied to the last dimension (inputDim)
   // independently for each position.
 
   // First linear transformation

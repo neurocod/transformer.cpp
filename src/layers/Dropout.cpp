@@ -10,8 +10,8 @@ Dropout::Dropout(float rate) : rate_(rate),
 }
 
 std::shared_ptr<Tensor> Dropout::forward(const std::shared_ptr<Tensor> &input,
-                                         bool is_training) {
-  if (!is_training) {
+                                         bool isTraining) {
+  if (!isTraining) {
     return input;
   }
 

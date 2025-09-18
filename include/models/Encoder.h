@@ -10,15 +10,15 @@ public:
   // Forward pass
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input,
                                   std::shared_ptr<Tensor> &padding_mask,
-                                  bool is_training);
+                                  bool isTraining);
 
 
 private:
   std::vector<EncoderLayer> layers_;
 
-  int num_layers_;
-  int embed_dim_;
-  int num_heads_;
-  int ff_hidden_dim_;
-  float dropout_rate_;
+  int _numLayers;
+  int _embedDim;
+  int _numHeads;
+  int _ffHiddenDim;
+  float _dropoutRate;
 };

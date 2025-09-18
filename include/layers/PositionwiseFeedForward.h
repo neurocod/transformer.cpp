@@ -4,7 +4,7 @@
 
 class PositionwiseFeedForward {
 public:
-  PositionwiseFeedForward(int input_dim, int hidden_dim);
+  PositionwiseFeedForward(int inputDim, int hidden_dim);
   ~PositionwiseFeedForward() = default;
 
   std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
@@ -13,6 +13,6 @@ private:
   Linear fc2_;
   ReLU activation_;
 
-  int input_dim_;
+  int _inputDim;
   int hidden_dim_;
 };

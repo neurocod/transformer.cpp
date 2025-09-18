@@ -912,21 +912,21 @@ std::shared_ptr<Tensor> Tensor::softmax(int dim) const {
 }
 
 // Gradient handling
-void Tensor::zero_grad() {
+void Tensor::zeroGrad() {
   if (_grad) {
     _grad->assign(num_elements(), 0.0f);
   }
 }
 
-void Tensor::backward(const std::shared_ptr<Tensor> &grad_output) {
-  if (_shape != grad_output->get_shape()) {
+void Tensor::backward(const std::shared_ptr<Tensor> &gradOutput) {
+  if (_shape != gradOutput->get_shape()) {
     throw std::runtime_error("Gradient shape mismatch in backward.");
   }
 
   // Accumulate the incoming gradient
-  if (_grad && grad_output->_data) {
+  if (_grad && gradOutput->_data) {
     for (size_t i = 0; i < _grad->size(); ++i) {
-      (*_grad)[i] += (*grad_output->_data)[i];
+      (*_grad)[i] += (*gradOutput->_data)[i];
     }
   }
 
@@ -935,69 +935,69 @@ void Tensor::backward(const std::shared_ptr<Tensor> &grad_output) {
   if (creator_op_ != OperationType::None && !parents_.empty()) {
     switch (creator_op_) {
     case OperationType::Add:
-      backward_add(grad_output);
+      backward_add(gradOutput);
       break;
     case OperationType::Sub:
-      backward_sub(grad_output);
+      backward_sub(gradOutput);
       break;
     case OperationType::Mul:
-      backward_mul(grad_output);
+      backward_mul(gradOutput);
       break;
     case OperationType::Div:
-      backward_div(grad_output);
+      backward_div(gradOutput);
       break;
     case OperationType::Transpose:
-      backward_transpose(grad_output);
+      backward_transpose(gradOutput);
       break;
     case OperationType::Reshape:
-      backward_reshape(grad_output);
+      backward_reshape(gradOutput);
       break;
     case OperationType::Dot:
-      backward_dot(grad_output);
+      backward_dot(gradOutput);
       break;
     case OperationType::Sum:
-      backward_sum(grad_output);
+      backward_sum(gradOutput);
       break;
     case OperationType::ReLU:
-      backward_relu(grad_output);
+      backward_relu(gradOutput);
       break;
     case OperationType::GELU:
-      backward_gelu(grad_output);
+      backward_gelu(gradOutput);
       break;
     case OperationType::Sigmoid:
-      backward_sigmoid(grad_output);
+      backward_sigmoid(gradOutput);
       break;
     case OperationType::Tanh:
-      backward_tanh(grad_output);
+      backward_tanh(gradOutput);
       break;
     case OperationType::LogSoftmax:
-      backward_logsoftmax(grad_output);
+      backward_logsoftmax(gradOutput);
       break;
     case OperationType::NegativeLogLikelihood:
-      backward_nllloss(grad_output);
+      backward_nllloss(gradOutput);
       break;
     case OperationType::LayerNorm:
-      backward_layernorm(grad_output);
+      backward_layernorm(gradOutput);
       break;
     case OperationType::Softmax:
-      backward_softmax(grad_output);
+      backward_softmax(gradOutput);
       break;
     case OperationType::EmbeddingLookup:
-      backward_embedding_lookup(grad_output);
+      backward_embedding_lookup(gradOutput);
       break;
     }
   }
 }
 
 // Helper to reduce gradient for broadcasting
-void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
+void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &gradOutput,
                              std::shared_ptr<Tensor> &parent_grad,
                              const std::vector<int> &parent_shape) {
-  const std::vector<int> &grad_shape = grad_output->get_shape();
+  const std::vector<int> &grad_shape = gradOutput->get_shape();
 
   if (grad_shape == parent_shape) {
     parent_grad = Tensor::create(parent_shape);
-    parent_grad->set_data(grad_output->_data);
+    parent_grad->set_data(gradOutput->_data);
     return;
   }
 
@@ -1041,11 +1041,11 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
                            ? parent_total_elements
                            : start_p_idx + elements_per_thread;
 
-    tasks.emplace_back([&, start_p_idx, end_p_idx, grad_output, parent_grad,
+    tasks.emplace_back([&, start_p_idx, end_p_idx, gradOutput, parent_grad,
                         parent_shape, grad_shape, parent_strides,
                         grad_strides]() {
       std::vector<int> parent_indices(parent_shape.size());
-      size_t grad_total_elements = grad_output->num_elements();
+      size_t grad_total_elements = gradOutput->num_elements();
       std::vector<int> current_grad_indices(grad_shape.size());
       int p_offset = grad_shape.size() - parent_shape.size();
 
@@ -1061,7 +1061,7 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
         }
 
         float sum_val = 0.0f;
-        if (grad_output->_data) {
+        if (gradOutput->_data) {
           for (size_t g_idx = 0; g_idx < grad_total_elements; ++g_idx) {
             size_t temp_g_idx = g_idx;
             for (int d = grad_shape.size() - 1; d >= 0; --d) {
@@ -1089,7 +1089,7 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
             }
 
             if (corresponds) {
-              sum_val += (*grad_output->_data)[g_idx];
+              sum_val += (*gradOutput->_data)[g_idx];
             }
           }
         }
@@ -1105,12 +1105,12 @@ void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
 }
 
 // Backward methods for specific operations
-void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_add(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Gradient of Z = A + B with respect to A is dZ/dA = 1.
   Gradient of Z = A + B with respect to B is dZ/dB = 1.
-  Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * 1 = grad_output
-  dL/dB = dL/dZ * dZ/dB = grad_output * 1 = grad_output
+  Chain rule: dL/dA = dL/dZ * dZ/dA = gradOutput * 1 = gradOutput
+  dL/dB = dL/dZ * dZ/dB = gradOutput * 1 = gradOutput
   */
 
   if (parents_.size() == 2) {
@@ -1122,7 +1122,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
 
     if (a_needs_grad) {
       std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-      reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
+      reduce_gradient(gradOutput, grad_a_propagated, parent_a->get_shape());
       parent_a->backward(grad_a_propagated);
     }
 
@@ -1131,7 +1131,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
 
     if (b_needs_grad) {
       std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-      reduce_gradient(grad_output, grad_b_propagated, parent_b->get_shape());
+      reduce_gradient(gradOutput, grad_b_propagated, parent_b->get_shape());
       parent_b->backward(grad_b_propagated);
     }
   } else {
@@ -1139,12 +1139,12 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_sub(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Gradient of Z = A - B with respect to A is dZ/dA = 1.
   Gradient of Z = A - B with respect to B is dZ/dB = -1.
-  Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * 1 = grad_output
-  dL/dB = dL/dZ * dZ/dB = grad_output * -1 = -grad_output
+  Chain rule: dL/dA = dL/dZ * dZ/dA = gradOutput * 1 = gradOutput
+  dL/dB = dL/dZ * dZ/dB = gradOutput * -1 = -gradOutput
   */
 
   if (parents_.size() == 2) {
@@ -1152,16 +1152,16 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> parent_b = parents_[1];
 
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-    reduce_gradient(grad_output, grad_a_propagated, parent_a->get_shape());
+    reduce_gradient(gradOutput, grad_a_propagated, parent_a->get_shape());
     parent_a->backward(grad_a_propagated);
 
-    // Need to propagate -grad_output
+    // Need to propagate -gradOutput
     std::shared_ptr<Tensor> neg_grad_output =
-        Tensor::create(grad_output->get_shape());
-    if (neg_grad_output->_data && grad_output->_data) {
+        Tensor::create(gradOutput->get_shape());
+    if (neg_grad_output->_data && gradOutput->_data) {
       std::shared_ptr<std::vector<float>> neg_data =
-          std::make_shared<std::vector<float>>(grad_output->num_elements());
-      const std::vector<float> &grad_output_data = grad_output->get_data();
+          std::make_shared<std::vector<float>>(gradOutput->num_elements());
+      const std::vector<float> &grad_output_data = gradOutput->get_data();
       for (size_t i = 0; i < neg_data->size(); ++i) {
         (*neg_data)[i] = -grad_output_data[i];
       }
@@ -1181,24 +1181,24 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Gradient of Z = A * B (element-wise) with respect to A is dZ/dA = B.
   Gradient of Z = A * B (element-wise) with respect to B is dZ/dB = A.
-  Chain rule: dL/dA = dL/dZ * dZ/dA = grad_output * B
-  dL/dB = dL/dZ * dZ/dB = grad_output * A
+  Chain rule: dL/dA = dL/dZ * dZ/dA = gradOutput * B
+  dL/dB = dL/dZ * dZ/dB = gradOutput * A
   */
   if (parents_.size() == 2) {
     std::shared_ptr<Tensor> parent_a = parents_[0];
     std::shared_ptr<Tensor> parent_b = parents_[1];
 
-    // grad_a = grad_output * parent_b
+    // grad_a = gradOutput * parent_b
     std::vector<int> intermediate_shape_a = calculate_broadcast_shape(
-        grad_output->get_shape(), parent_b->get_shape());
+        gradOutput->get_shape(), parent_b->get_shape());
     std::shared_ptr<Tensor> grad_a_intermediate_tensor =
         Tensor::create(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_grad_a =
-        grad_output->broadcast_to(intermediate_shape_a);
+        gradOutput->broadcast_to(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_parent_b =
         parent_b->broadcast_to(intermediate_shape_a);
     if (grad_a_intermediate_tensor->_data && broadcasted_grad_a->_data &&
@@ -1217,13 +1217,13 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output) {
                     parent_a->get_shape());
     parent_a->backward(grad_a_propagated);
 
-    // grad_b = grad_output * parent_a
+    // grad_b = gradOutput * parent_a
     std::vector<int> intermediate_shape_b = calculate_broadcast_shape(
-        grad_output->get_shape(), parent_a->get_shape());
+        gradOutput->get_shape(), parent_a->get_shape());
     std::shared_ptr<Tensor> grad_b_intermediate_tensor =
         Tensor::create(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_grad_b =
-        grad_output->broadcast_to(intermediate_shape_b);
+        gradOutput->broadcast_to(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_parent_a =
         parent_a->broadcast_to(intermediate_shape_b);
     if (grad_b_intermediate_tensor->_data && broadcasted_grad_b->_data &&
@@ -1246,24 +1246,24 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Backward pass for Z = A / B (element-wise):
-  dL/dA = dL/dZ * dZ/dA = grad_output * (1 / B)
-  dL/dB = dL/dZ * dZ/dB = grad_output * (-A / B^2)
+  dL/dA = dL/dZ * dZ/dA = gradOutput * (1 / B)
+  dL/dB = dL/dZ * dZ/dB = gradOutput * (-A / B^2)
   */
 
   if (parents_.size() == 2) {
     std::shared_ptr<Tensor> parent_a = parents_[0]; // Numerator
     std::shared_ptr<Tensor> parent_b = parents_[1]; // Denominator
 
-    // grad_a = grad_output / parent_b
+    // grad_a = gradOutput / parent_b
     std::vector<int> intermediate_shape_a = calculate_broadcast_shape(
-        grad_output->get_shape(), parent_b->get_shape());
+        gradOutput->get_shape(), parent_b->get_shape());
     std::shared_ptr<Tensor> grad_a_intermediate_tensor =
         Tensor::create(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_grad_a =
-        grad_output->broadcast_to(intermediate_shape_a);
+        gradOutput->broadcast_to(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_parent_b_for_a =
         parent_b->broadcast_to(intermediate_shape_a);
     if (grad_a_intermediate_tensor->_data && broadcasted_grad_a->_data &&
@@ -1283,15 +1283,15 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output) {
                     parent_a->get_shape());
     parent_a->backward(grad_a_propagated);
 
-    // grad_b = grad_output * (-parent_a / parent_b^2)
+    // grad_b = gradOutput * (-parent_a / parent_b^2)
     std::vector<int> intermediate_shape_b = calculate_broadcast_shape(
-        calculate_broadcast_shape(grad_output->get_shape(),
+        calculate_broadcast_shape(gradOutput->get_shape(),
                                   parent_a->get_shape()),
         parent_b->get_shape());
     std::shared_ptr<Tensor> grad_b_intermediate_tensor =
         Tensor::create(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_grad_b =
-        grad_output->broadcast_to(intermediate_shape_b);
+        gradOutput->broadcast_to(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_parent_a_for_b =
         parent_a->broadcast_to(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_parent_b_for_b =
@@ -1322,7 +1322,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_transpose(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Backward pass for Y = X.transpose(p):
   dL/dX = dL/dY.transpose(p_inverse)
@@ -1340,7 +1340,7 @@ void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output) {
 
     // Transpose the incoming gradient using the inverse permutation.
     std::shared_ptr<Tensor> grad_input =
-        grad_output->transpose(inverse_permutation);
+        gradOutput->transpose(inverse_permutation);
 
     std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(
         parent->get_shape(),
@@ -1351,7 +1351,7 @@ void Tensor::backward_transpose(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_reshape(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Backward pass for Y = X.reshape(new_shape):
   dL/dX = dL/dY.reshape(original_shape_of_X)
@@ -1366,14 +1366,14 @@ void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output) {
     size_t expected_elements = std::accumulate(
         original_shape_before_reshape_.begin(),
         original_shape_before_reshape_.end(), 1, std::multiplies<size_t>());
-    if (grad_output->num_elements() != expected_elements) {
+    if (gradOutput->num_elements() != expected_elements) {
       throw std::runtime_error(
           "Gradient element count mismatch during reshape backward pass.");
     }
 
     std::shared_ptr<Tensor> grad_input_reshaped_tensor = Tensor::create(
         original_shape_before_reshape_,
-        std::make_shared<std::vector<float>>(grad_output->get_data()));
+        std::make_shared<std::vector<float>>(gradOutput->get_data()));
 
     parent->backward(grad_input_reshaped_tensor);
   } else {
@@ -1381,7 +1381,7 @@ void Tensor::backward_reshape(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_dot(const std::shared_ptr<Tensor> &gradOutput) {
   /*
   Backward pass for Z = A.dot(B):
   dL/dA = dL/dZ . B^T
@@ -1403,9 +1403,9 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> parent_b_transposed =
         parent_b->transpose(b_transpose_perm);
 
-    // Optimized matrix multiplication for grad_output . B^T
+    // Optimized matrix multiplication for gradOutput . B^T
     std::shared_ptr<Tensor> grad_a_intermediate =
-        grad_output->dot(parent_b_transposed);
+        gradOutput->dot(parent_b_transposed);
 
     // Reduce gradient for parent A
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
@@ -1423,9 +1423,9 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> parent_a_transposed =
         parent_a->transpose(a_transpose_perm);
 
-    // Optimized matrix multiplication for A^T . grad_output
+    // Optimized matrix multiplication for A^T . gradOutput
     std::shared_ptr<Tensor> grad_b_intermediate =
-        parent_a_transposed->dot(grad_output);
+        parent_a_transposed->dot(gradOutput);
 
     // Reduce gradient for parent B
     std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
@@ -1437,15 +1437,15 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_sum(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
 
-    if (grad_output->get_shape().size() != 1 ||
-        grad_output->get_shape()[0] != 1) {
+    if (gradOutput->get_shape().size() != 1 ||
+        gradOutput->get_shape()[0] != 1) {
       throw std::runtime_error("Gradient for sum operation must be a scalar.");
     }
-    float grad_value = grad_output->get_data()[0];
+    float grad_value = gradOutput->get_data()[0];
 
     std::shared_ptr<Tensor> grad_input_tensor =
         Tensor::create(parent->get_shape());
@@ -1477,12 +1477,12 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_relu(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
@@ -1516,12 +1516,12 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_gelu(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     const float M_SQRT2_OVER_PI = 0.7978845608028654f; // sqrt(2 / PI)
@@ -1563,12 +1563,12 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
@@ -1601,12 +1601,12 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_tanh(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
     const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
@@ -1638,13 +1638,13 @@ void Tensor::backward_tanh(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input_intermediate =
         Tensor::create(shared_from_this()->get_shape());
     const std::vector<float> &output_data = shared_from_this()->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     const std::vector<int> &shape = shared_from_this()->get_shape();
@@ -1704,7 +1704,7 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 2) {
     std::shared_ptr<Tensor> log_probs =
         parents_[0]; // Input to NLLLoss (log probabilities)
@@ -1714,10 +1714,10 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output) {
     std::shared_ptr<Tensor> grad_input_intermediate =
         Tensor::create(log_probs->get_shape());
     const std::vector<float> &target_data = parents_[1]->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
-    if (grad_output->num_elements() != 1) {
+    if (gradOutput->num_elements() != 1) {
       throw std::runtime_error("Gradient for NLLLoss must be a scalar.");
     }
     float loss_grad_value = grad_output_data[0];
@@ -1772,10 +1772,10 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> input_parent = parents_[0];
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
 
     std::shared_ptr<Tensor> gamma = layernorm_gamma_;
     std::shared_ptr<Tensor> beta = layernorm_beta_;
@@ -1921,13 +1921,13 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_softmax(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input_intermediate =
         Tensor::create(this->get_shape());
     const std::vector<float> &output_data = this->get_data();
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     const std::vector<int> &shape = this->get_shape();
@@ -2016,12 +2016,12 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_dropout(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input_intermediate =
         Tensor::create(this->get_shape());
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     // Retrieve the mask and scale factor stored during the forward pass
@@ -2052,10 +2052,10 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &grad_output) {
   }
 }
 
-void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output) {
+void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> weights_parent = parents_[0];
-    const std::vector<float> &grad_output_data = grad_output->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->get_data();
 
     std::shared_ptr<Tensor> input_ids = this->embedding_indices_;
 
@@ -2069,9 +2069,9 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
 
     size_t batchSize = input_ids_shape[0];
     size_t sequence_length = input_ids_shape[1];
-    size_t embedDim = grad_output->get_shape().back();
+    size_t embedDim = gradOutput->get_shape().back();
 
-    if (grad_output->get_shape() != std::vector<int>{(int)batchSize,
+    if (gradOutput->get_shape() != std::vector<int>{(int)batchSize,
                                                      (int)sequence_length,
                                                      (int)embedDim}) {
       throw std::runtime_error(
@@ -2080,7 +2080,7 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
 
     if (weights_parent->_grad) {
       std::vector<float> &weights_grad_data = weights_parent->grad_ref();
-      size_t vocab_size = weights_parent->get_shape()[0];
+      size_t vocabSize = weights_parent->get_shape()[0];
 
       size_t total_indices = batchSize * sequence_length;
       size_t numThreads =
@@ -2090,7 +2090,7 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
       size_t indices_per_thread = total_indices / numThreads;
 
       std::vector<std::vector<float>> thread_local_grads(
-          numThreads, std::vector<float>(vocab_size * embedDim, 0.0f));
+          numThreads, std::vector<float>(vocabSize * embedDim, 0.0f));
       std::vector<std::function<void()>> tasks;
 
       for (size_t t = 0; t < numThreads; ++t) {
@@ -2099,10 +2099,10 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
                              ? total_indices
                              : start_idx + indices_per_thread;
 
-        tasks.emplace_back([&, t, start_idx, end_idx, vocab_size, embedDim]() {
+        tasks.emplace_back([&, t, start_idx, end_idx, vocabSize, embedDim]() {
           for (size_t i = start_idx; i < end_idx; ++i) {
             float token_id_float = input_ids_data[i];
-            if (token_id_float < 0 || token_id_float >= vocab_size ||
+            if (token_id_float < 0 || token_id_float >= vocabSize ||
                 std::fmod(token_id_float, 1.0f) != 0.0f) {
               continue;
             }
@@ -2122,7 +2122,7 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_outpu
       getThreadPool().run_batch(std::move(tasks));
 
       for (size_t t = 0; t < numThreads; ++t) {
-        for (size_t i = 0; i < vocab_size * embedDim; ++i) {
+        for (size_t i = 0; i < vocabSize * embedDim; ++i) {
           weights_grad_data[i] += thread_local_grads[t][i];
         }
       }

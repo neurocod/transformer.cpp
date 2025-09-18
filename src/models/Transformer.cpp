@@ -6,32 +6,30 @@ Transformer::Transformer(int input_vocab_size, int target_vocab_size,
                          int embedDim, int maxSequenceLength, int numLayers,
                          int numHeads, int ffHiddenDim, float dropoutRate,
                          float padTokenId)
-    : input_vocab_size_(input_vocab_size),
-      target_vocab_size_(target_vocab_size), embed_dim_(embedDim),
-      max_sequence_length_(maxSequenceLength), num_layers_(numLayers),
-      num_heads_(numHeads), ff_hidden_dim_(ffHiddenDim),
-      dropout_rate_(dropoutRate), pad_token_id_(padTokenId),
-      encoder_embedding_(input_vocab_size, embedDim),
-      encoder_positional_encoding_(maxSequenceLength, embedDim),
-      encoder_(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
-      decoder_embedding_(target_vocab_size, embedDim),
-      decoder_positional_encoding_(maxSequenceLength, embedDim),
-      decoder_(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
-      final_linear_(embedDim, target_vocab_size, "final") {
-  if (embed_dim_ % num_heads_ != 0) {
+    : _inputVocabSize(input_vocab_size),
+      _targetVocabSize(target_vocab_size), _embedDim(embedDim),
+      _maxSequenceLength(maxSequenceLength), _numLayers(numLayers),
+      _numHeads(numHeads), _ffHiddenDim(ffHiddenDim),
+      _dropoutRate(dropoutRate), _padTokenId(padTokenId),
+      _encoderEmbedding(input_vocab_size, embedDim),
+      _encoderPositionalEncoding(maxSequenceLength, embedDim),
+      _encoder(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
+      _decoderEmbedding(target_vocab_size, embedDim),
+      _decoderPositionalEncoding(maxSequenceLength, embedDim),
+      _decoder(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
+      _linearFinal(embedDim, target_vocab_size, "final") {
+  if (_embedDim % _numHeads != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");
   }
 }
 
-std::shared_ptr<Tensor> Transformer::create_encoder_padding_mask(
-    const std::shared_ptr<Tensor> &encoder_input_ids) {
-  return create_padding_mask(encoder_input_ids, pad_token_id_);
+std::shared_ptr<Tensor> Transformer::createEncoderPaddingMask(const std::shared_ptr<Tensor> &encoderInputIds) {
+  return create_padding_mask(encoderInputIds, _padTokenId);
 }
 
-std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
-    const std::shared_ptr<Tensor> &decoder_input_ids) {
-  const auto &decoder_shape = decoder_input_ids->get_shape();
+std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::shared_ptr<Tensor> &decoderInputIds) {
+  const auto &decoder_shape = decoderInputIds->get_shape();
   if (decoder_shape.size() != 2) {
     throw std::runtime_error(
         "Decoder input for self-attention mask must be 2D (batch, seq_len).");
@@ -42,7 +40,7 @@ std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
   std::shared_ptr<Tensor> look_ahead_mask =
       create_look_ahead_mask(sequence_length);
   std::shared_ptr<Tensor> padding_mask =
-      create_padding_mask(decoder_input_ids, pad_token_id_);
+      create_padding_mask(decoderInputIds, _padTokenId);
 
   const auto &look_ahead_shape = look_ahead_mask->get_shape();
   const auto &padding_shape = padding_mask->get_shape();
@@ -79,16 +77,16 @@ std::shared_ptr<Tensor> Transformer::create_decoder_self_attention_mask(
 }
 
 std::shared_ptr<Tensor> Transformer::create_decoder_cross_attention_mask(
-    const std::shared_ptr<Tensor> &encoder_input_ids) {
-  return create_padding_mask(encoder_input_ids, pad_token_id_);
+    const std::shared_ptr<Tensor> &encoderInputIds) {
+  return create_padding_mask(encoderInputIds, _padTokenId);
 }
 
 std::shared_ptr<Tensor>
-Transformer::forward(const std::shared_ptr<Tensor> &encoder_input_ids,
-                     const std::shared_ptr<Tensor> &decoder_input_ids,
-                     bool is_training) {
-  const std::vector<int> &enc_input_shape = encoder_input_ids->get_shape();
-  const std::vector<int> &dec_input_shape = decoder_input_ids->get_shape();
+Transformer::forward(const std::shared_ptr<Tensor> &encoderInputIds,
+                     const std::shared_ptr<Tensor> &decoderInputIds,
+                     bool isTraining) {
+  const std::vector<int> &enc_input_shape = encoderInputIds->get_shape();
+  const std::vector<int> &dec_input_shape = decoderInputIds->get_shape();
 
   if (enc_input_shape.size() != 2 || dec_input_shape.size() != 2) {
     throw std::runtime_error("Encoder and decoder input IDs must be 2D tensors "
@@ -96,39 +94,39 @@ Transformer::forward(const std::shared_ptr<Tensor> &encoder_input_ids,
   }
 
   std::shared_ptr<Tensor> encoder_padding_mask =
-      create_encoder_padding_mask(encoder_input_ids);
+      createEncoderPaddingMask(encoderInputIds);
   std::shared_ptr<Tensor> decoder_self_attention_mask =
-      create_decoder_self_attention_mask(decoder_input_ids);
+      createDecoderSelfAttentionMask(decoderInputIds);
   std::shared_ptr<Tensor> decoder_cross_attention_mask =
-      create_decoder_cross_attention_mask(encoder_input_ids);
+      create_decoder_cross_attention_mask(encoderInputIds);
 
   std::shared_ptr<Tensor> encoder_input_embeddings =
-      encoder_embedding_.forward(encoder_input_ids);
+      _encoderEmbedding.forward(encoderInputIds);
   std::shared_ptr<Tensor> encoder_input_with_pos =
-      encoder_positional_encoding_.forward(encoder_input_embeddings);
+      _encoderPositionalEncoding.forward(encoder_input_embeddings);
 
   std::shared_ptr<Tensor> encoder_input_dropped = encoder_input_with_pos;
 
-  std::shared_ptr<Tensor> encoder_output = encoder_.forward(
-      encoder_input_dropped, encoder_padding_mask, is_training);
+  std::shared_ptr<Tensor> encoder_output = _encoder.forward(
+      encoder_input_dropped, encoder_padding_mask, isTraining);
 
   std::shared_ptr<Tensor> decoder_input_embeddings =
-      decoder_embedding_.forward(decoder_input_ids);
+      _decoderEmbedding.forward(decoderInputIds);
   std::shared_ptr<Tensor> decoder_input_with_pos =
-      decoder_positional_encoding_.forward(decoder_input_embeddings);
+      _decoderPositionalEncoding.forward(decoder_input_embeddings);
 
   std::shared_ptr<Tensor> decoder_input_dropped = decoder_input_with_pos;
 
-  std::shared_ptr<Tensor> decoder_output = decoder_.forward(
+  std::shared_ptr<Tensor> decoder_output = _decoder.forward(
       decoder_input_dropped, encoder_output, decoder_self_attention_mask,
-      decoder_cross_attention_mask, is_training);
+      decoder_cross_attention_mask, isTraining);
 
-  std::shared_ptr<Tensor> logits = final_linear_.forward(decoder_output);
+  std::shared_ptr<Tensor> logits = _linearFinal.forward(decoder_output);
 
   return logits;
 }
 
-void Transformer::save_weights(const std::string& filename) const {
+void Transformer::saveWeights(const std::string& filename) const {
   std::ofstream outfile(filename, std::ios::binary | std::ios::trunc);
   if (!outfile.is_open()) {
     throw std::runtime_error("Failed to open file for saving weights: " + filename);
@@ -155,7 +153,7 @@ void Transformer::save_weights(const std::string& filename) const {
   }
 }
 
-void Transformer::load_weights(const std::string& filename) {
+void Transformer::loadWeights(const std::string& filename) {
   std::ifstream infile(filename, std::ios::binary);
   if (!infile.is_open()) {
     throw std::runtime_error("Failed to open file for loading weights: " + filename);

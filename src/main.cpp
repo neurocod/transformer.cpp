@@ -52,16 +52,16 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
   for (int epoch = 0; epoch < cf.numEpochs; ++epoch) {
     auto epoch_start = std::chrono::high_resolution_clock::now();
 
-    optimizer.zero_grad();
+    optimizer.zeroGrad();
 
     std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = dataLoader.randBatch();
-    std::shared_ptr<Tensor> encoder_input_ids = batch_data.first;
+    std::shared_ptr<Tensor> encoderInputIds = batch_data.first;
     std::shared_ptr<Tensor> target_output_ids = batch_data.second;
-    std::shared_ptr<Tensor> decoder_input_ids = encoder_input_ids;
+    std::shared_ptr<Tensor> decoderInputIds = encoderInputIds;
 
     // Forward pass
     std::shared_ptr<Tensor> logits =
-      model.forward(encoder_input_ids, decoder_input_ids, true);
+      model.forward(encoderInputIds, decoderInputIds, true);
 
     // Reshape logits
     std::shared_ptr<Tensor> reshaped_logits =
@@ -90,7 +90,7 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
 
   try {
     std::cout << std::format("Saving final weights to {}\n", cf.weightsFilename);
-    model.save_weights(cf.weightsFilename);
+    model.saveWeights(cf.weightsFilename);
     std::cout << "Weights saved successfully." << std::endl;
   }
   catch (const std::exception& e) {
@@ -121,7 +121,6 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
   for (float id_float : generated_ids) {
     std::cout << dataLoader.get_char_from_id(static_cast<int>(id_float));
   }
-  std::cout << std::flush;
 
   for (int i = 0; i < cf.maxGenerateLength; ++i) {
     std::vector<float> step_input_vec;
@@ -144,7 +143,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     std::shared_ptr<Tensor> encoder_input = step_input_tensor;
     std::shared_ptr<Tensor> decoder_input = step_input_tensor;
 
-    // Forward pass (is_training = false)
+    // Forward pass (isTraining = false)
     std::shared_ptr<Tensor> logits =
       model.forward(encoder_input, decoder_input, false);
     const int target_vocab_size = dataLoader.get_vocab_size();
@@ -163,7 +162,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     float max_logit = -std::numeric_limits<float>::infinity();
     int predicted_id = -1;
     if (logits_offset + target_vocab_size > logits_data.size()) {
-      std::cerr << std::format("\nError: Logits offset ({}) + vocab_size ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.\n",
+      std::cerr << std::format("\nError: Logits offset ({}) + vocabSize ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.\n",
         logits_offset, target_vocab_size, logits_data.size(), last_token_index);
       break;
     }
@@ -244,7 +243,7 @@ int mainExcept() {
     }
     try {
       std::cout << std::format("Attempting to load weights from {}...\n", cf.weightsFilename);
-      model.load_weights(cf.weightsFilename);
+      model.loadWeights(cf.weightsFilename);
       std::cout << "Weights loaded successfully." << std::endl;
     } catch (const std::exception& e) {
       std::cerr << "Failed to load weights: " << e.what() << std::endl;

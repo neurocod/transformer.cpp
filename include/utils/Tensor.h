@@ -89,8 +89,8 @@ public:
   std::shared_ptr<Tensor> softmax(int dim = -1) const;
 
   // Gradient handling
-  void zero_grad();
-  void backward(const std::shared_ptr<Tensor> &grad_output);
+  void zeroGrad();
+  void backward(const std::shared_ptr<Tensor> &gradOutput);
 
   // Helper to calculate total number of elements from shape
   size_t num_elements() const;
@@ -132,28 +132,28 @@ private:
     return _shape == other._shape;
   }
 
-  void reduce_gradient(const std::shared_ptr<Tensor> &grad_output,
+  void reduce_gradient(const std::shared_ptr<Tensor> &gradOutput,
                        std::shared_ptr<Tensor> &parent_grad,
                        const std::vector<int> &parent_shape);
-  void backward_add(const std::shared_ptr<Tensor> &grad_output);
-  void backward_sub(const std::shared_ptr<Tensor> &grad_output);
-  void backward_mul(const std::shared_ptr<Tensor> &grad_output);
-  void backward_div(const std::shared_ptr<Tensor> &grad_output);
+  void backward_add(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_sub(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_mul(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_div(const std::shared_ptr<Tensor> &gradOutput);
 
-  void backward_transpose(const std::shared_ptr<Tensor> &grad_output);
-  void backward_reshape(const std::shared_ptr<Tensor> &grad_output);
+  void backward_transpose(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_reshape(const std::shared_ptr<Tensor> &gradOutput);
 
-  void backward_dot(const std::shared_ptr<Tensor> &grad_output);
-  void backward_sum(const std::shared_ptr<Tensor> &grad_output);
+  void backward_dot(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_sum(const std::shared_ptr<Tensor> &gradOutput);
 
-  void backward_relu(const std::shared_ptr<Tensor> &grad_output);
-  void backward_gelu(const std::shared_ptr<Tensor> &grad_output);
-  void backward_sigmoid(const std::shared_ptr<Tensor> &grad_output);
-  void backward_tanh(const std::shared_ptr<Tensor> &grad_output);
-  void backward_logsoftmax(const std::shared_ptr<Tensor> &grad_output);
-  void backward_nllloss(const std::shared_ptr<Tensor> &grad_output);
-  void backward_layernorm(const std::shared_ptr<Tensor> &grad_output);
-  void backward_softmax(const std::shared_ptr<Tensor> &grad_output);
-  void backward_dropout(const std::shared_ptr<Tensor> &grad_output);
-  void backward_embedding_lookup(const std::shared_ptr<Tensor> &grad_output);
+  void backward_relu(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_gelu(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_sigmoid(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_tanh(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_logsoftmax(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_nllloss(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_layernorm(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_softmax(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_dropout(const std::shared_ptr<Tensor> &gradOutput);
+  void backward_embedding_lookup(const std::shared_ptr<Tensor> &gradOutput);
 };

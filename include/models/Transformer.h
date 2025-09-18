@@ -11,41 +11,35 @@ public:
   Transformer(int input_vocab_size, int target_vocab_size, int embedDim,
               int maxSequenceLength, int numLayers, int numHeads,
               int ffHiddenDim, float dropoutRate, float padTokenId = 0.0f);
+  virtual ~Transformer() {}
 
-  std::shared_ptr<Tensor>
-  forward(const std::shared_ptr<Tensor> &encoder_input_ids,
-          const std::shared_ptr<Tensor> &decoder_input_ids, bool is_training);
+	std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& encoderInputIds,
+		const std::shared_ptr<Tensor>& decoderInputIds, bool isTraining);
 
-  void save_weights(const std::string &filename) const;
-  void load_weights(const std::string &filename);
+  void saveWeights(const std::string &filename) const;
+  void loadWeights(const std::string &filename);
+protected:
+  Embedding _encoderEmbedding;
+  PositionalEncoding _encoderPositionalEncoding;
+  Encoder _encoder;
 
-  ~Transformer() = default;
+  Embedding _decoderEmbedding;
+  PositionalEncoding _decoderPositionalEncoding;
+  Decoder _decoder;
 
-private:
-  Embedding encoder_embedding_;
-  PositionalEncoding encoder_positional_encoding_;
-  Encoder encoder_;
+  Linear _linearFinal;
 
-  Embedding decoder_embedding_;
-  PositionalEncoding decoder_positional_encoding_;
-  Decoder decoder_;
+  const int _inputVocabSize;
+  const int _targetVocabSize;
+  const int _embedDim;
+  const int _maxSequenceLength;
+  const int _numLayers;
+  const int _numHeads;
+  const int _ffHiddenDim;
+  float _dropoutRate;
+  float _padTokenId;
 
-  Linear final_linear_;
-
-  int input_vocab_size_;
-  int target_vocab_size_;
-  int embed_dim_;
-  int max_sequence_length_;
-  int num_layers_;
-  int num_heads_;
-  int ff_hidden_dim_;
-  float dropout_rate_;
-  float pad_token_id_;
-
-  std::shared_ptr<Tensor>
-  create_encoder_padding_mask(const std::shared_ptr<Tensor> &encoder_input_ids);
-  std::shared_ptr<Tensor> create_decoder_self_attention_mask(
-      const std::shared_ptr<Tensor> &decoder_input_ids);
-  std::shared_ptr<Tensor> create_decoder_cross_attention_mask(
-      const std::shared_ptr<Tensor> &encoder_input_ids);
+  std::shared_ptr<Tensor> createEncoderPaddingMask(const std::shared_ptr<Tensor> &encoderInputIds);
+  std::shared_ptr<Tensor> createDecoderSelfAttentionMask(const std::shared_ptr<Tensor> &decoderInputIds);
+  std::shared_ptr<Tensor> create_decoder_cross_attention_mask(const std::shared_ptr<Tensor> &encoderInputIds);
 };
