@@ -22,7 +22,7 @@ Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
   // input_ids shape: (batchSize, sequence_length)
   // Output shape: (batchSize, sequence_length, embedDim)
 
-  const std::vector<int> &input_shape = input_ids->get_shape();
+  const std::vector<int> &input_shape = input_ids->shape();
   if (input_shape.size() != 2) {
     throw std::runtime_error("Embedding layer input must be a 2D tensor "
                              "(batchSize, sequence_length).");
@@ -35,8 +35,8 @@ Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
       Tensor::create({(int)batchSize, (int)sequence_length, _embedDim});
   std::vector<float> &output_data = output->data_ref();
 
-  const std::vector<float> &input_ids_data = input_ids->get_data();
-  const std::vector<float> &weights_data = _weights->get_data();
+  const std::vector<float> &input_ids_data = input_ids->data();
+  const std::vector<float> &weights_data = _weights->data();
 
   for (size_t i = 0; i < batchSize * sequence_length; ++i) {
     float token_id_float = input_ids_data[i];

@@ -8,8 +8,8 @@ public:
 
   std::string modelFileNameByParameters() const;
 
-  size_t numThreads;
-  bool inferenceMode;
+  size_t numThreads = 4;
+  bool inferenceMode = true;
   std::string weightsFilename;
   std::string dataFilename;
 

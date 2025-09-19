@@ -919,7 +919,7 @@ void Tensor::zeroGrad() {
 }
 
 void Tensor::backward(const std::shared_ptr<Tensor> &gradOutput) {
-  if (_shape != gradOutput->get_shape()) {
+  if (_shape != gradOutput->shape()) {
     throw std::runtime_error("Gradient shape mismatch in backward.");
   }
 
@@ -993,7 +993,7 @@ void Tensor::backward(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::reduce_gradient(const std::shared_ptr<Tensor> &gradOutput,
                              std::shared_ptr<Tensor> &parent_grad,
                              const std::vector<int> &parent_shape) {
-  const std::vector<int> &grad_shape = gradOutput->get_shape();
+  const std::vector<int> &grad_shape = gradOutput->shape();
 
   if (grad_shape == parent_shape) {
     parent_grad = Tensor::create(parent_shape);
@@ -1122,7 +1122,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &gradOutput) {
 
     if (a_needs_grad) {
       std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-      reduce_gradient(gradOutput, grad_a_propagated, parent_a->get_shape());
+      reduce_gradient(gradOutput, grad_a_propagated, parent_a->shape());
       parent_a->backward(grad_a_propagated);
     }
 
@@ -1131,7 +1131,7 @@ void Tensor::backward_add(const std::shared_ptr<Tensor> &gradOutput) {
 
     if (b_needs_grad) {
       std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-      reduce_gradient(gradOutput, grad_b_propagated, parent_b->get_shape());
+      reduce_gradient(gradOutput, grad_b_propagated, parent_b->shape());
       parent_b->backward(grad_b_propagated);
     }
   } else {
@@ -1152,23 +1152,23 @@ void Tensor::backward_sub(const std::shared_ptr<Tensor> &gradOutput) {
     std::shared_ptr<Tensor> parent_b = parents_[1];
 
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
-    reduce_gradient(gradOutput, grad_a_propagated, parent_a->get_shape());
+    reduce_gradient(gradOutput, grad_a_propagated, parent_a->shape());
     parent_a->backward(grad_a_propagated);
 
     // Need to propagate -gradOutput
     std::shared_ptr<Tensor> neg_grad_output =
-        Tensor::create(gradOutput->get_shape());
+        Tensor::create(gradOutput->shape());
     if (neg_grad_output->_data && gradOutput->_data) {
       std::shared_ptr<std::vector<float>> neg_data =
           std::make_shared<std::vector<float>>(gradOutput->num_elements());
-      const std::vector<float> &grad_output_data = gradOutput->get_data();
+      const std::vector<float> &grad_output_data = gradOutput->data();
       for (size_t i = 0; i < neg_data->size(); ++i) {
         (*neg_data)[i] = -grad_output_data[i];
       }
       neg_grad_output->set_data(neg_data);
 
       std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
-      reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->get_shape());
+      reduce_gradient(neg_grad_output, grad_b_propagated, parent_b->shape());
       parent_b->backward(grad_b_propagated);
     } else {
       spdlog::error("Error: Data vector missing in backward_sub gradient calculation.");
@@ -1192,7 +1192,7 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
 
     // grad_a = gradOutput * parent_b
     std::vector<int> intermediate_shape_a = calculate_broadcast_shape(
-        gradOutput->get_shape(), parent_b->get_shape());
+        gradOutput->shape(), parent_b->shape());
     std::shared_ptr<Tensor> grad_a_intermediate_tensor =
         Tensor::create(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_grad_a =
@@ -1211,12 +1211,12 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
     reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated,
-                    parent_a->get_shape());
+                    parent_a->shape());
     parent_a->backward(grad_a_propagated);
 
     // grad_b = gradOutput * parent_a
     std::vector<int> intermediate_shape_b = calculate_broadcast_shape(
-        gradOutput->get_shape(), parent_a->get_shape());
+        gradOutput->shape(), parent_a->shape());
     std::shared_ptr<Tensor> grad_b_intermediate_tensor =
         Tensor::create(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_grad_b =
@@ -1235,7 +1235,7 @@ void Tensor::backward_mul(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
     reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated,
-                    parent_b->get_shape());
+                    parent_b->shape());
     parent_b->backward(grad_b_propagated);
   } else {
     spdlog::error("Error: Mul operation expected 2 parents, but found {}\n", parents_.size());
@@ -1255,7 +1255,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
 
     // grad_a = gradOutput / parent_b
     std::vector<int> intermediate_shape_a = calculate_broadcast_shape(
-        gradOutput->get_shape(), parent_b->get_shape());
+        gradOutput->shape(), parent_b->shape());
     std::shared_ptr<Tensor> grad_a_intermediate_tensor =
         Tensor::create(intermediate_shape_a);
     std::shared_ptr<Tensor> broadcasted_grad_a =
@@ -1275,14 +1275,14 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
     reduce_gradient(grad_a_intermediate_tensor, grad_a_propagated,
-                    parent_a->get_shape());
+                    parent_a->shape());
     parent_a->backward(grad_a_propagated);
 
     // grad_b = gradOutput * (-parent_a / parent_b^2)
     std::vector<int> intermediate_shape_b = calculate_broadcast_shape(
-        calculate_broadcast_shape(gradOutput->get_shape(),
-                                  parent_a->get_shape()),
-        parent_b->get_shape());
+        calculate_broadcast_shape(gradOutput->shape(),
+                                  parent_a->shape()),
+        parent_b->shape());
     std::shared_ptr<Tensor> grad_b_intermediate_tensor =
         Tensor::create(intermediate_shape_b);
     std::shared_ptr<Tensor> broadcasted_grad_b =
@@ -1309,7 +1309,7 @@ void Tensor::backward_div(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
     reduce_gradient(grad_b_intermediate_tensor, grad_b_propagated,
-                    parent_b->get_shape());
+                    parent_b->shape());
     parent_b->backward(grad_b_propagated);
   } else {
     spdlog::error("Error: Division operation expected 2 parents, but found {}\n", parents_.size());
@@ -1337,8 +1337,8 @@ void Tensor::backward_transpose(const std::shared_ptr<Tensor> &gradOutput) {
         gradOutput->transpose(inverse_permutation);
 
     std::shared_ptr<Tensor> grad_input_tensor = Tensor::create(
-        parent->get_shape(),
-        std::make_shared<std::vector<float>>(grad_input->get_data()));
+        parent->shape(),
+        std::make_shared<std::vector<float>>(grad_input->data()));
     parent->backward(grad_input_tensor);
   } else {
     spdlog::error("Error: Transpose operation expected 1 parent, but found {}\n", parents_.size());
@@ -1367,7 +1367,7 @@ void Tensor::backward_reshape(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_input_reshaped_tensor = Tensor::create(
         original_shape_before_reshape_,
-        std::make_shared<std::vector<float>>(gradOutput->get_data()));
+        std::make_shared<std::vector<float>>(gradOutput->data()));
 
     parent->backward(grad_input_reshaped_tensor);
   } else {
@@ -1388,7 +1388,7 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &gradOutput) {
     std::shared_ptr<Tensor> parent_b = parents_[1];
 
     // Calculate dL/dA = dL/dZ . B^T
-    std::vector<int> b_transpose_perm(parent_b->get_shape().size());
+    std::vector<int> b_transpose_perm(parent_b->shape().size());
     std::iota(b_transpose_perm.begin(), b_transpose_perm.end(), 0);
     if (b_transpose_perm.size() >= 2) {
       std::swap(b_transpose_perm[b_transpose_perm.size() - 1],
@@ -1404,11 +1404,11 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &gradOutput) {
     // Reduce gradient for parent A
     std::shared_ptr<Tensor> grad_a_propagated = Tensor::create();
     reduce_gradient(grad_a_intermediate, grad_a_propagated,
-                    parent_a->get_shape());
+                    parent_a->shape());
     parent_a->backward(grad_a_propagated);
 
     // Calculate dL/dB = A^T . dL/dZ
-    std::vector<int> a_transpose_perm(parent_a->get_shape().size());
+    std::vector<int> a_transpose_perm(parent_a->shape().size());
     std::iota(a_transpose_perm.begin(), a_transpose_perm.end(), 0);
     if (a_transpose_perm.size() >= 2) {
       std::swap(a_transpose_perm[a_transpose_perm.size() - 1],
@@ -1424,7 +1424,7 @@ void Tensor::backward_dot(const std::shared_ptr<Tensor> &gradOutput) {
     // Reduce gradient for parent B
     std::shared_ptr<Tensor> grad_b_propagated = Tensor::create();
     reduce_gradient(grad_b_intermediate, grad_b_propagated,
-                    parent_b->get_shape());
+                    parent_b->shape());
     parent_b->backward(grad_b_propagated);
   } else {
     spdlog::error("Error: Dot operation expected 2 parents, but found {}", parents_.size());
@@ -1435,14 +1435,14 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
 
-    if (gradOutput->get_shape().size() != 1 ||
-        gradOutput->get_shape()[0] != 1) {
+    if (gradOutput->shape().size() != 1 ||
+        gradOutput->shape()[0] != 1) {
       throw std::runtime_error("Gradient for sum operation must be a scalar.");
     }
-    float grad_value = gradOutput->get_data()[0];
+    float grad_value = gradOutput->data()[0];
 
     std::shared_ptr<Tensor> grad_input_tensor =
-        Tensor::create(parent->get_shape());
+        Tensor::create(parent->shape());
 
     size_t total_elements = grad_input_tensor->num_elements();
     size_t numThreads =
@@ -1474,9 +1474,9 @@ void Tensor::backward_sum(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::backward_relu(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
-    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-    const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->shape());
+    const std::vector<float> &parent_data = parent->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
@@ -1513,9 +1513,9 @@ void Tensor::backward_relu(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::backward_gelu(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
-    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-    const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->shape());
+    const std::vector<float> &parent_data = parent->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     const float M_SQRT2_OVER_PI = 0.7978845608028654f; // sqrt(2 / PI)
@@ -1560,9 +1560,9 @@ void Tensor::backward_gelu(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
-    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-    const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->shape());
+    const std::vector<float> &parent_data = parent->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
@@ -1598,9 +1598,9 @@ void Tensor::backward_sigmoid(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::backward_tanh(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
-    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->get_shape());
-    const std::vector<float> &parent_data = parent->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+    std::shared_ptr<Tensor> grad_input = Tensor::create(parent->shape());
+    const std::vector<float> &parent_data = parent->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_data = grad_input->data_ref();
 
     size_t total_elements = parent_data.size();
@@ -1636,19 +1636,19 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input_intermediate =
-        Tensor::create(shared_from_this()->get_shape());
-    const std::vector<float> &output_data = shared_from_this()->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+        Tensor::create(shared_from_this()->shape());
+    const std::vector<float> &output_data = shared_from_this()->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
-    const std::vector<int> &shape = shared_from_this()->get_shape();
+    const std::vector<int> &shape = shared_from_this()->shape();
     size_t last_dim_size = shape.empty() ? 0 : shape.back();
     size_t num_elements = shared_from_this()->num_elements();
 
     if (last_dim_size == 0 || num_elements == 0) {
       std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
       reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                      parent->get_shape());
+                      parent->shape());
       parent->backward(grad_input_propagated);
       return;
     }
@@ -1691,7 +1691,7 @@ void Tensor::backward_logsoftmax(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
     reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                    parent->get_shape());
+                    parent->shape());
     parent->backward(grad_input_propagated);
   } else {
     spdlog::error("Error: LogSoftmax operation expected 1 parent, but found {}", parents_.size());
@@ -1706,9 +1706,9 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &gradOutput) {
         parents_[1]; // Targets (used for indexing in forward, not for gradient)
 
     std::shared_ptr<Tensor> grad_input_intermediate =
-        Tensor::create(log_probs->get_shape());
-    const std::vector<float> &target_data = parents_[1]->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+        Tensor::create(log_probs->shape());
+    const std::vector<float> &target_data = parents_[1]->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     if (gradOutput->num_elements() != 1) {
@@ -1716,14 +1716,14 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &gradOutput) {
     }
     float loss_grad_value = grad_output_data[0];
 
-    const std::vector<int> &log_prob_shape = log_probs->get_shape();
+    const std::vector<int> &log_prob_shape = log_probs->shape();
     size_t last_dim_size = log_prob_shape.empty() ? 0 : log_prob_shape.back();
     size_t num_elements = log_probs->num_elements();
 
     if (last_dim_size == 0 || num_elements == 0) {
       std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
       reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                      log_probs->get_shape());
+                      log_probs->shape());
       log_probs->backward(grad_input_propagated);
       return;
     }
@@ -1759,7 +1759,7 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &gradOutput) {
     }
     std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
     reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                    log_probs->get_shape());
+                    log_probs->shape());
     log_probs->backward(grad_input_propagated);
   } else {
     spdlog::error("Error: NegativeLogLikelihood operation expected 2 parents, but found {}", parents_.size());
@@ -1769,7 +1769,7 @@ void Tensor::backward_nllloss(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> input_parent = parents_[0];
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
 
     std::shared_ptr<Tensor> gamma = layernorm_gamma_;
     std::shared_ptr<Tensor> beta = layernorm_beta_;
@@ -1778,18 +1778,18 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &gradOutput) {
     std::shared_ptr<Tensor> centered_input = layernorm_centered_input_;
     float epsilon = layernorm_epsilon_;
 
-    const std::vector<float> &gamma_data = gamma->get_data();
-    const std::vector<float> &inv_stddev_data = inv_stddev->get_data();
-    const std::vector<float> &centered_input_data = centered_input->get_data();
+    const std::vector<float> &gamma_data = gamma->data();
+    const std::vector<float> &inv_stddev_data = inv_stddev->data();
+    const std::vector<float> &centered_input_data = centered_input->data();
 
-    const std::vector<int> &input_shape = input_parent->get_shape();
+    const std::vector<int> &input_shape = input_parent->shape();
     size_t last_dim_size = input_shape.empty() ? 0 : input_shape.back();
     size_t num_elements = input_parent->num_elements();
     size_t outer_dims_elements = num_elements / last_dim_size;
 
     if (last_dim_size == 0 || num_elements == 0) {
       std::shared_ptr<Tensor> grad_input_propagated =
-          Tensor::create(input_parent->get_shape());
+          Tensor::create(input_parent->shape());
       input_parent->backward(grad_input_propagated);
       return;
     }
@@ -1851,8 +1851,8 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &gradOutput) {
         Tensor::create(input_shape);
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
-    const std::vector<float> &mean_data = mean->get_data();
-    const std::vector<float> &variance_data = mean->get_data();
+    const std::vector<float> &mean_data = mean->data();
+    const std::vector<float> &variance_data = mean->data();
 
     size_t num_threads_input = std::thread::hardware_concurrency();
     if (outer_dims_elements < num_threads_input)
@@ -1908,7 +1908,7 @@ void Tensor::backward_layernorm(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
     reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                    input_parent->get_shape());
+                    input_parent->shape());
     input_parent->backward(grad_input_propagated);
   } else {
     spdlog::error("Error: LayerNorm operation expected 1 input parent, but found {}", parents_.size());
@@ -1919,19 +1919,19 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input_intermediate =
-        Tensor::create(this->get_shape());
-    const std::vector<float> &output_data = this->get_data();
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+        Tensor::create(this->shape());
+    const std::vector<float> &output_data = this->data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
-    const std::vector<int> &shape = this->get_shape();
+    const std::vector<int> &shape = this->shape();
     int dim = -1; // Need to figure out the dimension softmax was applied on.
                   // Assuming last dimension for now.
     if (shape.empty()) {
       // Handle scalar or empty tensor case if necessary.
       std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
       reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                      parent->get_shape());
+                      parent->shape());
       parent->backward(grad_input_propagated);
       return;
     } else {
@@ -1952,7 +1952,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &gradOutput) {
     if (num_slices_to_process == 0) {
       std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
       reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                      parent->get_shape());
+                      parent->shape());
       parent->backward(grad_input_propagated);
       return;
     }
@@ -2003,7 +2003,7 @@ void Tensor::backward_softmax(const std::shared_ptr<Tensor> &gradOutput) {
 
     std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
     reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                    parent->get_shape());
+                    parent->shape());
     parent->backward(grad_input_propagated);
   } else {
     spdlog::error("Error: Softmax operation expected 1 parent, but found {}", parents_.size());
@@ -2014,20 +2014,20 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> parent = parents_[0];
     std::shared_ptr<Tensor> grad_input_intermediate =
-        Tensor::create(this->get_shape());
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+        Tensor::create(this->shape());
+    const std::vector<float> &grad_output_data = gradOutput->data();
     std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->data_ref();
 
     // Retrieve the mask and scale factor stored during the forward pass
     std::shared_ptr<Tensor> mask = this->dropout_mask_;
     float scale = this->dropout_scale_;
 
-    if (!mask || mask->get_shape() != this->get_shape()) {
+    if (!mask || mask->shape() != this->shape()) {
       throw std::runtime_error(
           "Dropout mask is missing or shape mismatch in backward.");
     }
 
-    const std::vector<float> &mask_data = mask->get_data();
+    const std::vector<float> &mask_data = mask->data();
 
     // The gradient is passed through only for the elements that were kept in
     // the forward pass.
@@ -2039,7 +2039,7 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &gradOutput) {
     // Propagate gradient to the parent
     std::shared_ptr<Tensor> grad_input_propagated = Tensor::create();
     reduce_gradient(grad_input_intermediate, grad_input_propagated,
-                    parent->get_shape());
+                    parent->shape());
     parent->backward(grad_input_propagated);
   } else {
     spdlog::error("Error: Dropout operation expected 1 parent, but found {}", parents_.size());
@@ -2049,23 +2049,23 @@ void Tensor::backward_dropout(const std::shared_ptr<Tensor> &gradOutput) {
 void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &gradOutput) {
   if (parents_.size() == 1) {
     std::shared_ptr<Tensor> weights_parent = parents_[0];
-    const std::vector<float> &grad_output_data = gradOutput->get_data();
+    const std::vector<float> &grad_output_data = gradOutput->data();
 
     std::shared_ptr<Tensor> input_ids = this->embedding_indices_;
 
-    if (!input_ids || input_ids->get_shape().size() != 2) {
+    if (!input_ids || input_ids->shape().size() != 2) {
       throw std::runtime_error("Embedding indices tensor is missing or has "
                                "incorrect shape in backward.");
     }
 
-    const std::vector<float> &input_ids_data = input_ids->get_data();
-    const std::vector<int> &input_ids_shape = input_ids->get_shape();
+    const std::vector<float> &input_ids_data = input_ids->data();
+    const std::vector<int> &input_ids_shape = input_ids->shape();
 
     size_t batchSize = input_ids_shape[0];
     size_t sequence_length = input_ids_shape[1];
-    size_t embedDim = gradOutput->get_shape().back();
+    size_t embedDim = gradOutput->shape().back();
 
-    if (gradOutput->get_shape() != std::vector<int>{(int)batchSize,
+    if (gradOutput->shape() != std::vector<int>{(int)batchSize,
                                                      (int)sequence_length,
                                                      (int)embedDim}) {
       throw std::runtime_error(
@@ -2074,7 +2074,7 @@ void Tensor::backward_embedding_lookup(const std::shared_ptr<Tensor> &gradOutput
 
     if (weights_parent->_grad) {
       std::vector<float> &weights_grad_data = weights_parent->grad_ref();
-      size_t vocabSize = weights_parent->get_shape()[0];
+      size_t vocabSize = weights_parent->shape()[0];
 
       size_t total_indices = batchSize * sequence_length;
       size_t numThreads =

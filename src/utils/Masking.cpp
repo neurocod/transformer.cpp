@@ -28,7 +28,7 @@ std::shared_ptr<Tensor> create_look_ahead_mask(int sequence_length) {
 std::shared_ptr<Tensor>
 create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
                     float padTokenId) {
-  const std::vector<int> &input_shape = input_ids->get_shape();
+  const std::vector<int> &input_shape = input_ids->shape();
   if (input_shape.size() != 2) {
     throw std::runtime_error("Input IDs for padding mask must be a 2D tensor "
                              "(batchSize, sequence_length).");
@@ -40,7 +40,7 @@ create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
   std::shared_ptr<Tensor> mask =
       Tensor::create({(int)batchSize, (int)sequence_length});
   std::vector<float> &mask_data = mask->data_ref();
-  const std::vector<float> &input_ids_data = input_ids->get_data();
+  const std::vector<float> &input_ids_data = input_ids->data();
 
   for (size_t i = 0; i < batchSize * sequence_length; ++i) {
     if (input_ids_data[i] == padTokenId) {

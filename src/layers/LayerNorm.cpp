@@ -18,7 +18,7 @@ LayerNorm::LayerNorm(const std::string& name, int normalized_shape, float epsilo
 
 std::shared_ptr<Tensor>
 LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
-  const std::vector<int> &input_shape = input->get_shape();
+  const std::vector<int> &input_shape = input->shape();
   if (input_shape.empty() || input_shape.back() != normalized_shape_) {
     throw std::runtime_error("Input tensor's last dimension must match "
                              "normalized_shape in LayerNorm.");
@@ -40,7 +40,7 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<std::vector<float>> variance_data =
       std::make_shared<std::vector<float>>(outer_dims_elements);
 
-  const std::vector<float> &input_data = input->get_data();
+  const std::vector<float> &input_data = input->data();
 
   for (size_t i = 0; i < outer_dims_elements; ++i) {
     size_t start_idx = i * last_dim_size;
@@ -66,7 +66,7 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
       std::vector<int>(input_shape.begin(), input_shape.end() - 1));
   std::shared_ptr<std::vector<float>> inv_stddev_data =
       std::make_shared<std::vector<float>>(outer_dims_elements);
-  const std::vector<float> &variance_data_const = variance->get_data();
+  const std::vector<float> &variance_data_const = variance->data();
 
   for (size_t i = 0; i < outer_dims_elements; ++i) {
     (*inv_stddev_data)[i] =
@@ -82,8 +82,8 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
   centered_input_ = Tensor::create(input_shape);
   std::vector<float> &centered_input_data = centered_input_->data_ref();
 
-  const std::vector<float> &gamma_data = gamma_->get_data();
-  const std::vector<float> &beta_data = beta_->get_data();
+  const std::vector<float> &gamma_data = gamma_->data();
+  const std::vector<float> &beta_data = beta_->data();
 
   for (size_t i = 0; i < outer_dims_elements; ++i) {
     size_t start_idx = i * last_dim_size;

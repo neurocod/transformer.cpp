@@ -34,7 +34,7 @@ std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> &input) {
   // Weights shape is (inputDim, outputDim)
   // output = input * weights + biases
 
-  if (input->get_shape().empty() || input->get_shape().back() != _inputDim) {
+  if (input->shape().empty() || input->shape().back() != _inputDim) {
     throw std::runtime_error("Input tensor's last dimension is incompatible "
                              "with Linear layer input dimension.");
   }

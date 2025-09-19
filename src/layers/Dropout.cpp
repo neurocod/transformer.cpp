@@ -15,10 +15,10 @@ std::shared_ptr<Tensor> Dropout::forward(const std::shared_ptr<Tensor> &input,
     return input;
   }
 
-  std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
-  std::shared_ptr<Tensor> mask = Tensor::create(input->get_shape());
+  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+  std::shared_ptr<Tensor> mask = Tensor::create(input->shape());
 
-  const std::vector<float> &input_data = input->get_data();
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
   std::vector<float> &mask_data = mask->data_ref();
 

@@ -29,7 +29,7 @@ std::shared_ptr<Tensor> Transformer::createEncoderPaddingMask(const std::shared_
 }
 
 std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::shared_ptr<Tensor> &decoderInputIds) {
-  const auto &decoder_shape = decoderInputIds->get_shape();
+  const auto &decoder_shape = decoderInputIds->shape();
   if (decoder_shape.size() != 2) {
     throw std::runtime_error(
         "Decoder input for self-attention mask must be 2D (batch, seq_len).");
@@ -42,8 +42,8 @@ std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::s
   std::shared_ptr<Tensor> padding_mask =
       create_padding_mask(decoderInputIds, _padTokenId);
 
-  const auto &look_ahead_shape = look_ahead_mask->get_shape();
-  const auto &padding_shape = padding_mask->get_shape();
+  const auto &look_ahead_shape = look_ahead_mask->shape();
+  const auto &padding_shape = padding_mask->shape();
 
   if (look_ahead_shape !=
           std::vector<int>{1, 1, sequence_length, sequence_length} ||
@@ -57,8 +57,8 @@ std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::s
   std::shared_ptr<Tensor> combined_mask = Tensor::create(combined_mask_shape);
   std::vector<float> &combined_mask_data = combined_mask->data_ref();
 
-  const std::vector<float> &look_ahead_data = look_ahead_mask->get_data();
-  const std::vector<float> &padding_data = padding_mask->get_data();
+  const std::vector<float> &look_ahead_data = look_ahead_mask->data();
+  const std::vector<float> &padding_data = padding_mask->data();
 
   for (int b = 0; b < batchSize; ++b) {
     for (int tq = 0; tq < sequence_length; ++tq) {
@@ -85,8 +85,8 @@ std::shared_ptr<Tensor>
 Transformer::forward(const std::shared_ptr<Tensor> &encoderInputIds,
                      const std::shared_ptr<Tensor> &decoderInputIds,
                      bool isTraining) {
-  const std::vector<int> &enc_input_shape = encoderInputIds->get_shape();
-  const std::vector<int> &dec_input_shape = decoderInputIds->get_shape();
+  const std::vector<int> &enc_input_shape = encoderInputIds->shape();
+  const std::vector<int> &dec_input_shape = decoderInputIds->shape();
 
   if (enc_input_shape.size() != 2 || dec_input_shape.size() != 2) {
     throw std::runtime_error("Encoder and decoder input IDs must be 2D tensors "
@@ -173,14 +173,14 @@ void Transformer::loadWeights(const std::string& filename) {
       num_tensors_in_file, optimizable_tensors.size()));
   }
 
-  std::cout << std::format("Loading {} optimizable tensors from {}...\n", num_tensors_in_file, filename);
+  spdlog::info("Loading {} optimizable tensors from {}...", num_tensors_in_file, filename);
 
   for (size_t i = 0; i < num_tensors_in_file; ++i) {
     std::shared_ptr<Tensor>& tensor_ptr = optimizable_tensors[i];
 
     if (!tensor_ptr) {
       throw std::runtime_error(std::format("Warning: Encountered null tensor pointer in model while "
-        "loading weights for index {}\n", i));
+        "loading weights for index {}", i));
     }
     tensor_ptr->read(reader);
   }

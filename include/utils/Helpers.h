@@ -5,36 +5,38 @@ inline void print_tensor(const std::shared_ptr<Tensor> &t,
                          const std::string &name) {
   if (!t)
     return;
-  std::cout << "--- Tensor: " << name << " ---" << std::endl;
-  std::cout << "Shape: [";
-  for (size_t i = 0; i < t->get_shape().size(); ++i) {
-    std::cout << t->get_shape()[i]
-              << (i == t->get_shape().size() - 1 ? "" : ", ");
+  std::stringstream out;
+  out << "--- Tensor: " << name << " ---" << std::endl;
+  out << "Shape: [";
+  for (size_t i = 0; i < t->shape().size(); ++i) {
+    out << t->shape()[i]
+              << (i == t->shape().size() - 1 ? "" : ", ");
   }
-  std::cout << "]" << std::endl;
+  out << "]" << std::endl;
 
-  std::cout << "Data: [";
-  const auto &data = t->get_data();
+  out << "Data: [";
+  const auto &data = t->data();
   size_t print_limit = std::min((size_t)20, data.size());
   for (size_t i = 0; i < print_limit; ++i) {
-    std::cout << data[i] << (i == print_limit - 1 ? "" : ", ");
+    out << data[i] << (i == print_limit - 1 ? "" : ", ");
   }
   if (data.size() > print_limit) {
-    std::cout << ", ...";
+    out << ", ...";
   }
-  std::cout << "]" << std::endl;
+  out << "]" << std::endl;
 
-  std::cout << "Grad: [";
-  const auto &grad = t->get_grad();
+  out << "Grad: [";
+  const auto &grad = t->grad();
   print_limit = std::min((size_t)20, grad.size());
   for (size_t i = 0; i < print_limit; ++i) {
-    std::cout << grad[i] << (i == print_limit - 1 ? "" : ", ");
+    out << grad[i] << (i == print_limit - 1 ? "" : ", ");
   }
   if (grad.size() > print_limit) {
-    std::cout << ", ...";
+    out << ", ...";
   }
-  std::cout << "]" << std::endl;
-  std::cout << "--------------------------" << std::endl;
+  out << "]" << std::endl;
+  out << "--------------------------";
+  spdlog::info(out.str());
 }
 
 inline bool are_tensors_equal(const std::shared_ptr<Tensor> &t1,
@@ -42,12 +44,12 @@ inline bool are_tensors_equal(const std::shared_ptr<Tensor> &t1,
                               float tolerance = 1e-9) {
   if (!t1 || !t2)
     return false;
-  if (t1->get_shape() != t2->get_shape()) {
+  if (t1->shape() != t2->shape()) {
     spdlog::error("Shape mismatch!");
     return false;
   }
-  const auto &data1 = t1->get_data();
-  const auto &data2 = t2->get_data();
+  const auto &data1 = t1->data();
+  const auto &data2 = t2->data();
   if (data1.size() != data2.size()) {
     spdlog::error("Data size mismatch!");
     return false;

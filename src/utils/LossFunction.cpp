@@ -2,7 +2,7 @@
 
 void LossFunction::backward(std::shared_ptr<Tensor> &loss) {
   // The gradient of the loss with respect to itself is 1.0.
-  if (loss->get_shape().size() != 1 || loss->get_shape()[0] != 1) {
+  if (loss->shape().size() != 1 || loss->shape()[0] != 1) {
     throw std::runtime_error(
         "Backward pass for loss must start from a scalar loss tensor.");
   }
@@ -14,7 +14,7 @@ void LossFunction::backward(std::shared_ptr<Tensor> &loss) {
 std::shared_ptr<Tensor>
 MeanSquaredErrorLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
                                    std::shared_ptr<Tensor> &targets) {
-  if (predictions->get_shape() != targets->get_shape()) {
+  if (predictions->shape() != targets->shape()) {
     throw std::runtime_error(
         "Prediction and target shapes mismatch in MeanSquaredErrorLoss.");
   }
@@ -40,10 +40,10 @@ MeanSquaredErrorLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
 
 // Helper function for LogSoftmax
 std::shared_ptr<Tensor> log_softmax(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
-  const std::vector<float> &input_data = input->get_data();
+  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
-  const std::vector<int> &shape = input->get_shape();
+  const std::vector<int> &shape = input->shape();
   size_t last_dim_size = shape.empty() ? 0 : shape.back();
   size_t num_elements = input->num_elements();
 
@@ -89,11 +89,11 @@ nll_loss(const std::shared_ptr<Tensor> &log_probabilities,
   std::shared_ptr<Tensor> loss = Tensor::create(
       std::vector<int>{1},
       std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
-  const std::vector<float> &log_prob_data = log_probabilities->get_data();
-  const std::vector<float> &target_data = targets->get_data();
+  const std::vector<float> &log_prob_data = log_probabilities->data();
+  const std::vector<float> &target_data = targets->data();
   float total_loss = 0.0f;
 
-  const std::vector<int> &log_prob_shape = log_probabilities->get_shape();
+  const std::vector<int> &log_prob_shape = log_probabilities->shape();
   size_t last_dim_size = log_prob_shape.empty() ? 0 : log_prob_shape.back();
   size_t num_elements_log_prob = log_probabilities->num_elements();
 

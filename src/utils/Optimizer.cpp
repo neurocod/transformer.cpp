@@ -11,7 +11,7 @@ void SGD::step() {
       // Could make a copy of the param_data and then set it again, but this
       // qould be inefficient because you have an extra copy
       std::vector<float> &param_data = param->data_ref();
-      const std::vector<float> &param_grad = param->get_grad();
+      const std::vector<float> &param_grad = param->grad();
 
       if (param_data.size() != param_grad.size()) {
         throw std::runtime_error(
@@ -31,8 +31,8 @@ Adam::Adam(float learningRate, float beta1, float beta2, float epsilon)
       epsilon_(epsilon), t_(0) {
   // Initialize moments m and v for each optimizable parameter
   for (const auto &param : parameters_) {
-    m_.push_back(Tensor::create(param->get_shape()));
-    v_.push_back(Tensor::create(param->get_shape()));
+    m_.push_back(Tensor::create(param->shape()));
+    v_.push_back(Tensor::create(param->shape()));
   }
 }
 
@@ -46,10 +46,10 @@ void Adam::step() {
   float total_norm_sq = 0.0f;
   for (size_t i = 0; i < parameters_.size(); ++i) {
     std::shared_ptr<Tensor> param = parameters_[i];
-    if (!param || param->get_grad().empty())
+    if (!param || param->grad().empty())
       continue;
 
-    const std::vector<float> &param_grad = param->get_grad();
+    const std::vector<float> &param_grad = param->grad();
     for (float grad_val : param_grad) {
       total_norm_sq += grad_val * grad_val;
     }
@@ -62,7 +62,7 @@ void Adam::step() {
   if (clip_coef < 1.0f) {
     for (size_t i = 0; i < parameters_.size(); ++i) {
       std::shared_ptr<Tensor> param = parameters_[i];
-      if (!param || param->get_grad().empty())
+      if (!param || param->grad().empty())
         continue;
 
       std::vector<float> &param_grad_mutable = param->grad_ref();
@@ -74,11 +74,11 @@ void Adam::step() {
 
   for (size_t i = 0; i < parameters_.size(); ++i) {
     std::shared_ptr<Tensor> param = parameters_[i];
-    if (!param || param->get_data().empty() || param->get_grad().empty())
+    if (!param || param->data().empty() || param->grad().empty())
       continue;
 
     std::vector<float> &param_data = param->data_ref();
-    const std::vector<float> &param_grad = param->get_grad();
+    const std::vector<float> &param_grad = param->grad();
 
     std::vector<float> &m_data = m_[i]->data_ref();
     std::vector<float> &v_data = v_[i]->data_ref();

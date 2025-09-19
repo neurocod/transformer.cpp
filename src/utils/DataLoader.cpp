@@ -53,7 +53,7 @@ void DataLoader::readFile(const std::string& filename) {
     while (text.size() < target)
       text += _textGenerator.generateSimple();
   } else {
-    std::cout << "Loading data from: " << filename << std::endl;
+    spdlog::info("Loading data from {}", filename);
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     if (!file)
       throw std::runtime_error("Could not open data file: " + filename);
@@ -79,7 +79,7 @@ void DataLoader::readFile(const std::string& filename) {
     _data.push_back(_charToId[c]);
   }
 
-  std::cout << "Dataset size (characters): " << _data.size() << std::endl;
+  spdlog::info("Dataset size (characters): {}", _data.size());
 
   // Calculate number of possible batches
   size_t total_sequence_batches = _data.size() / (_sequenceLength);
@@ -90,7 +90,7 @@ void DataLoader::readFile(const std::string& filename) {
                              "current sequence length and batch size.");
   }
 
-  std::cout << "Number of full batches available per epoch: " << _numBatches << std::endl;
+  spdlog::info("Number of full batches available per epoch: {}", _numBatches);
 }
 
 int DataLoader::get_vocab_size() const { return _chars.size(); }

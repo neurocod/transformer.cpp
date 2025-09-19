@@ -1,8 +1,8 @@
 #include "layers/Activations.h"
 
 std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
-  const std::vector<float> &input_data = input->get_data();
+  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
@@ -16,8 +16,8 @@ std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
 }
 
 std::shared_ptr<Tensor> GELU::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
-  const std::vector<float> &input_data = input->get_data();
+  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
 
   // GELU approximation: 0.5 * x * (1 + tanh(sqrt(2 / PI) * (x + 0.044715 *
@@ -38,8 +38,8 @@ std::shared_ptr<Tensor> GELU::forward(const std::shared_ptr<Tensor> &input) {
 }
 
 std::shared_ptr<Tensor> Sigmoid::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
-  const std::vector<float> &input_data = input->get_data();
+  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
@@ -53,8 +53,8 @@ std::shared_ptr<Tensor> Sigmoid::forward(const std::shared_ptr<Tensor> &input) {
 }
 
 std::shared_ptr<Tensor> Tanh::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->get_shape());
-  const std::vector<float> &input_data = input->get_data();
+  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
 
   for (size_t i = 0; i < input_data.size(); ++i) {

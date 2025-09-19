@@ -22,7 +22,7 @@ std::shared_ptr<Tensor> MultiHeadAttention::scaled_dot_product_attention(
   // Calculate attention scores: scores = Q . K^T
   // K^T needs transposing the last two dimensions: (batchSize, numHeads,
   // head_dim, sequence_length)
-  std::vector<int> k_shape = k->get_shape();
+  std::vector<int> k_shape = k->shape();
   std::vector<int> k_transpose_perm(k_shape.size());
   std::iota(k_transpose_perm.begin(), k_transpose_perm.end(), 0);
   // Swap the last two dimensions
@@ -52,7 +52,7 @@ std::shared_ptr<Tensor> MultiHeadAttention::scaled_dot_product_attention(
 
   // Apply softmax to get attention weights
   std::shared_ptr<Tensor> attention_weights =
-      scaled_scores->softmax(scaled_scores->get_shape().size() - 1);
+      scaled_scores->softmax(scaled_scores->shape().size() - 1);
 
   // Multiply attention weights by values: attention_output = weights . V
   // weights shape: (batchSize, numHeads, sequence_length, sequence_length)
@@ -68,9 +68,9 @@ std::shared_ptr<Tensor> MultiHeadAttention::forward(
     std::shared_ptr<Tensor> &value, std::shared_ptr<Tensor> mask) {
   // query, key, value input shapes are (batchSize, sequence_length, embedDim)
 
-  const std::vector<int> &query_shape = query->get_shape();
-  const std::vector<int> &key_shape = key->get_shape();
-  const std::vector<int> &value_shape = value->get_shape();
+  const std::vector<int> &query_shape = query->shape();
+  const std::vector<int> &key_shape = key->shape();
+  const std::vector<int> &value_shape = value->shape();
 
   if (query_shape.size() != 3 || key_shape.size() != 3 ||
       value_shape.size() != 3 || query_shape[0] != key_shape[0] ||

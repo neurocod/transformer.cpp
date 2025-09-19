@@ -23,7 +23,7 @@ PositionalEncoding::PositionalEncoding(int maxSequenceLength, int embedDim)
 
 std::shared_ptr<Tensor>
 PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
-  const std::vector<int> &input_shape = input->get_shape();
+  const std::vector<int> &input_shape = input->shape();
   if (input_shape.size() != 3) {
     throw std::runtime_error("Positional Encoding input must be a 3D tensor "
                              "(batchSize, sequence_length, embedDim).");
@@ -45,9 +45,9 @@ PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
 
   // Add the pre-calculated positional encodings to the input tensor.
   std::shared_ptr<Tensor> output = Tensor::create(input_shape);
-  const std::vector<float> &input_data = input->get_data();
+  const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->data_ref();
-  const std::vector<float> &encoding_data = positional_encodings_->get_data();
+  const std::vector<float> &encoding_data = positional_encodings_->data();
 
   for (size_t b = 0; b < batchSize; ++b) {
     for (size_t s = 0; s < sequence_length; ++s) {

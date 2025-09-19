@@ -44,7 +44,7 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
   Adam optimizer(cf.learningRate);
   CrossEntropyLoss criterion;
 
-  std::cout << "Starting Transformer training..." << std::endl;
+  spdlog::info("Starting Transformer training...");
   using clock = std::chrono::high_resolution_clock;
 
   auto t_train_start = clock::now();
@@ -71,7 +71,7 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
     std::shared_ptr<Tensor> loss =
       criterion.computeLoss(reshaped_logits, target_output_ids);
 
-    spdlog::info("Epoch [{}/{}], Loss: {}", (epoch + 1), cf.numEpochs, vector_to_string(loss->get_data()));
+    spdlog::info("Epoch [{}/{}], Loss: {}", (epoch + 1), cf.numEpochs, vector_to_string(loss->data()));
 
     // Backward pass
     criterion.backward(loss);
@@ -79,12 +79,12 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
 
     auto epoch_end = std::chrono::high_resolution_clock::now();
     auto epoch_ms = std::chrono::duration_cast<std::chrono::milliseconds>(epoch_end - epoch_start).count();
-    spdlog::info("[LOG] Epoch {} took {} ms.", (epoch + 1), epoch_ms);
+    spdlog::info("Epoch {} took {} ms", (epoch + 1), epoch_ms);
   }
 
   auto t_train_end = clock::now();
   auto train_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_train_end - t_train_start).count();
-  spdlog::info("[LOG] Model training took {} ms.", train_ms);
+  spdlog::info("Model training took {} ms", train_ms);
 
   spdlog::info("\nTransformer training finished.");
 
@@ -107,7 +107,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
   // Tokenize the initial prompt
   std::shared_ptr<Tensor> current_input_ids =
     string_to_tensor(cf.initialPrompt, dataLoader, current_seq_len);
-  std::vector<float> generated_ids = current_input_ids->get_data();
+  std::vector<float> generated_ids = current_input_ids->data();
 
   // Remove padding from initial prompt display if any was added by
   // string_to_tensor
@@ -117,7 +117,7 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
   // Get actual length of the prompt after removing padding
   int current_total_len = generated_ids.size();
 
-  std::cout << "Generating..." << std::endl;
+  spdlog::info("Generating...");
   for (float id_float : generated_ids) {
     std::cout << dataLoader.get_char_from_id(static_cast<int>(id_float));
   }
@@ -151,18 +151,18 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
 
     int last_token_index = std::min(current_total_len, current_seq_len) - 1;
     if (last_token_index < 0) {
-      spdlog::error("\nError: last_token_index is negative ({}). current_total_len={}. Breaking.\n", last_token_index, current_total_len);
+      spdlog::error("\nError: last_token_index is negative ({}). current_total_len={}. Breaking.", last_token_index, current_total_len);
       break;
     }
 
-    const auto& logits_data = logits->get_data();
+    const auto& logits_data = logits->data();
     size_t logits_offset = last_token_index * target_vocab_size;
 
     // Find the token with the highest logit
     float max_logit = -std::numeric_limits<float>::infinity();
     int predicted_id = -1;
     if (logits_offset + target_vocab_size > logits_data.size()) {
-      spdlog::error("\nError: Logits offset ({}) + vocabSize ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.\n",
+      spdlog::error("\nError: Logits offset ({}) + vocabSize ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.",
         logits_offset, target_vocab_size, logits_data.size(), last_token_index);
       break;
     }
@@ -189,13 +189,14 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     std::cout << next_char << std::flush;
   }
 
-  std::cout << "\n--- Generation Complete ---\n";
+  spdlog::info("\n--- Generation Complete ---");
 }
+
 int mainExcept() {
 #ifdef NDEBUG
-  std::cout << "[LOG] Build type: RELEASE" << std::endl;
+  spdlog::info("Build type: RELEASE");
 #else
-  std::cout << "[LOG] Build type: DEBUG" << std::endl;
+  spdlog::info("Build type: DEBUG");
 #endif
 #ifdef _WIN32
   namespace fs = std::filesystem;
@@ -222,7 +223,7 @@ int mainExcept() {
 
   auto t_init_end = clock::now();
   auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
-  std::cout << std::format("[LOG] Model initialization took {} ms.\n", init_ms);
+  spdlog::info("Model initialization took {} ms", init_ms);
 
   // Print model parameters count
   size_t total_params = 0;
@@ -232,15 +233,15 @@ int mainExcept() {
       total_params += param->num_elements();
     }
   }
-  std::cout << std::format("Total optimizable parameters: {}\n", total_params);
+  spdlog::info("Total optimizable parameters: {}", total_params);
 
   if (cf.inferenceMode) {
     if (!std::filesystem::exists(cf.weightsFilename)) {
-      spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.\n", cf.weightsFilename);
+      spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.", cf.weightsFilename);
       return 1;
     }
     try {
-      std::cout << std::format("Attempting to load weights from {}...\n", cf.weightsFilename);
+      spdlog::info("Attempting to load weights from {}...", cf.weightsFilename);
       model.loadWeights(cf.weightsFilename);
       spdlog::info("Weights loaded successfully.");
     } catch (const std::exception& e) {

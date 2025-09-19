@@ -53,9 +53,9 @@ public:
   std::shared_ptr<Tensor> embedding_indices_;
 
   // Getters for shape, data, and gradient
-  const std::vector<int> &get_shape() const { return _shape; };
-  const std::vector<float> &get_data() const { return *_data; };
-  const std::vector<float> &get_grad() const { return *_grad; };
+  const std::vector<int> &shape() const { return _shape; };
+  const std::vector<float> &data() const { return *_data; };
+  const std::vector<float> &grad() const { return *_grad; };
   std::vector<float> &data_ref() { return *_data; }
   std::vector<float> &grad_ref() { return *_grad; }
 
