@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.21)
 
 project(TransformerCPP)
 
@@ -11,6 +11,12 @@ endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto -DNDEBUG")
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-flto")
+
+if (WIN32)
+  add_compile_options(/EHsc)
+  set(CMAKE_CXX_FLAGS "/utf-8")
+  set(CMAKE_C_FLAGS "/utf-8")
+endif()
 
 include_directories(include)
 include_directories(${CMAKE_SOURCE_DIR}/extern/spdlog/include)
@@ -44,8 +50,6 @@ add_executable(neural_network
 target_precompile_headers(neural_network PRIVATE src/pch.h)
 
 if (WIN32)
-  set(CMAKE_CXX_FLAGS "/utf-8")
-  set(CMAKE_C_FLAGS "/utf-8")
 else()
   # Link filesystem library (C++17)
   target_link_libraries(neural_network PRIVATE stdc++fs)
