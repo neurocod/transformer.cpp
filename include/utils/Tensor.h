@@ -56,8 +56,8 @@ public:
   const std::vector<int> &shape() const { return _shape; };
   const std::vector<float> &data() const { return *_data; };
   const std::vector<float> &grad() const { return *_grad; };
-  std::vector<float> &data_ref() { return *_data; }
-  std::vector<float> &grad_ref() { return *_grad; }
+  std::vector<float> &dataRef() { return *_data; }
+  std::vector<float> &gradRef() { return *_grad; }
 
   void set_data(const std::shared_ptr<std::vector<float>> &data);
   void set_parents(const std::vector<std::shared_ptr<Tensor>> &parents) {
@@ -101,9 +101,7 @@ public:
 
   static std::shared_ptr<Tensor> create();
   static std::shared_ptr<Tensor> create(const std::vector<int>& shape, const std::string& name = {});
-  static std::shared_ptr<Tensor>
-  create(const std::vector<int> &shape,
-         const std::shared_ptr<std::vector<float>> &data,
+  static std::shared_ptr<Tensor> create(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data,
          const std::string& name = {});
 
 private:

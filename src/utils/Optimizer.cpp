@@ -10,7 +10,7 @@ void SGD::step() {
     if (param) {
       // Could make a copy of the param_data and then set it again, but this
       // qould be inefficient because you have an extra copy
-      std::vector<float> &param_data = param->data_ref();
+      std::vector<float> &param_data = param->dataRef();
       const std::vector<float> &param_grad = param->grad();
 
       if (param_data.size() != param_grad.size()) {
@@ -65,7 +65,7 @@ void Adam::step() {
       if (!param || param->grad().empty())
         continue;
 
-      std::vector<float> &param_grad_mutable = param->grad_ref();
+      std::vector<float> &param_grad_mutable = param->gradRef();
       for (float &grad_val : param_grad_mutable) {
         grad_val *= clip_coef;
       }
@@ -77,11 +77,11 @@ void Adam::step() {
     if (!param || param->data().empty() || param->grad().empty())
       continue;
 
-    std::vector<float> &param_data = param->data_ref();
+    std::vector<float> &param_data = param->dataRef();
     const std::vector<float> &param_grad = param->grad();
 
-    std::vector<float> &m_data = m_[i]->data_ref();
-    std::vector<float> &v_data = v_[i]->data_ref();
+    std::vector<float> &m_data = m_[i]->dataRef();
+    std::vector<float> &v_data = v_[i]->dataRef();
 
     if (param_data.size() != param_grad.size() ||
         param_data.size() != m_data.size() ||
