@@ -16,7 +16,7 @@ public:
 	std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& encoderInputIds,
 		const std::shared_ptr<Tensor>& decoderInputIds, bool isTraining);
 
-  void saveToFile(const std::string &filename) const;
+  bool saveToFile(const std::string &filename) const;
   static std::shared_ptr<Transformer> loadFromFile(const std::string &filename, int inputVocabSize, int targetVocabSize);
 
 protected:

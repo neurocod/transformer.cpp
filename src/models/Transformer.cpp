@@ -120,10 +120,11 @@ Transformer::forward(const std::shared_ptr<Tensor> &encoderInputIds,
 
 static const std::string binFileTag("TensorConfig");
 
-void Transformer::saveToFile(const std::string &filename) const {
+bool Transformer::saveToFile(const std::string &filename) const {
   std::ofstream outfile(filename, std::ios::binary | std::ios::trunc);
   if (!outfile.is_open()) {
-    throw std::runtime_error("Failed to open file for saving weights: " + filename);
+    spdlog::error("Failed to open file for saving weights: " + filename);
+    return false;
   }
 
   BinaryWriter writer(outfile);
@@ -145,9 +146,11 @@ void Transformer::saveToFile(const std::string &filename) const {
     tensor_ptr->write(writer);
 
     if (!writer.ok()) {
-      throw std::ios_base::failure("Error writing tensor data to file: " + filename);
+      spdlog::error("Error writing tensor data to file: " + filename);
+      return false;
     }
   }
+  return true;
 }
 
 std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filename, int inputVocabSize,
@@ -182,14 +185,15 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
 
   uint32_t num_tensors_in_file = reader.read<uint32_t>();
   if (!reader.ok()) {
-    throw std::runtime_error("Failed to read number of tensors from file: " + filename);
+    spdlog::error("Failed to read number of tensors from file: " + filename);
+    return 0;
   }
 
   auto& optimizable_tensors = Tensor::get_optimizable_tensors();
   if (num_tensors_in_file != optimizable_tensors.size()) {
-    throw std::runtime_error(std::format(
-      "Mismatch between number of tensors in file ({}) and model ({}). Model architecture may have changed.",
-      num_tensors_in_file, optimizable_tensors.size()));
+    spdlog::error("Mismatch between number of tensors in file ({}) and model ({}). Model architecture may have changed.",
+      num_tensors_in_file, optimizable_tensors.size());
+    return 0;
   }
 
   spdlog::info("Loading {} optimizable tensors from {}...", num_tensors_in_file, filename);
@@ -198,8 +202,8 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
     std::shared_ptr<Tensor>& tensor_ptr = optimizable_tensors[i];
 
     if (!tensor_ptr) {
-      throw std::runtime_error(std::format("Warning: Encountered null tensor pointer in model while "
-        "loading weights for index {}", i));
+      spdlog::error("Warning: Encountered null tensor pointer in model while loading weights for index {}", i);
+      return 0;
     }
     tensor_ptr->read(reader);
   }

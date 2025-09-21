@@ -34,12 +34,6 @@ std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
                         std::make_shared<std::vector<float>>(ids));
 }
 
-void pressEnterToContinue() {
-  spdlog::info("\nPress Enter twice to continue...");
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Clear the input buffer
-  std::cin.get(); // Wait for a character (Enter key)
-}
-
 void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
   using clock = std::chrono::high_resolution_clock;
   auto t_init_start = clock::now();
@@ -105,14 +99,9 @@ void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
   spdlog::info("Model training took {} ms", train_ms);
   spdlog::info("Transformer training finished.");
 
-  try {
-    spdlog::info("Saving final weights to {}", cf.weightsFilename);
-    model.saveToFile(cf.weightsFilename);
+  spdlog::info("Saving final weights to {}", cf.weightsFilename);
+  if (model.saveToFile(cf.weightsFilename))
     spdlog::info("Weights saved successfully.");
-  }
-  catch (const std::exception& e) {
-    spdlog::error("Failed to save weights: {}", e.what());
-  }
 }
 
 int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
@@ -250,21 +239,17 @@ int mainExcept() {
   cf.targetVocabSize = dataLoader.get_vocab_size();
   TransformerConfig::instance() = cf;
 
-  if (cf.inferenceMode) {
+  if (cf.inferenceMode)
     return inferenceMode(cf, dataLoader);
-  }
 
   trainModel(cf, dataLoader);
-
   return 0;
 }
 
 int main() {
-  TransformerConfig::unitTest();
   try {
     return mainExcept();
-  }
-  catch(const std::exception& ex) {
+  } catch(const std::exception& ex) {
     spdlog::error("\n===\nUncaught exception: {}", ex.what());
     return 1;
   }
