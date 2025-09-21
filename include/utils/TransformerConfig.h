@@ -20,7 +20,7 @@ public:
   int numHeads;
   int ffHiddenDim;
   float dropoutRate;
-  float padTokenId;
+  float padTokenId = 0;
 
   // Training Parameters
   float learningRate;

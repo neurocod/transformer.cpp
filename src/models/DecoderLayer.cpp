@@ -29,32 +29,25 @@ DecoderLayer::forward(std::shared_ptr<Tensor> &target_input,
   std::shared_ptr<Tensor> masked_attention_output_dropped =
       dropout1_.forward(masked_attention_output, isTraining);
 
-  std::shared_ptr<Tensor> masked_attention_residual =
-      *target_input + masked_attention_output_dropped;
-  std::shared_ptr<Tensor> layernorm1_output =
-      layernorm1_.forward(masked_attention_residual);
+  std::shared_ptr<Tensor> masked_attention_residual = *target_input + masked_attention_output_dropped;
+  std::shared_ptr<Tensor> layernorm1_output = layernorm1_.forward(masked_attention_residual);
 
   std::shared_ptr<Tensor> cross_attention_output = cross_attention_.forward(
       layernorm1_output, encoder_output, encoder_output, padding_mask);
 
-  std::shared_ptr<Tensor> cross_attention_output_dropped =
-      dropout2_.forward(cross_attention_output, isTraining);
+  std::shared_ptr<Tensor> cross_attention_output_dropped = dropout2_.forward(cross_attention_output, isTraining);
 
   std::shared_ptr<Tensor> cross_attention_residual =
       *layernorm1_output + cross_attention_output_dropped;
   std::shared_ptr<Tensor> layernorm2_output =
       layernorm2_.forward(cross_attention_residual);
 
-  std::shared_ptr<Tensor> feed_forward_output =
-      feed_forward_.forward(layernorm2_output);
+  std::shared_ptr<Tensor> feed_forward_output = feed_forward_.forward(layernorm2_output);
 
-  std::shared_ptr<Tensor> feed_forward_output_dropped =
-      dropout3_.forward(feed_forward_output, isTraining);
+  std::shared_ptr<Tensor> feed_forward_output_dropped = dropout3_.forward(feed_forward_output, isTraining);
 
-  std::shared_ptr<Tensor> feed_forward_residual =
-      *layernorm2_output + feed_forward_output_dropped;
-  std::shared_ptr<Tensor> layernorm3_output =
-      layernorm3_.forward(feed_forward_residual);
+  std::shared_ptr<Tensor> feed_forward_residual = *layernorm2_output + feed_forward_output_dropped;
+  std::shared_ptr<Tensor> layernorm3_output = layernorm3_.forward(feed_forward_residual);
 
   return layernorm3_output;
 }

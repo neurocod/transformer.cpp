@@ -3,29 +3,25 @@
 #include "utils/BinaryReader.h"
 
 Transformer::Transformer(int input_vocab_size, int target_vocab_size,
-                         int embedDim, int maxSequenceLength, int numLayers,
-                         int numHeads, int ffHiddenDim, float dropoutRate,
-                         float padTokenId)
-    : _inputVocabSize(input_vocab_size),
-      _targetVocabSize(target_vocab_size), _embedDim(embedDim),
-      _maxSequenceLength(maxSequenceLength), _numLayers(numLayers),
-      _numHeads(numHeads), _ffHiddenDim(ffHiddenDim),
-      _dropoutRate(dropoutRate), _padTokenId(padTokenId),
-      _encoderEmbedding(input_vocab_size, embedDim),
-      _encoderPositionalEncoding(maxSequenceLength, embedDim),
-      _encoder(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
-      _decoderEmbedding(target_vocab_size, embedDim),
-      _decoderPositionalEncoding(maxSequenceLength, embedDim),
-      _decoder(numLayers, embedDim, numHeads, ffHiddenDim, dropoutRate),
-      _linearFinal(embedDim, target_vocab_size, "final") {
-  if (_embedDim % _numHeads != 0) {
+    const TransformerConfig& cf)
+    : _(cf),
+      _inputVocabSize(input_vocab_size),
+      _targetVocabSize(target_vocab_size),
+      _encoderEmbedding(input_vocab_size, cf.embedDim),
+      _encoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
+      _encoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
+      _decoderEmbedding(target_vocab_size, cf.embedDim),
+      _decoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
+      _decoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
+      _linearFinal(cf.embedDim, target_vocab_size, "final") {
+  if (cf.embedDim % cf.numHeads != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");
   }
 }
 
 std::shared_ptr<Tensor> Transformer::createEncoderPaddingMask(const std::shared_ptr<Tensor> &encoderInputIds) {
-  return create_padding_mask(encoderInputIds, _padTokenId);
+  return create_padding_mask(encoderInputIds, _.padTokenId);
 }
 
 std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::shared_ptr<Tensor> &decoderInputIds) {
@@ -39,8 +35,7 @@ std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::s
 
   std::shared_ptr<Tensor> look_ahead_mask =
       create_look_ahead_mask(sequence_length);
-  std::shared_ptr<Tensor> padding_mask =
-      create_padding_mask(decoderInputIds, _padTokenId);
+  std::shared_ptr<Tensor> padding_mask = create_padding_mask(decoderInputIds, _.padTokenId);
 
   const auto &look_ahead_shape = look_ahead_mask->shape();
   const auto &padding_shape = padding_mask->shape();
@@ -78,7 +73,7 @@ std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::s
 
 std::shared_ptr<Tensor> Transformer::create_decoder_cross_attention_mask(
     const std::shared_ptr<Tensor> &encoderInputIds) {
-  return create_padding_mask(encoderInputIds, _padTokenId);
+  return create_padding_mask(encoderInputIds, _.padTokenId);
 }
 
 std::shared_ptr<Tensor>

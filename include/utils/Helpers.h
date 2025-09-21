@@ -69,10 +69,9 @@ inline std::string vector_to_string(const std::vector<T> &vec) {
   std::ostringstream oss;
   oss << "[";
   for (size_t i = 0; i < vec.size(); ++i) {
-    oss << vec[i];
-    if (i != vec.size() - 1) {
+    if (i)
       oss << ", ";
-    }
+    oss << vec[i];
   }
   oss << "]";
   return oss.str();

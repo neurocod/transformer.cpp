@@ -217,9 +217,7 @@ int mainExcept() {
   const int input_vocab_size = dataLoader.get_vocab_size();
   const int target_vocab_size = dataLoader.get_vocab_size();
 
-  Transformer model(input_vocab_size, target_vocab_size, cf.embedDim,
-    cf.maxSequenceLength, cf.numLayers, cf.numHeads, cf.ffHiddenDim,
-    cf.dropoutRate, cf.padTokenId);
+  Transformer model(input_vocab_size, target_vocab_size, cf);
 
   auto t_init_end = clock::now();
   auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
