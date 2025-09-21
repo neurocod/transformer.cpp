@@ -258,6 +258,7 @@ int mainExcept() {
 }
 
 int main() {
+  TransformerConfig::unitTest();
   try {
     return mainExcept();
   }

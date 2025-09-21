@@ -5,6 +5,8 @@ class TransformerConfig {
 public:
   static const TransformerConfig& instance();
   static void init(const std::string& filename);
+  std::string toString() const;
+  static bool unitTest();
 
   std::string modelFileNameByParameters() const;
 

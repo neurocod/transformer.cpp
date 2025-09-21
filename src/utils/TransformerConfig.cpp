@@ -71,9 +71,9 @@ std::string TransformerConfig::toString() const {
   oss << "initialPrompt=" << initialPrompt << "\n";
   return oss.str();
 }
-/*
+
 bool TransformerConfig::unitTest() {
-    std::string parsed = R"ini(inferenceMode = false
+    std::string ini  = R"ini(inferenceMode = false
 weightsFilename = auto
 dataFilename = ../data/tiny_shakespeare.txt
 
@@ -98,33 +98,33 @@ numThreads = 500
  )ini";
  
     ConfigParser parser;
-    parser.loadFile(testConfigFile);
+    parser.loadIniValues(ini);
 
     TransformerConfig cfg;
     cfg.init(parser);
 
-    std::string expected = "numThreads=2\n"
-                           "inferenceMode=false\n"
-                           "weightsFilename=test_weights.bin\n"
-                           "dataFilename=test_data.txt\n"
-                           "embedDim=128\n"
-                           "maxSequenceLength=64\n"
-                           "numLayers=4\n"
-                           "numHeads=8\n"
-                           "ffHiddenDim=256\n"
-                           "dropoutRate=0.1\n"
-                           "padTokenId=0\n"
-                           "learningRate=0.001\n"
-                           "numEpochs=10\n"
-                           "batchSize=16\n"
-                           "inputSeqLength=32\n"
-                           "decoderSeqLength=32\n"
-                           "maxGenerateLength=50\n"
-                           "initialPrompt=Hello\n";
+    std::string expected = R"ini(numThreads=500
+inferenceMode=false
+weightsFilename=weigth-32-1024-16.bin
+dataFilename=../data/tiny_shakespeare.txt
+embedDim=256
+maxSequenceLength=100
+numLayers=32
+numHeads=16
+ffHiddenDim=1024
+dropoutRate=0.1
+padTokenId=0
+learningRate=0.0005
+numEpochs=100
+batchSize=128
+inputSeqLength=10
+decoderSeqLength=10
+maxGenerateLength=100
+initialPrompt=ROMEO:
+)ini";
 
-    // 5. Сравниваем результат
-    assert(cfg.toString() == expected && "TransformerConfig::toString() failed unit test");
-
-    // (опционально) удалить временный файл
-    std::remove(testConfigFile.c_str());
-}*/
+    std::string result = cfg.toString();
+    bool ok = result == expected;
+    assert(ok && "TransformerConfig::toString() failed unit test");
+    return ok;
+}

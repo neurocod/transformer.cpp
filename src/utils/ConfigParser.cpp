@@ -1,4 +1,6 @@
 #include "utils/ConfigParser.h"
+#include <fstream>
+#include <sstream>
 
 template <> std::string ConfigParser::value<std::string>(const std::string &key) const {
   std::lock_guard<std::mutex> lock(mutex_);
@@ -23,8 +25,15 @@ void ConfigParser::loadFile(const std::string &filename) {
     throw std::runtime_error("Could not open config file: " + filename);
   }
 
+  std::stringstream buffer;
+  buffer << file.rdbuf();
+  loadIniValues(buffer.str());
+}
+
+void ConfigParser::loadIniValues(const std::string &content) {
+  std::istringstream stream(content);
   std::string line;
-  while (std::getline(file, line)) {
+  while (std::getline(stream, line)) {
     // Remove leading/trailing whitespace
     line.erase(line.begin(),
                std::find_if(line.begin(), line.end(), [](unsigned char ch) { return !std::isspace(ch); }));

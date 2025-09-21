@@ -4,6 +4,12 @@ class ConfigParser {
 public:
   static ConfigParser& instance(const std::string& filename = "");
 
+  ConfigParser() {}
+  ConfigParser(const std::string &filename) {
+    if (!filename.empty()) {
+      loadFile(filename);
+    }
+  }
   // Delete copy constructor and assignment operator to prevent cloning
   ConfigParser(const ConfigParser &) = delete;
   ConfigParser &operator=(const ConfigParser &) = delete;
@@ -41,12 +47,6 @@ public:
   virtual std::string toString() const;
 
 private:
-  ConfigParser(const std::string &filename = "") {
-    if (!filename.empty()) {
-      loadFile(filename);
-    }
-  }
-
   std::unordered_map<std::string, std::string> config_map_;
   mutable std::mutex mutex_;
 };
