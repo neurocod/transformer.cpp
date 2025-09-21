@@ -20,7 +20,7 @@ public:
   static std::shared_ptr<Transformer> loadFromFile(const std::string &filename, int inputVocabSize, int targetVocabSize);
 
 protected:
-  TransformerConfig _;
+  TransformerConfig _cfg;
   Embedding _encoderEmbedding;
   PositionalEncoding _encoderPositionalEncoding;
   Encoder _encoder;

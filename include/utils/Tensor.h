@@ -32,7 +32,7 @@ public:
   Tensor(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data, const std::string& name = {});
   ~Tensor() {}
   void write(BinaryWriter& writer) const;
-  void read(BinaryReader& reader);
+  bool read(BinaryReader& reader);
 
   // Intermediate values for different functions
   // Backward permutation

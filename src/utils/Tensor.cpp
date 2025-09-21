@@ -81,18 +81,22 @@ void Tensor::write(BinaryWriter& writer)const {
   }
 }
 
-void Tensor::read(BinaryReader& reader) {
-  const std::string name = reader.readString();
-  if (!reader.ok())
-    throw std::ios_base::failure("Failed to read tensor name");
-  if (name != _name)
-    throw std::invalid_argument(std::format("Tensor names mismatch: read {} != {} expected", name, _name));
-  //std::cout << std::format("reading tensor {}\n", _name);
-
+bool Tensor::read(BinaryReader& reader) {
+  std::optional<std::string> name = reader.readString();
+  if (!name) {
+    spdlog::error("Failed to read tensor name");
+    return false;
+  }
+  if (*name != _name) {
+    spdlog::error("Tensor names mismatch: read {} != {} expected", *name, _name);
+    return false;
+  }
   // Read rank
   const uint32_t rank = reader.read<uint32_t>();
-  if (!reader.ok())
-    throw std::ios_base::failure("Failed to read tensor rank");
+  if (!reader.ok()) {
+    spdlog::error("Failed to read tensor rank");
+    return false;
+  }
 
   // Read shape
   _shape.clear();
@@ -101,7 +105,8 @@ void Tensor::read(BinaryReader& reader) {
   for (uint32_t i = 0; i < rank; ++i) {
     const uint32_t dim_size = reader.read<uint32_t>();
     if (!reader.ok()) {
-      throw std::ios_base::failure("Failed to read tensor shape dimension");
+      spdlog::error("Failed to read tensor shape dimension");
+      return false;
     }
     _shape.push_back(static_cast<int>(dim_size));
   }
@@ -109,22 +114,23 @@ void Tensor::read(BinaryReader& reader) {
   // Read number of elements
   const uint64_t num_elements = reader.read<uint64_t>();
   if (!reader.ok()) {
-    throw std::ios_base::failure("Failed to read tensor element count");
+    spdlog::error("Failed to read tensor element count");
+    return false;
   }
 
   // Validate element count matches shape
   uint64_t expected_elements = 1;
   for (int dim : _shape) {
     if (dim <= 0) {
-      throw std::invalid_argument("Invalid tensor dimension: " + std::to_string(dim));
+      spdlog::error("Invalid tensor dimension: " + std::to_string(dim));
+      return false;
     }
     expected_elements *= static_cast<uint64_t>(dim);
   }
 
   if (num_elements != expected_elements) {
-    throw std::invalid_argument(
-      std::format("Element count mismatch: expected {}, got {}",
-        expected_elements, num_elements));
+    spdlog::error("Element count mismatch: expected {}, got {}", expected_elements, num_elements);
+    return false;
   }
 
   // Read data
@@ -134,7 +140,8 @@ void Tensor::read(BinaryReader& reader) {
 
   reader.readVector(*_data, num_elements);
   if (!reader.ok()) {
-    throw std::ios_base::failure("Failed to read tensor data");
+    spdlog::error("Failed to read tensor data");
+    return false;
   }
 
   // Initialize gradient vector if needed
@@ -143,6 +150,7 @@ void Tensor::read(BinaryReader& reader) {
   } else {
     _grad = std::make_shared<std::vector<float>>(num_elements, 0.0f);
   }
+  return true;
 }
 
 // Setter for data

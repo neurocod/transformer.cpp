@@ -3,7 +3,7 @@
 #include "utils/BinaryReader.h"
 #include "utils/ConfigParser.h"
 
-Transformer::Transformer(const TransformerConfig& cf): _(cf),
+Transformer::Transformer(const TransformerConfig& cf): _cfg(cf),
       _encoderEmbedding(cf.inputVocabSize, cf.embedDim),
       _encoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
       _encoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
@@ -12,27 +12,25 @@ Transformer::Transformer(const TransformerConfig& cf): _(cf),
       _decoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
       _linearFinal(cf.embedDim, cf.targetVocabSize, "final") {
   if (cf.embedDim % cf.numHeads != 0) {
-    throw std::runtime_error(
-        "Embedding dimension must be divisible by the number of heads.");
+    throw std::runtime_error("Embedding dimension must be divisible by the number of heads.");
   }
 }
 
 std::shared_ptr<Tensor> Transformer::createEncoderPaddingMask(const std::shared_ptr<Tensor> &encoderInputIds) {
-  return create_padding_mask(encoderInputIds, _.padTokenId);
+  return create_padding_mask(encoderInputIds, _cfg.padTokenId);
 }
 
 std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::shared_ptr<Tensor> &decoderInputIds) {
   const auto &decoder_shape = decoderInputIds->shape();
   if (decoder_shape.size() != 2) {
-    throw std::runtime_error(
-        "Decoder input for self-attention mask must be 2D (batch, seq_len).");
+    throw std::runtime_error("Decoder input for self-attention mask must be 2D (batch, seq_len).");
   }
   int batchSize = decoder_shape[0];
   int sequence_length = decoder_shape[1];
 
   std::shared_ptr<Tensor> look_ahead_mask =
       create_look_ahead_mask(sequence_length);
-  std::shared_ptr<Tensor> padding_mask = create_padding_mask(decoderInputIds, _.padTokenId);
+  std::shared_ptr<Tensor> padding_mask = create_padding_mask(decoderInputIds, _cfg.padTokenId);
 
   const auto &look_ahead_shape = look_ahead_mask->shape();
   const auto &padding_shape = padding_mask->shape();
@@ -70,7 +68,7 @@ std::shared_ptr<Tensor> Transformer::createDecoderSelfAttentionMask(const std::s
 
 std::shared_ptr<Tensor> Transformer::create_decoder_cross_attention_mask(
     const std::shared_ptr<Tensor> &encoderInputIds) {
-  return create_padding_mask(encoderInputIds, _.padTokenId);
+  return create_padding_mask(encoderInputIds, _cfg.padTokenId);
 }
 
 std::shared_ptr<Tensor>
@@ -130,7 +128,7 @@ bool Transformer::saveToFile(const std::string &filename) const {
   BinaryWriter writer(outfile);
 
   writer.write(binFileTag);
-  writer.write(_.toString());
+  writer.write(_cfg.toString());
 
   const auto& optimizable_tensors = Tensor::get_optimizable_tensors();
   const uint32_t num_tensors = optimizable_tensors.size();
@@ -162,19 +160,19 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
   }
 
   BinaryReader reader(infile);
-  auto fileTag = reader.readString();
-  if (!reader.ok() || fileTag != binFileTag) {
+  std::optional<std::string> fileTag = reader.readString();
+  if (!fileTag || *fileTag != binFileTag) {
     spdlog::error("Incorrect Transformer file format in {}", filename);
     return 0;
   }
-  std::string configIni = reader.readString();
-  if (!reader.ok() || configIni.empty()) {
+  std::optional<std::string> configIni = reader.readString();
+  if (!configIni || configIni->empty()) {
     spdlog::error("Incorrect Transformer config in {}", filename);
     return 0;
   }
 
   ConfigParser parser;
-  parser.loadIniValues(configIni);
+  parser.loadIniValues(*configIni);
 
   TransformerConfig config;
   config.init(parser);
@@ -205,7 +203,8 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
       spdlog::error("Warning: Encountered null tensor pointer in model while loading weights for index {}", i);
       return 0;
     }
-    tensor_ptr->read(reader);
+    if (!tensor_ptr->read(reader))
+      return 0;
   }
   return ret;
 }
