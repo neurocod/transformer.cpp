@@ -83,7 +83,7 @@ void Tensor::write(BinaryWriter& writer)const {
 
 void Tensor::read(BinaryReader& reader) {
   const std::string name = reader.readString();
-  if (!reader.good())
+  if (!reader.ok())
     throw std::ios_base::failure("Failed to read tensor name");
   if (name != _name)
     throw std::invalid_argument(std::format("Tensor names mismatch: read {} != {} expected", name, _name));
@@ -91,7 +91,7 @@ void Tensor::read(BinaryReader& reader) {
 
   // Read rank
   const uint32_t rank = reader.read<uint32_t>();
-  if (!reader.good())
+  if (!reader.ok())
     throw std::ios_base::failure("Failed to read tensor rank");
 
   // Read shape
@@ -100,7 +100,7 @@ void Tensor::read(BinaryReader& reader) {
 
   for (uint32_t i = 0; i < rank; ++i) {
     const uint32_t dim_size = reader.read<uint32_t>();
-    if (!reader.good()) {
+    if (!reader.ok()) {
       throw std::ios_base::failure("Failed to read tensor shape dimension");
     }
     _shape.push_back(static_cast<int>(dim_size));
@@ -108,7 +108,7 @@ void Tensor::read(BinaryReader& reader) {
 
   // Read number of elements
   const uint64_t num_elements = reader.read<uint64_t>();
-  if (!reader.good()) {
+  if (!reader.ok()) {
     throw std::ios_base::failure("Failed to read tensor element count");
   }
 
@@ -133,7 +133,7 @@ void Tensor::read(BinaryReader& reader) {
   }
 
   reader.readVector(*_data, num_elements);
-  if (!reader.good()) {
+  if (!reader.ok()) {
     throw std::ios_base::failure("Failed to read tensor data");
   }
 

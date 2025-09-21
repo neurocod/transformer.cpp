@@ -3,8 +3,9 @@ class ConfigParser;
 
 class TransformerConfig {
 public:
-  static const TransformerConfig& instance();
-  static void init(const std::string& filename);
+  static TransformerConfig& instance();
+  void init(const std::string& filename);
+  void init(const ConfigParser &config);
   std::string toString() const;
   static bool unitTest();
 
@@ -14,6 +15,8 @@ public:
   bool inferenceMode = true;
   std::string weightsFilename;
   std::string dataFilename;
+  int inputVocabSize = 2;
+  int targetVocabSize = 2;
 
   // Model Architecture
   int embedDim;
@@ -34,7 +37,4 @@ public:
   // Inference Parameters
   int maxGenerateLength;
   std::string initialPrompt;
-private:
-  static TransformerConfig& mutableInstance();
-  void init(const ConfigParser& config);
 };

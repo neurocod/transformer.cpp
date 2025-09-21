@@ -11,11 +11,6 @@ template <> std::string ConfigParser::value<std::string>(const std::string &key)
   return it->second;
 }
 
-ConfigParser &ConfigParser::instance(const std::string &filename) {
-  static ConfigParser instance(filename);
-  return instance;
-}
-
 void ConfigParser::loadFile(const std::string &filename) {
   std::lock_guard<std::mutex> lock(mutex_);
   config_map_.clear();

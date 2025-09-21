@@ -1,19 +1,16 @@
 #include "models/Transformer.h"
 #include "utils/BinaryWriter.h"
 #include "utils/BinaryReader.h"
+#include "utils/ConfigParser.h"
 
-Transformer::Transformer(int input_vocab_size, int target_vocab_size,
-    const TransformerConfig& cf)
-    : _(cf),
-      _inputVocabSize(input_vocab_size),
-      _targetVocabSize(target_vocab_size),
-      _encoderEmbedding(input_vocab_size, cf.embedDim),
+Transformer::Transformer(const TransformerConfig& cf): _(cf),
+      _encoderEmbedding(cf.inputVocabSize, cf.embedDim),
       _encoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
       _encoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
-      _decoderEmbedding(target_vocab_size, cf.embedDim),
+      _decoderEmbedding(cf.targetVocabSize, cf.embedDim),
       _decoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
       _decoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
-      _linearFinal(cf.embedDim, target_vocab_size, "final") {
+      _linearFinal(cf.embedDim, cf.targetVocabSize, "final") {
   if (cf.embedDim % cf.numHeads != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");
@@ -121,13 +118,18 @@ Transformer::forward(const std::shared_ptr<Tensor> &encoderInputIds,
   return logits;
 }
 
-void Transformer::saveWeights(const std::string& filename) const {
+static const std::string binFileTag("TensorConfig");
+
+void Transformer::saveToFile(const std::string &filename) const {
   std::ofstream outfile(filename, std::ios::binary | std::ios::trunc);
   if (!outfile.is_open()) {
     throw std::runtime_error("Failed to open file for saving weights: " + filename);
   }
 
   BinaryWriter writer(outfile);
+
+  writer.write(binFileTag);
+  writer.write(_.toString());
 
   const auto& optimizable_tensors = Tensor::get_optimizable_tensors();
   const uint32_t num_tensors = optimizable_tensors.size();
@@ -142,22 +144,44 @@ void Transformer::saveWeights(const std::string& filename) const {
 
     tensor_ptr->write(writer);
 
-    if (!writer.good()) {
+    if (!writer.ok()) {
       throw std::ios_base::failure("Error writing tensor data to file: " + filename);
     }
   }
 }
 
-void Transformer::loadWeights(const std::string& filename) {
+std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filename, int inputVocabSize,
+                                                       int targetVocabSize) {
   std::ifstream infile(filename, std::ios::binary);
   if (!infile.is_open()) {
-    throw std::runtime_error("Failed to open file for loading weights: " + filename);
+    spdlog::error("Can't open file {}", filename);
+    return 0;
   }
 
   BinaryReader reader(infile);
+  auto fileTag = reader.readString();
+  if (!reader.ok() || fileTag != binFileTag) {
+    spdlog::error("Incorrect Transformer file format in {}", filename);
+    return 0;
+  }
+  std::string configIni = reader.readString();
+  if (!reader.ok() || configIni.empty()) {
+    spdlog::error("Incorrect Transformer config in {}", filename);
+    return 0;
+  }
+
+  ConfigParser parser;
+  parser.loadIniValues(configIni);
+
+  TransformerConfig config;
+  config.init(parser);
+  config.inputVocabSize = inputVocabSize;
+  config.targetVocabSize = targetVocabSize;
+
+  auto ret = std::make_shared<Transformer>(config);
 
   uint32_t num_tensors_in_file = reader.read<uint32_t>();
-  if (!reader.good()) {
+  if (!reader.ok()) {
     throw std::runtime_error("Failed to read number of tensors from file: " + filename);
   }
 
@@ -179,4 +203,5 @@ void Transformer::loadWeights(const std::string& filename) {
     }
     tensor_ptr->read(reader);
   }
+  return ret;
 }

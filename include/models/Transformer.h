@@ -10,16 +10,17 @@ class TransformerConfig;
 
 class Transformer {
 public:
-  Transformer(int input_vocab_size, int target_vocab_size, const TransformerConfig& config);
+  Transformer(const TransformerConfig& config);
   virtual ~Transformer() {}
 
 	std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor>& encoderInputIds,
 		const std::shared_ptr<Tensor>& decoderInputIds, bool isTraining);
 
-  void saveWeights(const std::string &filename) const;
-  void loadWeights(const std::string &filename);
+  void saveToFile(const std::string &filename) const;
+  static std::shared_ptr<Transformer> loadFromFile(const std::string &filename, int inputVocabSize, int targetVocabSize);
+
 protected:
-  const TransformerConfig _;
+  TransformerConfig _;
   Embedding _encoderEmbedding;
   PositionalEncoding _encoderPositionalEncoding;
   Encoder _encoder;
@@ -29,8 +30,6 @@ protected:
   Decoder _decoder;
 
   Linear _linearFinal;
-  const int _inputVocabSize;
-  const int _targetVocabSize;
 
   std::shared_ptr<Tensor> createEncoderPaddingMask(const std::shared_ptr<Tensor> &encoderInputIds);
   std::shared_ptr<Tensor> createDecoderSelfAttentionMask(const std::shared_ptr<Tensor> &decoderInputIds);

@@ -1,10 +1,9 @@
 #include "utils/ThreadPool.h"
 #include "utils/ConfigParser.h"
+#include "utils/TransformerConfig.h"
 
 ThreadPool &getThreadPool() {
-  static ThreadPool pool([]() {
-    return ConfigParser::instance().value<int>("numThreads");
-  }());
+  static ThreadPool pool(TransformerConfig::instance().numThreads);
   return pool;
 }
 

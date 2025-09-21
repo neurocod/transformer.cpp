@@ -1,6 +1,7 @@
 #include "utils/Tensor.h"
 #include "utils/Helpers.h"
 #include "utils/TransformerConfig.h"
+#include "utils/ConfigParser.h"
 #include <cassert>
 
 void test_addition() {
@@ -314,7 +315,8 @@ int main() {
     fs::path newCwd = cwd.parent_path().parent_path();
     fs::current_path(newCwd);
 #endif
-    TransformerConfig::init("../config.ini");
+    TransformerConfig::unitTest();
+    TransformerConfig::instance().init("../config.ini");
     test_addition();
     test_subtraction();
     test_dot_product();

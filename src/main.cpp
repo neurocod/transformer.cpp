@@ -40,12 +40,30 @@ void pressEnterToContinue() {
   std::cin.get(); // Wait for a character (Enter key)
 }
 
-void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dataLoader) {
+void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
+  using clock = std::chrono::high_resolution_clock;
+  auto t_init_start = clock::now();
+
+  Transformer model(cf);
+
+  auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - t_init_start).count();
+  spdlog::info("Model initialization took {} ms", init_ms);
+
+  // Print model parameters count
+  size_t total_params = 0;
+  const auto &parameters = Tensor::get_optimizable_tensors();
+  for (const auto &param : parameters) {
+    if (param) {
+      total_params += param->num_elements();
+    }
+  }
+  spdlog::info("Total optimizable parameters: {}", total_params);
+
+
   Adam optimizer(cf.learningRate);
   CrossEntropyLoss criterion;
 
   spdlog::info("Starting Transformer training...");
-  using clock = std::chrono::high_resolution_clock;
 
   auto t_train_start = clock::now();
 
@@ -85,12 +103,11 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
   auto t_train_end = clock::now();
   auto train_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_train_end - t_train_start).count();
   spdlog::info("Model training took {} ms", train_ms);
-
-  spdlog::info("\nTransformer training finished.");
+  spdlog::info("Transformer training finished.");
 
   try {
     spdlog::info("Saving final weights to {}", cf.weightsFilename);
-    model.saveWeights(cf.weightsFilename);
+    model.saveToFile(cf.weightsFilename);
     spdlog::info("Weights saved successfully.");
   }
   catch (const std::exception& e) {
@@ -98,8 +115,26 @@ void trainModel(Transformer& model, const TransformerConfig& cf, DataLoader& dat
   }
 }
 
-void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& dataLoader) {
-  spdlog::info("\n--- Running Inference ---");
+int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
+  if (!std::filesystem::exists(cf.weightsFilename)) {
+    spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.", cf.weightsFilename);
+    return 1;
+  }
+  std::shared_ptr<Transformer> model; 
+  try {
+    spdlog::info("Attempting to load weights from {}...", cf.weightsFilename);
+    model = Transformer::loadFromFile(cf.weightsFilename, dataLoader.get_vocab_size(), dataLoader.get_vocab_size());
+  } catch (const std::exception &e) {
+    spdlog::error("Failed to load weights: {}", e.what());
+    model = nullptr;
+  }
+  
+  if (!model) {
+    spdlog::error("Cannot run inference without weights. Exiting.");
+    return 1;
+  }
+
+  spdlog::info("Weights loaded successfully.\n--- Running Inference ---");
   spdlog::info("Initial prompt: \"{}\"", cf.initialPrompt);
 
   int current_seq_len = cf.inputSeqLength;
@@ -145,9 +180,9 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
 
     // Forward pass (isTraining = false)
     std::shared_ptr<Tensor> logits =
-      model.forward(encoder_input, decoder_input, false);
-    const int target_vocab_size = dataLoader.get_vocab_size();
-    // Logits shape: (1, current_seq_len, target_vocab_size)
+      model->forward(encoder_input, decoder_input, false);
+    const int targetVocabSize = dataLoader.get_vocab_size();
+    // Logits shape: (1, current_seq_len, targetVocabSize)
 
     int last_token_index = std::min(current_total_len, current_seq_len) - 1;
     if (last_token_index < 0) {
@@ -156,18 +191,18 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
     }
 
     const auto& logits_data = logits->data();
-    size_t logits_offset = last_token_index * target_vocab_size;
+    size_t logits_offset = last_token_index * targetVocabSize;
 
     // Find the token with the highest logit
     float max_logit = -std::numeric_limits<float>::infinity();
     int predicted_id = -1;
-    if (logits_offset + target_vocab_size > logits_data.size()) {
+    if (logits_offset + targetVocabSize > logits_data.size()) {
       spdlog::error("\nError: Logits offset ({}) + vocabSize ({}) exceeds logits_data size ({}). last_token_index={}. Breaking.",
-        logits_offset, target_vocab_size, logits_data.size(), last_token_index);
+        logits_offset, targetVocabSize, logits_data.size(), last_token_index);
       break;
     }
 
-    for (int j = 0; j < target_vocab_size; ++j) {
+    for (int j = 0; j < targetVocabSize; ++j) {
       if (logits_data[logits_offset + j] > max_logit) {
         max_logit = logits_data[logits_offset + j];
         predicted_id = j;
@@ -188,8 +223,9 @@ void inferenceMode(Transformer& model, const TransformerConfig& cf, DataLoader& 
 
     std::cout << next_char << std::flush;
   }
-
-  spdlog::info("\n--- Generation Complete ---");
+  std::cout << "\n";
+  spdlog::info("--- Generation Complete ---");
+  return 0;
 }
 
 int mainExcept() {
@@ -204,55 +240,21 @@ int mainExcept() {
   fs::path newCwd = cwd.parent_path().parent_path();
   fs::current_path(newCwd);
 #endif
-  using clock = std::chrono::high_resolution_clock;
-
-  auto t_init_start = clock::now();
-
-  TransformerConfig::init("../config.ini");
-  const TransformerConfig& cf = TransformerConfig::instance();
+  TransformerConfig cf;
+  cf.init("../config.ini");
 
   DataLoader dataLoader(cf.inputSeqLength, cf.batchSize);
   dataLoader.readFile(cf.dataFilename);
 
-  const int input_vocab_size = dataLoader.get_vocab_size();
-  const int target_vocab_size = dataLoader.get_vocab_size();
-
-  Transformer model(input_vocab_size, target_vocab_size, cf);
-
-  auto t_init_end = clock::now();
-  auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(t_init_end - t_init_start).count();
-  spdlog::info("Model initialization took {} ms", init_ms);
-
-  // Print model parameters count
-  size_t total_params = 0;
-  const auto &parameters = Tensor::get_optimizable_tensors();
-  for (const auto &param : parameters) {
-    if (param) {
-      total_params += param->num_elements();
-    }
-  }
-  spdlog::info("Total optimizable parameters: {}", total_params);
+  cf.inputVocabSize = dataLoader.get_vocab_size();
+  cf.targetVocabSize = dataLoader.get_vocab_size();
+  TransformerConfig::instance() = cf;
 
   if (cf.inferenceMode) {
-    if (!std::filesystem::exists(cf.weightsFilename)) {
-      spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.", cf.weightsFilename);
-      return 1;
-    }
-    try {
-      spdlog::info("Attempting to load weights from {}...", cf.weightsFilename);
-      model.loadWeights(cf.weightsFilename);
-      spdlog::info("Weights loaded successfully.");
-    } catch (const std::exception& e) {
-      spdlog::error("Failed to load weights: {}", e.what());
-      if (cf.inferenceMode) {
-        spdlog::error("Cannot run inference without weights. Exiting.");
-        return 1;
-      }
-    }
-    inferenceMode(model, cf, dataLoader);
-  } else {
-    trainModel(model, cf, dataLoader);
+    return inferenceMode(cf, dataLoader);
   }
+
+  trainModel(cf, dataLoader);
 
   return 0;
 }

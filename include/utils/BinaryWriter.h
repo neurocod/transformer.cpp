@@ -40,5 +40,5 @@ public:
 		}
 			
 		// Check stream state
-		bool good() const { return _stream.good(); }
+		bool ok() const { return _stream.good(); }
 };

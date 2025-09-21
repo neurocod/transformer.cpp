@@ -45,7 +45,7 @@ public:
 
 		std::string readString() {
 			const uint32_t length = read<uint32_t>();
-			if (!good()) {
+			if (!ok()) {
 				throw std::ios_base::failure("Failed to read string length");
 			}
 
@@ -55,7 +55,7 @@ public:
 
 			std::string result(length, '\0');
 			_stream.read(result.data(), length);
-			if (!good()) {
+			if (!ok()) {
 				throw std::ios_base::failure("Failed to read string data");
 			}
 
@@ -63,5 +63,5 @@ public:
 		}
 		
 		// Check stream state
-		bool good() const { return _stream.good(); }
+		bool ok() const { return _stream.good(); }
 };
