@@ -4,11 +4,11 @@ TabWidth: 2
 UseTab: Never
 ColumnLimit: 120
 AllowShortIfStatementsOnASingleLine: false
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Attach
 SpacesInParentheses: false
 SpaceAfterCStyleCast: false
 SpaceBeforeParens: ControlStatements
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
 SortIncludes: false
 ReflowComments: true
