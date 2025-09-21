@@ -48,7 +48,8 @@ void DataLoader::readFile(const std::string& filename) {
     throw std::runtime_error("file already read");
 
   std::string text;
-  if (const bool generat = true) {
+  const bool generate = filename == "generate";
+  if (generate) {
     const size_t target = _sequenceLength * _batchSize;
     while (text.size() < target)
       text += _textGenerator.generateSimple();
