@@ -20,7 +20,7 @@ public:
 private:
   const int _sequenceLength;
   const int _batchSize;
-  CharToIdTextGenerator _textGenerator;
+  CharToIdGenerator _textGenerator;
 
   std::vector<char> _chars;
   std::unordered_map<char, int> _charToId;

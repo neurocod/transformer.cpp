@@ -1,9 +1,9 @@
 #pragma once
 
-class CharToIdTextGenerator {
+class CharToIdGenerator {
 public:
-    CharToIdTextGenerator();
-    virtual ~CharToIdTextGenerator() {}
+    CharToIdGenerator();
+    virtual ~CharToIdGenerator() {}
 
     std::string generateSimple();
     std::string generateComplex();
@@ -13,5 +13,5 @@ protected:
     const std::string _trash;
     
     char randChar(const std::string& source) const;
-    std::string randTrash(int maxLen = 5) const;
+    std::string randTrash(int maxLen) const;
 };

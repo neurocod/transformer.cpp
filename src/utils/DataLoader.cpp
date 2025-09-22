@@ -52,7 +52,7 @@ void DataLoader::readFile(const std::string& filename) {
   if (generate) {
     const size_t target = _sequenceLength * _batchSize;
     while (text.size() < target)
-      text += _textGenerator.generateSimple();
+      text += _textGenerator.generateComplex();
   } else {
     spdlog::info("Loading data from {}", filename);
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
@@ -126,11 +126,9 @@ std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
     }
   }
 
-  Tensor::Ptr input_tensor =
-      Tensor::create({_batchSize, _sequenceLength},
+  Tensor::Ptr input_tensor = Tensor::create({_batchSize, _sequenceLength},
                      std::make_shared<std::vector<float>>(inputBatchVec));
-  Tensor::Ptr target_tensor =
-      Tensor::create({_batchSize * _sequenceLength},
+  Tensor::Ptr target_tensor = Tensor::create({_batchSize * _sequenceLength},
                      std::make_shared<std::vector<float>>(targetBatchVec));
 
   return {input_tensor, target_tensor};
