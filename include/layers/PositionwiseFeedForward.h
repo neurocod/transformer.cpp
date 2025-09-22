@@ -7,7 +7,7 @@ public:
   PositionwiseFeedForward(int inputDim, int hidden_dim);
   ~PositionwiseFeedForward() = default;
 
-  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
+  Tensor::Ptr forward(Tensor::Ptr &input);
 private:
   Linear fc1_;
   Linear fc2_;

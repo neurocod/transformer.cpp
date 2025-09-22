@@ -9,12 +9,12 @@ Encoder::Encoder(int numLayers, int embedDim, int numHeads,
   }
 }
 
-std::shared_ptr<Tensor> Encoder::forward(std::shared_ptr<Tensor> &input,
-                                         std::shared_ptr<Tensor> &padding_mask,
+Tensor::Ptr Encoder::forward(Tensor::Ptr &input,
+                                         Tensor::Ptr &padding_mask,
                                          bool isTraining) {
   // Input shape: (batchSize, sequence_length, embedDim)
 
-  std::shared_ptr<Tensor> output = input;
+  Tensor::Ptr output = input;
 
   for (size_t i = 0; i < layers_.size(); ++i) {
     output = layers_[i].forward(output, padding_mask, isTraining);

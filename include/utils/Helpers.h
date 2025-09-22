@@ -1,7 +1,7 @@
 #pragma once
 #include "Tensor.h"
 
-inline void print_tensor(const std::shared_ptr<Tensor> &t,
+inline void print_tensor(const Tensor::Ptr &t,
                          const std::string &name) {
   if (!t)
     return;
@@ -39,8 +39,8 @@ inline void print_tensor(const std::shared_ptr<Tensor> &t,
   spdlog::info(out.str());
 }
 
-inline bool are_tensors_equal(const std::shared_ptr<Tensor> &t1,
-                              const std::shared_ptr<Tensor> &t2,
+inline bool are_tensors_equal(const Tensor::Ptr &t1,
+                              const Tensor::Ptr &t2,
                               float tolerance = 1e-9) {
   if (!t1 || !t2)
     return false;

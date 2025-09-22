@@ -8,10 +8,10 @@ public:
   ~Decoder() = default;
 
   // Forward pass
-  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &target_input,
-                                  std::shared_ptr<Tensor> &encoder_output,
-                                  std::shared_ptr<Tensor> &look_ahead_mask,
-                                  std::shared_ptr<Tensor> &padding_mask,
+  Tensor::Ptr forward(Tensor::Ptr &target_input,
+                                  Tensor::Ptr &encoder_output,
+                                  Tensor::Ptr &look_ahead_mask,
+                                  Tensor::Ptr &padding_mask,
                                   bool isTraining);
 
 private:

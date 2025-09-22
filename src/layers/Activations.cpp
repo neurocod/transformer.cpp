@@ -1,7 +1,7 @@
 #include "layers/Activations.h"
 
-std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+Tensor::Ptr ReLU::forward(const Tensor::Ptr &input) {
+  Tensor::Ptr output = Tensor::create(input->shape());
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();
 
@@ -15,8 +15,8 @@ std::shared_ptr<Tensor> ReLU::forward(const std::shared_ptr<Tensor> &input) {
   return output;
 }
 
-std::shared_ptr<Tensor> GELU::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+Tensor::Ptr GELU::forward(const Tensor::Ptr &input) {
+  Tensor::Ptr output = Tensor::create(input->shape());
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();
 
@@ -37,8 +37,8 @@ std::shared_ptr<Tensor> GELU::forward(const std::shared_ptr<Tensor> &input) {
   return output;
 }
 
-std::shared_ptr<Tensor> Sigmoid::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+Tensor::Ptr Sigmoid::forward(const Tensor::Ptr &input) {
+  Tensor::Ptr output = Tensor::create(input->shape());
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();
 
@@ -52,8 +52,8 @@ std::shared_ptr<Tensor> Sigmoid::forward(const std::shared_ptr<Tensor> &input) {
   return output;
 }
 
-std::shared_ptr<Tensor> Tanh::forward(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+Tensor::Ptr Tanh::forward(const Tensor::Ptr &input) {
+  Tensor::Ptr output = Tensor::create(input->shape());
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();
 

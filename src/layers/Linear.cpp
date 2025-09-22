@@ -29,7 +29,7 @@ Linear::Linear(int inputDim, int outputDim, const std::string& name)
   _biases->set_data(biases_data);
 }
 
-std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> &input) {
+Tensor::Ptr Linear::forward(Tensor::Ptr &input) {
   // Input shape is (..., inputDim)
   // Weights shape is (inputDim, outputDim)
   // output = input * weights + biases
@@ -39,12 +39,12 @@ std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> &input) {
                              "with Linear layer input dimension.");
   }
 
-  std::shared_ptr<Tensor> product = input->dot(_weights);
-  std::shared_ptr<Tensor> output = *product + _biases;
+  Tensor::Ptr product = input->dot(_weights);
+  Tensor::Ptr output = *product + _biases;
 
   return output;
 }
 
-std::shared_ptr<Tensor> Linear::weights() { return _weights; }
+Tensor::Ptr Linear::weights() { return _weights; }
 
-std::shared_ptr<Tensor> Linear::biases() { return _biases; }
+Tensor::Ptr Linear::biases() { return _biases; }

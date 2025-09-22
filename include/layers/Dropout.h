@@ -7,7 +7,7 @@ public:
   ~Dropout() = default;
 
   // Forward pass
-  std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input,
+  Tensor::Ptr forward(const Tensor::Ptr &input,
                                   bool isTraining);
 private:
   float rate_; // Dropout rate

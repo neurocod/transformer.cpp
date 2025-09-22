@@ -5,13 +5,13 @@ class LossFunction {
 public:
   virtual ~LossFunction() = default;
 
-  virtual std::shared_ptr<Tensor>
-  computeLoss(std::shared_ptr<Tensor> &predictions,
-               std::shared_ptr<Tensor> &targets) = 0;
+  virtual Tensor::Ptr
+  computeLoss(Tensor::Ptr &predictions,
+               Tensor::Ptr &targets) = 0;
 
   // This assumes computeLoss returns a shared_ptr to a Tensor that has its
   // computation graph set up.
-  void backward(std::shared_ptr<Tensor> &loss);
+  void backward(Tensor::Ptr &loss);
 };
 
 class MeanSquaredErrorLoss : public LossFunction {
@@ -21,9 +21,8 @@ public:
   ~MeanSquaredErrorLoss() override = default;
 
   // MSE = mean((predictions - targets)^2)
-  std::shared_ptr<Tensor>
-  computeLoss(std::shared_ptr<Tensor> &predictions,
-               std::shared_ptr<Tensor> &targets) override;
+  Tensor::Ptr computeLoss(Tensor::Ptr &predictions,
+               Tensor::Ptr &targets) override;
 };
 
 class CrossEntropyLoss : public LossFunction {
@@ -32,7 +31,6 @@ public:
   ~CrossEntropyLoss() override = default;
 
   // Computes the Cross-Entropy Loss
-  std::shared_ptr<Tensor>
-  computeLoss(std::shared_ptr<Tensor> &predictions,
-               std::shared_ptr<Tensor> &targets) override;
+  Tensor::Ptr computeLoss(Tensor::Ptr &predictions,
+               Tensor::Ptr &targets) override;
 };

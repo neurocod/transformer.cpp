@@ -12,7 +12,7 @@ public:
 
   // Zeros the gradients of all parameters managed by this optimizer
   void zeroGrad() {
-    for (std::shared_ptr<Tensor> &param : parameters_) {
+    for (Tensor::Ptr &param : parameters_) {
       if (param) {
         param->zeroGrad();
       }
@@ -21,8 +21,7 @@ public:
 
 protected:
   // List of shared pointers to the parameters to update
-  std::vector<std::shared_ptr<Tensor>> &parameters_ =
-      Tensor::get_optimizable_tensors();
+  std::vector<Tensor::Ptr> &parameters_ = Tensor::get_optimizable_tensors();
 };
 
 class SGD : public Optimizer {
@@ -52,6 +51,6 @@ private:
   float epsilon_;
   int t_; // Timestep
 
-  std::vector<std::shared_ptr<Tensor>> m_; // First moment
-  std::vector<std::shared_ptr<Tensor>> v_; // Second moment
+  std::vector<Tensor::Ptr> m_; // First moment
+  std::vector<Tensor::Ptr> v_; // Second moment
 };

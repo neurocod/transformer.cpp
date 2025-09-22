@@ -96,7 +96,7 @@ void DataLoader::readFile(const std::string& filename) {
 
 int DataLoader::get_vocab_size() const { return _chars.size(); }
 
-std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> DataLoader::randBatch() {
+std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
   if (_data.empty())
     throw std::runtime_error("Data not loaded. Call readFile() first.");
 
@@ -126,10 +126,10 @@ std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> DataLoader::randBatc
     }
   }
 
-  std::shared_ptr<Tensor> input_tensor =
+  Tensor::Ptr input_tensor =
       Tensor::create({_batchSize, _sequenceLength},
                      std::make_shared<std::vector<float>>(inputBatchVec));
-  std::shared_ptr<Tensor> target_tensor =
+  Tensor::Ptr target_tensor =
       Tensor::create({_batchSize * _sequenceLength},
                      std::make_shared<std::vector<float>>(targetBatchVec));
 

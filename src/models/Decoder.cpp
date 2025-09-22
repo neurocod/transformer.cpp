@@ -9,12 +9,11 @@ Decoder::Decoder(int numLayers, int embedDim, int numHeads,
   }
 }
 
-std::shared_ptr<Tensor>
-Decoder::forward(std::shared_ptr<Tensor> &target_input,
-                 std::shared_ptr<Tensor> &encoder_output,
-                 std::shared_ptr<Tensor> &look_ahead_mask,
-                 std::shared_ptr<Tensor> &padding_mask, bool isTraining) {
-  std::shared_ptr<Tensor> output = target_input;
+Tensor::Ptr Decoder::forward(Tensor::Ptr &target_input,
+                 Tensor::Ptr &encoder_output,
+                 Tensor::Ptr &look_ahead_mask,
+                 Tensor::Ptr &padding_mask, bool isTraining) {
+  Tensor::Ptr output = target_input;
 
   for (size_t i = 0; i < layers_.size(); ++i) {
     output = layers_[i].forward(output, encoder_output, look_ahead_mask,

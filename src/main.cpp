@@ -7,7 +7,7 @@
 #include "utils/Tensor.h"
 
 // Function to convert string to tensor of IDs
-std::shared_ptr<Tensor> string_to_tensor(const std::string &text,
+Tensor::Ptr string_to_tensor(const std::string &text,
                                          const DataLoader &loader,
                                          int seq_len) {
   const auto &char_to_id = loader.get_char_to_id_map();
@@ -66,22 +66,19 @@ void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
 
     optimizer.zeroGrad();
 
-    std::pair<std::shared_ptr<Tensor>, std::shared_ptr<Tensor>> batch_data = dataLoader.randBatch();
-    std::shared_ptr<Tensor> encoderInputIds = batch_data.first;
-    std::shared_ptr<Tensor> target_output_ids = batch_data.second;
-    std::shared_ptr<Tensor> decoderInputIds = encoderInputIds;
+    std::pair<Tensor::Ptr, Tensor::Ptr> batch_data = dataLoader.randBatch();
+    Tensor::Ptr encoderInputIds = batch_data.first;
+    Tensor::Ptr target_output_ids = batch_data.second;
+    Tensor::Ptr decoderInputIds = encoderInputIds;
 
     // Forward pass
-    std::shared_ptr<Tensor> logits =
-      model.forward(encoderInputIds, decoderInputIds, true);
+    Tensor::Ptr logits = model.forward(encoderInputIds, decoderInputIds, true);
 
     // Reshape logits
-    std::shared_ptr<Tensor> reshaped_logits =
-      logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader.get_vocab_size() });
+    Tensor::Ptr reshaped_logits = logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader.get_vocab_size() });
 
     // Compute loss
-    std::shared_ptr<Tensor> loss =
-      criterion.computeLoss(reshaped_logits, target_output_ids);
+    Tensor::Ptr loss = criterion.computeLoss(reshaped_logits, target_output_ids);
 
     spdlog::info("Epoch [{}/{}], Loss: {}", (epoch + 1), cf.numEpochs, vector_to_string(loss->data()));
 
@@ -129,8 +126,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
   int current_seq_len = cf.inputSeqLength;
 
   // Tokenize the initial prompt
-  std::shared_ptr<Tensor> current_input_ids =
-    string_to_tensor(cf.initialPrompt, dataLoader, current_seq_len);
+  Tensor::Ptr current_input_ids = string_to_tensor(cf.initialPrompt, dataLoader, current_seq_len);
   std::vector<float> generated_ids = current_input_ids->data();
 
   // Remove padding from initial prompt display if any was added by
@@ -158,18 +154,16 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
     }
 
     // Create tensor for this step (batch size 1)
-    std::shared_ptr<Tensor> step_input_tensor =
-      Tensor::create({ 1, current_seq_len },
+    Tensor::Ptr step_input_tensor = Tensor::create({ 1, current_seq_len },
         std::make_shared<std::vector<float>>(step_input_vec));
 
     // Encoder input and Decoder input are the same for autoregressive
     // generation
-    std::shared_ptr<Tensor> encoder_input = step_input_tensor;
-    std::shared_ptr<Tensor> decoder_input = step_input_tensor;
+    Tensor::Ptr encoder_input = step_input_tensor;
+    Tensor::Ptr decoder_input = step_input_tensor;
 
     // Forward pass (isTraining = false)
-    std::shared_ptr<Tensor> logits =
-      model->forward(encoder_input, decoder_input, false);
+    Tensor::Ptr logits = model->forward(encoder_input, decoder_input, false);
     const int targetVocabSize = dataLoader.get_vocab_size();
     // Logits shape: (1, current_seq_len, targetVocabSize)
 

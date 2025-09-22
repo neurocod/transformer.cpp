@@ -9,14 +9,14 @@ Dropout::Dropout(float rate) : rate_(rate),
   }
 }
 
-std::shared_ptr<Tensor> Dropout::forward(const std::shared_ptr<Tensor> &input,
+Tensor::Ptr Dropout::forward(const Tensor::Ptr &input,
                                          bool isTraining) {
   if (!isTraining) {
     return input;
   }
 
-  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
-  std::shared_ptr<Tensor> mask = Tensor::create(input->shape());
+  Tensor::Ptr output = Tensor::create(input->shape());
+  Tensor::Ptr mask = Tensor::create(input->shape());
 
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();

@@ -10,34 +10,25 @@ EncoderLayer::EncoderLayer(int embedDim, int numHeads, int ffHiddenDim, float dr
 	_dropoutRate(dropoutRate) {
 }
 
-std::shared_ptr<Tensor>
-EncoderLayer::forward(std::shared_ptr<Tensor> &input,
-											std::shared_ptr<Tensor> &padding_mask, bool isTraining) {
+Tensor::Ptr EncoderLayer::forward(Tensor::Ptr &input,
+											Tensor::Ptr &padding_mask, bool isTraining) {
 	// Input shape: (batchSize, sequence_length, embedDim)
 
-	std::shared_ptr<Tensor> attention_output =
-			self_attention_.forward(input, input, input, padding_mask);
+	Tensor::Ptr attention_output = self_attention_.forward(input, input, input, padding_mask);
 
-	std::shared_ptr<Tensor> attention_output_dropped =
-			dropout1_.forward(attention_output, isTraining);
+	Tensor::Ptr attention_output_dropped = dropout1_.forward(attention_output, isTraining);
 
 	// output = input + attention_output_dropped
-	std::shared_ptr<Tensor> attention_residual =
-			*input + attention_output_dropped;
-	std::shared_ptr<Tensor> layernorm1_output =
-			layernorm1_.forward(attention_residual);
+	Tensor::Ptr attention_residual = *input + attention_output_dropped;
+	Tensor::Ptr layernorm1_output = layernorm1_.forward(attention_residual);
 
-	std::shared_ptr<Tensor> feed_forward_output =
-			feed_forward_.forward(layernorm1_output);
+	Tensor::Ptr feed_forward_output = feed_forward_.forward(layernorm1_output);
 
-	std::shared_ptr<Tensor> feed_forward_output_dropped =
-			dropout2_.forward(feed_forward_output, isTraining);
+	Tensor::Ptr feed_forward_output_dropped = dropout2_.forward(feed_forward_output, isTraining);
 
 	// output = layernorm1_output + feed_forward_output_dropped
-	std::shared_ptr<Tensor> feed_forward_residual =
-			*layernorm1_output + feed_forward_output_dropped;
-	std::shared_ptr<Tensor> layernorm2_output =
-			layernorm2_.forward(feed_forward_residual);
+	Tensor::Ptr feed_forward_residual = *layernorm1_output + feed_forward_output_dropped;
+	Tensor::Ptr layernorm2_output = layernorm2_.forward(feed_forward_residual);
 
 	return layernorm2_output;
 }

@@ -6,7 +6,7 @@
 
 void SGD::step() {
   // Iterate through all parameters
-  for (const std::shared_ptr<Tensor> &param : parameters_) {
+  for (const Tensor::Ptr &param : parameters_) {
     if (param) {
       // Could make a copy of the param_data and then set it again, but this
       // qould be inefficient because you have an extra copy
@@ -45,7 +45,7 @@ void Adam::step() {
   // Gradient Clipping
   float total_norm_sq = 0.0f;
   for (size_t i = 0; i < parameters_.size(); ++i) {
-    std::shared_ptr<Tensor> param = parameters_[i];
+    Tensor::Ptr param = parameters_[i];
     if (!param || param->grad().empty())
       continue;
 
@@ -61,7 +61,7 @@ void Adam::step() {
   // Clip gradients if the total norm exceeds the threshold
   if (clip_coef < 1.0f) {
     for (size_t i = 0; i < parameters_.size(); ++i) {
-      std::shared_ptr<Tensor> param = parameters_[i];
+      Tensor::Ptr param = parameters_[i];
       if (!param || param->grad().empty())
         continue;
 
@@ -73,7 +73,7 @@ void Adam::step() {
   }
 
   for (size_t i = 0; i < parameters_.size(); ++i) {
-    std::shared_ptr<Tensor> param = parameters_[i];
+    Tensor::Ptr param = parameters_[i];
     if (!param || param->data().empty() || param->grad().empty())
       continue;
 

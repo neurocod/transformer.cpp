@@ -7,10 +7,10 @@ public:
   ~PositionalEncoding() = default;
 
   // Forward pass
-  std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
+  Tensor::Ptr forward(const Tensor::Ptr &input);
 
 private:
-  std::shared_ptr<Tensor> positional_encodings_; // Pre-calculated
+  Tensor::Ptr positional_encodings_; // Pre-calculated
 
   int _maxSequenceLength;
   int _embedDim;

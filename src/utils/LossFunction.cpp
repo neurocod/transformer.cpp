@@ -1,27 +1,26 @@
 #include <utils/LossFunction.h>
 
-void LossFunction::backward(std::shared_ptr<Tensor> &loss) {
+void LossFunction::backward(Tensor::Ptr &loss) {
   // The gradient of the loss with respect to itself is 1.0.
   if (loss->shape().size() != 1 || loss->shape()[0] != 1) {
     throw std::runtime_error(
         "Backward pass for loss must start from a scalar loss tensor.");
   }
-  std::shared_ptr<Tensor> initial_grad_for_loss = Tensor::create(
+  Tensor::Ptr initial_grad_for_loss = Tensor::create(
       {1}, std::make_shared<std::vector<float>>(std::vector<float>{{1.0f}}));
   loss->backward(initial_grad_for_loss);
 }
 
-std::shared_ptr<Tensor>
-MeanSquaredErrorLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
-                                   std::shared_ptr<Tensor> &targets) {
+Tensor::Ptr MeanSquaredErrorLoss::computeLoss(Tensor::Ptr &predictions,
+                                   Tensor::Ptr &targets) {
   if (predictions->shape() != targets->shape()) {
     throw std::runtime_error(
         "Prediction and target shapes mismatch in MeanSquaredErrorLoss.");
   }
 
-  std::shared_ptr<Tensor> diff = *predictions - targets;
-  std::shared_ptr<Tensor> squared_diff = *diff * diff;
-  std::shared_ptr<Tensor> sum_squared_diff = squared_diff->sum();
+  Tensor::Ptr diff = *predictions - targets;
+  Tensor::Ptr squared_diff = *diff * diff;
+  Tensor::Ptr sum_squared_diff = squared_diff->sum();
 
   size_t num_elements = predictions->num_elements();
   if (num_elements == 0) {
@@ -30,17 +29,17 @@ MeanSquaredErrorLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
         std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
   }
 
-  std::shared_ptr<Tensor> num_elements_tensor = Tensor::create(
+  Tensor::Ptr num_elements_tensor = Tensor::create(
       {1}, std::make_shared<std::vector<float>>(
                std::vector<float>{{static_cast<float>(num_elements)}}));
-  std::shared_ptr<Tensor> mean_loss = (*sum_squared_diff) / num_elements_tensor;
+  Tensor::Ptr mean_loss = (*sum_squared_diff) / num_elements_tensor;
 
   return mean_loss;
 }
 
 // Helper function for LogSoftmax
-std::shared_ptr<Tensor> log_softmax(const std::shared_ptr<Tensor> &input) {
-  std::shared_ptr<Tensor> output = Tensor::create(input->shape());
+Tensor::Ptr log_softmax(const Tensor::Ptr &input) {
+  Tensor::Ptr output = Tensor::create(input->shape());
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();
   const std::vector<int> &shape = input->shape();
@@ -83,11 +82,9 @@ std::shared_ptr<Tensor> log_softmax(const std::shared_ptr<Tensor> &input) {
 }
 
 // Helper function for Negative Log Likelihood Loss
-std::shared_ptr<Tensor>
-nll_loss(const std::shared_ptr<Tensor> &log_probabilities,
-         const std::shared_ptr<Tensor> &targets) {
-  std::shared_ptr<Tensor> loss = Tensor::create(
-      std::vector<int>{1},
+Tensor::Ptr nll_loss(const Tensor::Ptr &log_probabilities,
+         const Tensor::Ptr &targets) {
+  Tensor::Ptr loss = Tensor::create(std::vector<int>{1},
       std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
   const std::vector<float> &log_prob_data = log_probabilities->data();
   const std::vector<float> &target_data = targets->data();
@@ -141,14 +138,13 @@ nll_loss(const std::shared_ptr<Tensor> &log_probabilities,
   return loss;
 }
 
-std::shared_ptr<Tensor>
-CrossEntropyLoss::computeLoss(std::shared_ptr<Tensor> &predictions,
-                               std::shared_ptr<Tensor> &targets) {
+Tensor::Ptr CrossEntropyLoss::computeLoss(Tensor::Ptr &predictions,
+                               Tensor::Ptr &targets) {
   // Apply LogSoftmax to predictions
-  std::shared_ptr<Tensor> log_probs = log_softmax(predictions);
+  Tensor::Ptr log_probs = log_softmax(predictions);
 
   // Compute Negative Log Likelihood Loss
-  std::shared_ptr<Tensor> loss = nll_loss(log_probs, targets);
+  Tensor::Ptr loss = nll_loss(log_probs, targets);
 
   return loss;
 }

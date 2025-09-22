@@ -10,8 +10,8 @@ public:
                float dropoutRate = 0.1f);
   ~EncoderLayer() = default;
 
-  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input,
-                                  std::shared_ptr<Tensor> &padding_mask,
+  Tensor::Ptr forward(Tensor::Ptr &input,
+                                  Tensor::Ptr &padding_mask,
                                   bool isTraining);
 
 private:

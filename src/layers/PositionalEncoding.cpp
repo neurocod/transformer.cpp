@@ -21,8 +21,7 @@ PositionalEncoding::PositionalEncoding(int maxSequenceLength, int embedDim)
   }
 }
 
-std::shared_ptr<Tensor>
-PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
+Tensor::Ptr PositionalEncoding::forward(const Tensor::Ptr &input) {
   const std::vector<int> &input_shape = input->shape();
   if (input_shape.size() != 3) {
     throw std::runtime_error("Positional Encoding input must be a 3D tensor "
@@ -44,7 +43,7 @@ PositionalEncoding::forward(const std::shared_ptr<Tensor> &input) {
   }
 
   // Add the pre-calculated positional encodings to the input tensor.
-  std::shared_ptr<Tensor> output = Tensor::create(input_shape);
+  Tensor::Ptr output = Tensor::create(input_shape);
   const std::vector<float> &input_data = input->data();
   std::vector<float> &output_data = output->dataRef();
   const std::vector<float> &encoding_data = positional_encodings_->data();

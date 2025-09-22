@@ -7,21 +7,21 @@ public:
   ~LayerNorm() = default;
 
   // Forward pass
-  std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input);
+  Tensor::Ptr forward(const Tensor::Ptr &input);
 
 
   // Getters for learnable parameters
-  std::shared_ptr<Tensor> get_gamma();
-  std::shared_ptr<Tensor> get_beta();
+  Tensor::Ptr get_gamma();
+  Tensor::Ptr get_beta();
 
 private:
-  std::shared_ptr<Tensor> gamma_; // Learnable scale parameter (gain)
-  std::shared_ptr<Tensor> beta_;  // Learnable shift parameter (bias)
+  Tensor::Ptr gamma_; // Learnable scale parameter (gain)
+  Tensor::Ptr beta_;  // Learnable shift parameter (bias)
   float epsilon_;
 
   int normalized_shape_;
 
-  std::shared_ptr<Tensor> mean_;
-  std::shared_ptr<Tensor> inv_stddev_;
-  std::shared_ptr<Tensor> centered_input_;
+  Tensor::Ptr mean_;
+  Tensor::Ptr inv_stddev_;
+  Tensor::Ptr centered_input_;
 };

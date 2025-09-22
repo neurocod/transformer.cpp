@@ -6,12 +6,12 @@ public:
   Linear(int inputDim, int outputDim, const std::string& name);
   ~Linear() {}
 
-  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &input);
-  std::shared_ptr<Tensor> weights();
-  std::shared_ptr<Tensor> biases();
+  Tensor::Ptr forward(Tensor::Ptr &input);
+  Tensor::Ptr weights();
+  Tensor::Ptr biases();
 private:
-  std::shared_ptr<Tensor> _weights; // Weight matrix (inputDim, outputDim)
-  std::shared_ptr<Tensor> _biases;  // Bias vector (1, outputDim)
+  Tensor::Ptr _weights; // Weight matrix (inputDim, outputDim)
+  Tensor::Ptr _biases;  // Bias vector (1, outputDim)
 
   int _inputDim;
   int _outputDim;

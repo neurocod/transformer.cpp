@@ -16,8 +16,7 @@ LayerNorm::LayerNorm(const std::string& name, int normalized_shape, float epsilo
   beta_->set_data(beta_data);
 }
 
-std::shared_ptr<Tensor>
-LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
+Tensor::Ptr LayerNorm::forward(const Tensor::Ptr &input) {
   const std::vector<int> &input_shape = input->shape();
   if (input_shape.empty() || input_shape.back() != normalized_shape_) {
     throw std::runtime_error("Input tensor's last dimension must match "
@@ -35,7 +34,7 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
   std::shared_ptr<std::vector<float>> mean_data =
       std::make_shared<std::vector<float>>(outer_dims_elements);
 
-  std::shared_ptr<Tensor> variance = Tensor::create(
+  Tensor::Ptr variance = Tensor::create(
       std::vector<int>(input_shape.begin(), input_shape.end() - 1));
   std::shared_ptr<std::vector<float>> variance_data =
       std::make_shared<std::vector<float>>(outer_dims_elements);
@@ -75,7 +74,7 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
   inv_stddev_->set_data(inv_stddev_data);
 
   // Normalize, scale, and shift
-  std::shared_ptr<Tensor> output = Tensor::create(input_shape);
+  Tensor::Ptr output = Tensor::create(input_shape);
   std::vector<float> &output_data = output->dataRef();
 
   // Store centered input for backward pass
@@ -111,6 +110,6 @@ LayerNorm::forward(const std::shared_ptr<Tensor> &input) {
   return output;
 }
 
-std::shared_ptr<Tensor> LayerNorm::get_gamma() { return gamma_; }
+Tensor::Ptr LayerNorm::get_gamma() { return gamma_; }
 
-std::shared_ptr<Tensor> LayerNorm::get_beta() { return beta_; }
+Tensor::Ptr LayerNorm::get_beta() { return beta_; }

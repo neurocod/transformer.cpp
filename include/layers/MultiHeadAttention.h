@@ -9,10 +9,10 @@ public:
   // Forward pass
   // query, key, and value can be the same tensor for self-attention, or
   // different for cross-attention
-  std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> &query,
-                                  std::shared_ptr<Tensor> &key,
-                                  std::shared_ptr<Tensor> &value,
-                                  std::shared_ptr<Tensor> mask = nullptr);
+  Tensor::Ptr forward(Tensor::Ptr &query,
+                                  Tensor::Ptr &key,
+                                  Tensor::Ptr &value,
+                                  Tensor::Ptr mask = nullptr);
 
 private:
   Linear query_proj_;
@@ -25,7 +25,7 @@ private:
   int head_dim_;
 
   // Helper function to calculate scaled dot-product attention
-  std::shared_ptr<Tensor> scaled_dot_product_attention(
-      std::shared_ptr<Tensor> &q, std::shared_ptr<Tensor> &k,
-      std::shared_ptr<Tensor> &v, std::shared_ptr<Tensor> mask = nullptr);
+  Tensor::Ptr scaled_dot_product_attention(
+      Tensor::Ptr &q, Tensor::Ptr &k,
+      Tensor::Ptr &v, Tensor::Ptr mask = nullptr);
 };

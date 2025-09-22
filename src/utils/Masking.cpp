@@ -2,9 +2,8 @@
 #include <algorithm>
 #include <iostream>
 
-std::shared_ptr<Tensor> create_look_ahead_mask(int sequence_length) {
-  std::shared_ptr<Tensor> mask =
-      Tensor::create({sequence_length, sequence_length});
+Tensor::Ptr create_look_ahead_mask(int sequence_length) {
+  Tensor::Ptr mask = Tensor::create({sequence_length, sequence_length});
   std::vector<float> &mask_data = mask->dataRef();
 
   // Create a lower triangular mask with -inf in the upper triangle
@@ -25,8 +24,7 @@ std::shared_ptr<Tensor> create_look_ahead_mask(int sequence_length) {
   return mask;
 }
 
-std::shared_ptr<Tensor>
-create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
+Tensor::Ptr create_padding_mask(const Tensor::Ptr &input_ids,
                     float padTokenId) {
   const std::vector<int> &input_shape = input_ids->shape();
   if (input_shape.size() != 2) {
@@ -37,8 +35,7 @@ create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
   size_t batchSize = input_shape[0];
   size_t sequence_length = input_shape[1];
 
-  std::shared_ptr<Tensor> mask =
-      Tensor::create({(int)batchSize, (int)sequence_length});
+  Tensor::Ptr mask = Tensor::create({(int)batchSize, (int)sequence_length});
   std::vector<float> &mask_data = mask->dataRef();
   const std::vector<float> &input_ids_data = input_ids->data();
 
@@ -52,8 +49,7 @@ create_padding_mask(const std::shared_ptr<Tensor> &input_ids,
 
   // Create a mask of shape (batchSize, 1, 1, sequence_length) and rely on
   // broadcasting rules to expand it over the query sequence length dimension.
-  std::shared_ptr<Tensor> final_mask =
-      mask->reshape({(int)batchSize, 1, 1, (int)sequence_length});
+  Tensor::Ptr final_mask = mask->reshape({(int)batchSize, 1, 1, (int)sequence_length});
 
   return final_mask;
 }

@@ -17,8 +17,7 @@ Embedding::Embedding(int vocabSize, int embedDim)
   _weights->set_data(weights_data);
 }
 
-std::shared_ptr<Tensor>
-Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
+Tensor::Ptr Embedding::forward(const Tensor::Ptr &input_ids) {
   // input_ids shape: (batchSize, sequence_length)
   // Output shape: (batchSize, sequence_length, embedDim)
 
@@ -31,8 +30,7 @@ Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
   size_t batchSize = input_shape[0];
   size_t sequence_length = input_shape[1];
 
-  std::shared_ptr<Tensor> output =
-      Tensor::create({(int)batchSize, (int)sequence_length, _embedDim});
+  Tensor::Ptr output = Tensor::create({(int)batchSize, (int)sequence_length, _embedDim});
   std::vector<float> &output_data = output->dataRef();
 
   const std::vector<float> &input_ids_data = input_ids->data();
@@ -62,4 +60,4 @@ Embedding::forward(const std::shared_ptr<Tensor> &input_ids) {
   return output;
 }
 
-std::shared_ptr<Tensor> Embedding::weights() { return _weights; }
+Tensor::Ptr Embedding::weights() { return _weights; }

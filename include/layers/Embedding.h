@@ -8,10 +8,10 @@ public:
 
   // Input shape: (batchSize, sequence_length)
   // Output shape: (batchSize, sequence_length, embedDim)
-  std::shared_ptr<Tensor> forward(const std::shared_ptr<Tensor> &input_ids);
-  std::shared_ptr<Tensor> weights();
+  Tensor::Ptr forward(const Tensor::Ptr &input_ids);
+  Tensor::Ptr weights();
 private:
-  std::shared_ptr<Tensor> _weights;
+  Tensor::Ptr _weights;
 
   int _vocabSize;
   int _embedDim;
