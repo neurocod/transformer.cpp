@@ -3,10 +3,10 @@
 MultiHeadAttention::MultiHeadAttention(const std::string& name, int embedDim, int numHeads):
   _embedDim(embedDim), _numHeads(numHeads),
   head_dim_(embedDim / numHeads),
-  query_proj_(embedDim, embedDim, name + "attention.query"),
-  key_proj_(embedDim, embedDim, name + "attention.key"),
-  value_proj_(embedDim, embedDim, name + "attention.value"),
-  output_proj_(embedDim, embedDim, name + "attention.out") {
+  query_proj_(embedDim, embedDim, name + "att.q"),
+  key_proj_(embedDim, embedDim, name + "att.k"),
+  value_proj_(embedDim, embedDim, name + "att.v"),
+  output_proj_(embedDim, embedDim, name + "att.out") {
   if (_embedDim % _numHeads != 0) {
     throw std::runtime_error(
         "Embedding dimension must be divisible by the number of heads.");
