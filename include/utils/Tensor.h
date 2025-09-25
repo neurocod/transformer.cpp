@@ -35,6 +35,8 @@ public:
   ~Tensor() {}
   void write(BinaryWriter& writer) const;
   bool read(BinaryReader& reader);
+  std::string debugString() const;
+  const char *dbg() const; // in Visual Studio Immediate Window, write: t.dbg(), sb
 
   // Intermediate values for different functions
   // Backward permutation

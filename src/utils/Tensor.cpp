@@ -54,13 +54,13 @@ Tensor::Ptr Tensor::create(const std::vector<int> &shape,
 }
 
 void Tensor::write(BinaryWriter& writer)const {
-  std::string str;
+  std::string shape;
   for (auto dim : _shape) {
-    if (!str.empty())
-      str += " * ";
-    str += std::to_string(dim);
+    if (!shape.empty())
+      shape += " * ";
+    shape += std::to_string(dim);
   }
-  std::cout << std::format("writing tensor {}, {}\n", _name, str);
+  spdlog::info("writing tensor {}, {}\n", _name, shape);
 
   writer.write(_name);
 
@@ -1840,4 +1840,76 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
     {
         std::cerr << "Error: EmbeddingLookup operation expected 1 parent (weights), but found " << parents_.size() << std::endl;
     }
+}
+
+
+std::string Tensor::debugString() const {
+  std::ostringstream oss;
+
+  // Show size information
+  oss << "Tensor \"" << _name << "\" ";
+  if (_shape.empty() || !_data) {
+    oss << "[] (empty)\n";
+    return oss.str();
+  }
+  const auto &data = *_data;
+
+  oss << "[";
+  for (size_t i = 0; i < _shape.size(); ++i) {
+    if (i > 0)
+      oss << "x";
+    oss << _shape[i];
+  }
+  oss << "] (" << data.size() << " elements)\n";
+
+  if (data.empty()) {
+    oss << "No data\n";
+    return oss.str();
+  }
+
+  // Handle different dimensionalities
+  if (_shape.size() == 1) {
+    // 1D: Simple row of numbers
+    for (int i = 0; i < _shape[0]; ++i) {
+      if (i > 0)
+        oss << " ";
+      oss << std::fixed << std::setprecision(3) << data[i];
+    }
+    oss << "\n";
+  } else if (_shape.size() == 2) {
+    // 2D: Table format
+    int rows = _shape[0];
+    int cols = _shape[1];
+
+    for (int i = 0; i < rows; ++i) {
+      for (int j = 0; j < cols; ++j) {
+        if (j > 0)
+          oss << " ";
+        oss << std::setw(8) << std::fixed << std::setprecision(3) << data[i * cols + j];
+      }
+      oss << "\n";
+    }
+  } else {
+    // 3D+: Show as linear array with indices
+    oss << "Multi-dimensional data (showing first 50 elements):\n";
+    size_t limit = std::min(data.size(), size_t(50));
+    for (size_t i = 0; i < limit; ++i) {
+      if (i > 0 && i % 10 == 0)
+        oss << "\n";
+      oss << std::fixed << std::setprecision(3) << data[i] << " ";
+    }
+    if (data.size() > 50) {
+      oss << "... (" << (data.size() - 50) << " more)";
+    }
+    oss << "\n";
+  }
+
+  return oss.str();
+}
+const char *Tensor::dbg() const {
+  thread_local std::string ret;
+  ret = debugString();
+  while (!ret.empty() && ret.back() == '\n')
+    ret.pop_back();
+  return ret.c_str();
 }
