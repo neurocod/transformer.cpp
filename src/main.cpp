@@ -9,9 +9,9 @@
 using Vec = Tensor::Vec;
 // Function to convert string to tensor of IDs
 Tensor::Ptr string_to_tensor(const std::string &text,
-                                         const DataLoader &loader,
+                                         const Tokenizer &tokenizer,
                                          int seq_len) {
-  const auto &char_to_id = loader.charToIdMap();
+  const auto &char_to_id = tokenizer.charToIdMap();
   Vec ids;
   ids.reserve(seq_len);
   for (char c : text) {
@@ -35,11 +35,14 @@ Tensor::Ptr string_to_tensor(const std::string &text,
                         std::make_shared<Vec>(ids));
 }
 
-void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
+void trainModel(const TransformerConfig& cf) {
   using clock = std::chrono::high_resolution_clock;
   auto t_init_start = clock::now();
 
-  Transformer model(cf);
+  auto dataLoader = std::make_shared<DataLoader>(cf.inputSeqLength, cf.batchSize);
+  dataLoader->readFile(cf.dataFilename);
+
+  Transformer model(cf, std::static_pointer_cast<Tokenizer>(dataLoader));
 
   auto init_ms = std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - t_init_start).count();
   spdlog::info("Model initialization took {} ms", init_ms);
@@ -67,7 +70,7 @@ void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
 
     optimizer.zeroGrad();
 
-    std::pair<Tensor::Ptr, Tensor::Ptr> batch_data = dataLoader.randBatch();
+    std::pair<Tensor::Ptr, Tensor::Ptr> batch_data = dataLoader->randBatch();
     Tensor::Ptr encoderInputIds = batch_data.first;
     Tensor::Ptr target_output_ids = batch_data.second;
     Tensor::Ptr decoderInputIds = encoderInputIds;
@@ -76,7 +79,7 @@ void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
     Tensor::Ptr logits = model.forward(encoderInputIds, decoderInputIds, true);
 
     // Reshape logits
-    Tensor::Ptr reshaped_logits = logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader.vocabSize() });
+    Tensor::Ptr reshaped_logits = logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader->vocabSize() });
 
     // Compute loss
     Tensor::Ptr loss = criterion.computeLoss(reshaped_logits, target_output_ids);
@@ -102,7 +105,7 @@ void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
     spdlog::info("Weights saved successfully.");
 }
 
-int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
+int inferenceMode(const TransformerConfig& cf) {
   if (!std::filesystem::exists(cf.weightsFilename)) {
     spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.", cf.weightsFilename);
     return 1;
@@ -110,7 +113,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
   std::shared_ptr<Transformer> model; 
   try {
     spdlog::info("Attempting to load weights from {}...", cf.weightsFilename);
-    model = Transformer::loadFromFile(cf.weightsFilename, dataLoader.vocabSize(), dataLoader.vocabSize());
+    model = Transformer::loadFromFile(cf.weightsFilename);
   } catch (const std::exception &e) {
     spdlog::error("Failed to load weights: {}", e.what());
     model = nullptr;
@@ -127,7 +130,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
   int current_seq_len = cf.inputSeqLength;
 
   // Tokenize the initial prompt
-  Tensor::Ptr current_input_ids = string_to_tensor(cf.initialPrompt, dataLoader, current_seq_len);
+  Tensor::Ptr current_input_ids = string_to_tensor(cf.initialPrompt, model->tokenizer(), current_seq_len);
   Vec generated_ids = current_input_ids->data();
 
   // Remove padding from initial prompt display if any was added by
@@ -140,7 +143,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
 
   spdlog::info("Generating...");
   for (float id_float : generated_ids) {
-    std::cout << dataLoader.charFromId(static_cast<int>(id_float));
+    std::cout << model->tokenizer().charFromId(static_cast<int>(id_float));
   }
 
   for (int i = 0; i < cf.maxGenerateLength; ++i) {
@@ -165,7 +168,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
 
     // Forward pass (isTraining = false)
     Tensor::Ptr logits = model->forward(encoder_input, decoder_input, false);
-    const int targetVocabSize = dataLoader.vocabSize();
+    const int targetVocabSize = model->tokenizer().targetVocabSize();
     // Logits shape: (1, current_seq_len, targetVocabSize)
 
     int last_token_index = std::min(current_total_len, current_seq_len) - 1;
@@ -203,7 +206,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
     current_total_len++;
 
     // Convert the predicted ID to a character and print it
-    char next_char = dataLoader.charFromId(predicted_id);
+    char next_char = model->tokenizer().charFromId(predicted_id);
 
     std::cout << next_char << std::flush;
   }
@@ -226,18 +229,12 @@ int mainExcept() {
 #endif
   TransformerConfig cf;
   cf.init("../config.ini");
-
-  DataLoader dataLoader(cf.inputSeqLength, cf.batchSize);
-  dataLoader.readFile(cf.dataFilename);
-
-  cf.inputVocabSize = dataLoader.vocabSize();
-  cf.targetVocabSize = dataLoader.vocabSize();
   TransformerConfig::instance() = cf;
 
   if (cf.inferenceMode)
-    return inferenceMode(cf, dataLoader);
+    return inferenceMode(cf);
 
-  trainModel(cf, dataLoader);
+  trainModel(cf);
   return 0;
 }
 

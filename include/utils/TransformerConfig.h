@@ -15,8 +15,6 @@ public:
   bool inferenceMode = true;
   std::string weightsFilename;
   std::string dataFilename;
-  int inputVocabSize = 2;
-  int targetVocabSize = 2;
 
   // Model Architecture
   int embedDim;

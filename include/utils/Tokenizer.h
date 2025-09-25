@@ -20,4 +20,6 @@ public:
   char charFromId(int id) const;
   int idFromChar(char character) const;
   int vocabSize() const { return _chars.size(); }
+  int inputVocabSize() const { return _chars.size(); }
+  int targetVocabSize() const { return _chars.size(); }
 };

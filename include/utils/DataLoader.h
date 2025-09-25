@@ -5,6 +5,7 @@
 
 class DataLoader: public Tokenizer {
 public:
+  using Ptr = std::shared_ptr<DataLoader>;
   DataLoader(int sequence_length, int batchSize);
 
   void readFile(const std::string& filename);

@@ -3,17 +3,17 @@
 #include "utils/BinaryReader.h"
 #include "utils/ConfigParser.h"
 
-Transformer::Transformer(const TransformerConfig& cf): _cfg(cf),
-      _encoderEmbedding(cf.inputVocabSize, cf.embedDim),
+Transformer::Transformer(const TransformerConfig &cf, Tokenizer::Ptr tokenizer)
+    : _cfg(cf), _tokenizer(tokenizer),
+      _encoderEmbedding(tokenizer->inputVocabSize(), cf.embedDim),
       _encoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
       _encoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
-      _decoderEmbedding(cf.targetVocabSize, cf.embedDim),
+      _decoderEmbedding(tokenizer->targetVocabSize(), cf.embedDim),
       _decoderPositionalEncoding(cf.maxSequenceLength, cf.embedDim),
       _decoder(cf.numLayers, cf.embedDim, cf.numHeads, cf.ffHiddenDim, cf.dropoutRate),
-      _linearFinal(cf.embedDim, cf.targetVocabSize, "final") {
-  if (cf.embedDim % cf.numHeads != 0) {
+      _linearFinal(cf.embedDim, tokenizer->targetVocabSize(), "final") {
+  if (cf.embedDim % cf.numHeads != 0)
     throw std::runtime_error("Embedding dimension must be divisible by the number of heads.");
-  }
 }
 
 Tensor::Ptr Transformer::createEncoderPaddingMask(const Tensor::Ptr &encoderInputIds) {
@@ -119,6 +119,7 @@ bool Transformer::saveToFile(const std::string &filename) const {
 
   writer.write(binFileTag);
   writer.write(_cfg.toString());
+  _tokenizer->write(writer);
 
   const auto& optimizable_tensors = Tensor::get_optimizable_tensors();
   const uint32_t num_tensors = optimizable_tensors.size();
@@ -141,8 +142,8 @@ bool Transformer::saveToFile(const std::string &filename) const {
   return true;
 }
 
-std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filename, int inputVocabSize,
-                                                       int targetVocabSize) {
+std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filename) {
+  //, int inputVocabSize, int targetVocabSize
   std::ifstream infile(filename, std::ios::binary);
   if (!infile.is_open()) {
     spdlog::error("Can't open file {}", filename);
@@ -157,7 +158,7 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
   }
   std::optional<std::string> configIni = reader.readString();
   if (!configIni || configIni->empty()) {
-    spdlog::error("Incorrect Transformer config in {}", filename);
+    spdlog::error("Incorrect Transformer config in file {}", filename);
     return 0;
   }
 
@@ -166,10 +167,14 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
 
   TransformerConfig config;
   config.init(parser);
-  config.inputVocabSize = inputVocabSize;
-  config.targetVocabSize = targetVocabSize;
 
-  auto ret = std::make_shared<Transformer>(config);
+  auto tokenizer = std::make_shared<Tokenizer>();
+  if (!tokenizer->read(reader)) {
+    spdlog::error("Invalid tokenizer loaded from {}", filename);
+    return 0;
+  }
+
+  auto ret = std::make_shared<Transformer>(config, tokenizer);
 
   uint32_t num_tensors_in_file = reader.read<uint32_t>();
   if (!reader.ok()) {

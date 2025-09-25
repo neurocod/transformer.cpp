@@ -13,7 +13,6 @@ void TransformerConfig::init(const std::string &filename) {
 }
 
 void TransformerConfig::init(const ConfigParser& config) {
-  //inputVocabSize, targetVocabSize - filled by caller code
   numThreads = config.value<int>("numThreads");
   inferenceMode = config.value<bool>("inferenceMode");
   weightsFilename = config.value<std::string>("weightsFilename");
@@ -52,8 +51,6 @@ std::string TransformerConfig::toString() const {
   std::ostringstream oss;
   oss << "numThreads=" << numThreads << "\n";
   oss << "inferenceMode=" << (inferenceMode ? "true" : "false") << "\n";
-  oss << "inputVocabSize=" << inputVocabSize << "\n";
-  oss << "targetVocabSize=" << targetVocabSize << "\n";
   oss << "weightsFilename=" << weightsFilename << "\n";
   oss << "dataFilename=" << dataFilename << "\n";
   oss << "embedDim=" << embedDim << "\n";
@@ -106,8 +103,6 @@ numThreads = 500
 
     std::string expected = R"ini(numThreads=500
 inferenceMode=false
-inputVocabSize=2
-targetVocabSize=2
 weightsFilename=weigth-32-1024-16.bin
 dataFilename=../data/tiny_shakespeare.txt
 embedDim=256

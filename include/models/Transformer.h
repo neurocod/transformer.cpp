@@ -4,23 +4,25 @@
 #include "../layers/PositionalEncoding.h"
 #include "../utils/Masking.h"
 #include "utils/TransformerConfig.h"
+#include "utils/Tokenizer.h"
 #include "Decoder.h"
 #include "Encoder.h"
 class TransformerConfig;
 
 class Transformer {
 public:
-  Transformer(const TransformerConfig& config);
+  Transformer(const TransformerConfig &config, Tokenizer::Ptr tokenizer);
   virtual ~Transformer() {}
 
 	Tensor::Ptr forward(const Tensor::Ptr& encoderInputIds,
 		const Tensor::Ptr& decoderInputIds, bool isTraining);
 
   bool saveToFile(const std::string &filename) const;
-  static std::shared_ptr<Transformer> loadFromFile(const std::string &filename, int inputVocabSize, int targetVocabSize);
-
+  static std::shared_ptr<Transformer> loadFromFile(const std::string &filename);
+  const Tokenizer &tokenizer() const { return *_tokenizer; }
 protected:
   TransformerConfig _cfg;
+  Tokenizer::Ptr _tokenizer;
   Embedding _encoderEmbedding;
   PositionalEncoding _encoderPositionalEncoding;
   Encoder _encoder;
