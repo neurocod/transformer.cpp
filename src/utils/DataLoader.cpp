@@ -131,28 +131,3 @@ std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
 
   return {input_tensor, target_tensor};
 }
-
-char Tokenizer::charFromId(int id) const {
-  auto it = _idToChar.find(id);
-  if (it == _idToChar.end()) {
-    // Return a default character or throw an error for unknown ID
-    it = _idToChar.find(0); // Assuming 0 might be padding or unknown
-    if (it != _idToChar.end())
-      return it->second;
-    return '?';
-  }
-  return it->second;
-}
-
-int Tokenizer::idFromChar(char ch) const {
-  auto it = _charToId.find(ch);
-  if (it == _charToId.end()) {
-    it = _charToId.find('\0');
-    if (it != _charToId.end())
-      return it->second;
-    if (_charToId.count(0))
-      return _charToId.at(0);
-    return -1;
-  }
-  return it->second;
-}
