@@ -4,7 +4,7 @@ class ConfigParser;
 class TransformerConfig {
 public:
   static TransformerConfig& instance();
-  void init(const std::string& filename);
+  void readFile(const std::string& filename);
   void init(const ConfigParser &config);
   std::string toString() const;
   static bool unitTest();

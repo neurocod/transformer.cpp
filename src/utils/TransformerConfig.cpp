@@ -6,7 +6,7 @@ TransformerConfig& TransformerConfig::instance() {
   return instance;
 }
 
-void TransformerConfig::init(const std::string &filename) {
+void TransformerConfig::readFile(const std::string &filename) {
   ConfigParser parser;
   parser.loadFile(filename);
   init(parser);

@@ -33,6 +33,12 @@ public:
   Tensor(const std::vector<int>& shape, const std::string& name = {});
   Tensor(const std::vector<int> &shape, const std::shared_ptr<Vec> &data, const std::string& name = {});
   ~Tensor() {}
+  static Tensor::Ptr create();
+  static Tensor::Ptr create(const std::vector<int> &shape, const std::string &name = {});
+  static Tensor::Ptr create(const std::vector<int> &shape, const std::shared_ptr<Vec> &data,
+                            const std::string &name = {});
+
+  std::shared_ptr<Tensor> sharedPtr() { return shared_from_this(); }
   void write(BinaryWriter& writer) const;
   bool read(BinaryReader& reader);
   std::string debugString() const;
@@ -102,11 +108,6 @@ public:
   const std::vector<Tensor::Ptr> &get_parents() const {
     return parents_;
   }
-
-  static Tensor::Ptr create();
-  static Tensor::Ptr create(const std::vector<int>& shape, const std::string& name = {});
-  static Tensor::Ptr create(const std::vector<int> &shape, const std::shared_ptr<Vec> &data,
-         const std::string& name = {});
 
 private:
   static std::vector<Tensor::Ptr> optimizable_tensors_;

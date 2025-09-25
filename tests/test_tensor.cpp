@@ -317,7 +317,7 @@ int main() {
     fs::current_path(newCwd);
 #endif
     TransformerConfig::unitTest();
-    TransformerConfig::instance().init("../config.ini");
+    TransformerConfig::instance().readFile("../config.ini");
     test_addition();
     test_subtraction();
     test_dot_product();

@@ -16,6 +16,7 @@ public:
 
   const std::unordered_map<char, int> &charToIdMap() const { return _charToId; }
   const std::unordered_map<int, char> &idToCharMap() const { return _idToChar; }
+  std::vector<char> chars() const { return _chars; }
 
   char charFromId(int id) const;
   int idFromChar(char character) const;

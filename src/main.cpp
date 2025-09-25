@@ -229,7 +229,7 @@ int mainExcept() {
   fs::current_path(newCwd);
 #endif
   TransformerConfig cf;
-  cf.init("../config.ini");
+  cf.readFile("../config.ini");
   TransformerConfig::instance() = cf;
 
   if (cf.inferenceMode)
