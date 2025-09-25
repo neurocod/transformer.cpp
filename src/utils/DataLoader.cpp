@@ -67,6 +67,7 @@ void DataLoader::readFile(const std::string& filename) {
   // Build Vocabulary
   std::unordered_set<char> unique_chars(text.begin(), text.end());
   _chars.assign(unique_chars.begin(), unique_chars.end());
+  std::sort(_chars.begin(), _chars.end());
 
   for (size_t i = 0; i < _chars.size(); ++i) {
     _charToId[_chars[i]] = i;
