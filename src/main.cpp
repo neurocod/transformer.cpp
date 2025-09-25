@@ -11,7 +11,7 @@ using Vec = Tensor::Vec;
 Tensor::Ptr string_to_tensor(const std::string &text,
                                          const DataLoader &loader,
                                          int seq_len) {
-  const auto &char_to_id = loader.get_char_to_id_map();
+  const auto &char_to_id = loader.charToIdMap();
   Vec ids;
   ids.reserve(seq_len);
   for (char c : text) {
@@ -76,7 +76,7 @@ void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
     Tensor::Ptr logits = model.forward(encoderInputIds, decoderInputIds, true);
 
     // Reshape logits
-    Tensor::Ptr reshaped_logits = logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader.get_vocab_size() });
+    Tensor::Ptr reshaped_logits = logits->reshape({ cf.batchSize * cf.decoderSeqLength, dataLoader.vocabSize() });
 
     // Compute loss
     Tensor::Ptr loss = criterion.computeLoss(reshaped_logits, target_output_ids);
@@ -110,7 +110,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
   std::shared_ptr<Transformer> model; 
   try {
     spdlog::info("Attempting to load weights from {}...", cf.weightsFilename);
-    model = Transformer::loadFromFile(cf.weightsFilename, dataLoader.get_vocab_size(), dataLoader.get_vocab_size());
+    model = Transformer::loadFromFile(cf.weightsFilename, dataLoader.vocabSize(), dataLoader.vocabSize());
   } catch (const std::exception &e) {
     spdlog::error("Failed to load weights: {}", e.what());
     model = nullptr;
@@ -140,7 +140,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
 
   spdlog::info("Generating...");
   for (float id_float : generated_ids) {
-    std::cout << dataLoader.get_char_from_id(static_cast<int>(id_float));
+    std::cout << dataLoader.charFromId(static_cast<int>(id_float));
   }
 
   for (int i = 0; i < cf.maxGenerateLength; ++i) {
@@ -165,7 +165,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
 
     // Forward pass (isTraining = false)
     Tensor::Ptr logits = model->forward(encoder_input, decoder_input, false);
-    const int targetVocabSize = dataLoader.get_vocab_size();
+    const int targetVocabSize = dataLoader.vocabSize();
     // Logits shape: (1, current_seq_len, targetVocabSize)
 
     int last_token_index = std::min(current_total_len, current_seq_len) - 1;
@@ -203,7 +203,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
     current_total_len++;
 
     // Convert the predicted ID to a character and print it
-    char next_char = dataLoader.get_char_from_id(predicted_id);
+    char next_char = dataLoader.charFromId(predicted_id);
 
     std::cout << next_char << std::flush;
   }
@@ -230,8 +230,8 @@ int mainExcept() {
   DataLoader dataLoader(cf.inputSeqLength, cf.batchSize);
   dataLoader.readFile(cf.dataFilename);
 
-  cf.inputVocabSize = dataLoader.get_vocab_size();
-  cf.targetVocabSize = dataLoader.get_vocab_size();
+  cf.inputVocabSize = dataLoader.vocabSize();
+  cf.targetVocabSize = dataLoader.vocabSize();
   TransformerConfig::instance() = cf;
 
   if (cf.inferenceMode)

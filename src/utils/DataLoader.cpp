@@ -52,7 +52,7 @@ void DataLoader::readFile(const std::string& filename) {
   if (generate) {
     const size_t target = _sequenceLength * _batchSize;
     while (text.size() < target)
-      text += _textGenerator.generateComplex();
+      text += _textGenerator.generateSimple();
   } else {
     spdlog::info("Loading data from {}", filename);
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
@@ -94,8 +94,6 @@ void DataLoader::readFile(const std::string& filename) {
   spdlog::info("Number of full batches available per epoch: {}", _numBatches);
 }
 
-int DataLoader::get_vocab_size() const { return _chars.size(); }
-
 std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
   if (_data.empty())
     throw std::runtime_error("Data not loaded. Call readFile() first.");
@@ -134,7 +132,7 @@ std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
   return {input_tensor, target_tensor};
 }
 
-char DataLoader::get_char_from_id(int id) const {
+char Tokenizer::charFromId(int id) const {
   auto it = _idToChar.find(id);
   if (it == _idToChar.end()) {
     // Return a default character or throw an error for unknown ID
@@ -146,7 +144,7 @@ char DataLoader::get_char_from_id(int id) const {
   return it->second;
 }
 
-int DataLoader::get_id_from_char(char ch) const {
+int Tokenizer::idFromChar(char ch) const {
   auto it = _charToId.find(ch);
   if (it == _charToId.end()) {
     it = _charToId.find('\0');
@@ -157,12 +155,4 @@ int DataLoader::get_id_from_char(char ch) const {
     return -1;
   }
   return it->second;
-}
-
-const std::unordered_map<char, int> &DataLoader::get_char_to_id_map() const {
-  return _charToId;
-}
-
-const std::unordered_map<int, char> &DataLoader::get_id_to_char_map() const {
-  return _idToChar;
 }
