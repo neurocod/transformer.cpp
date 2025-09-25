@@ -11,6 +11,7 @@ class TransformerConfig;
 
 class Transformer {
 public:
+  using Ptr = std::shared_ptr<Transformer>;
   Transformer(const TransformerConfig &config, Tokenizer::Ptr tokenizer);
   virtual ~Transformer() {}
 
@@ -20,6 +21,7 @@ public:
   bool saveToFile(const std::string &filename) const;
   static std::shared_ptr<Transformer> loadFromFile(const std::string &filename);
   const Tokenizer &tokenizer() const { return *_tokenizer; }
+  const TransformerConfig& config() const { return _cfg; }
 protected:
   TransformerConfig _cfg;
   Tokenizer::Ptr _tokenizer;

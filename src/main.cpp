@@ -105,15 +105,15 @@ void trainModel(const TransformerConfig& cf) {
     spdlog::info("Weights saved successfully.");
 }
 
-int inferenceMode(const TransformerConfig& cf) {
-  if (!std::filesystem::exists(cf.weightsFilename)) {
-    spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.", cf.weightsFilename);
+int inferenceMode(const std::string& filename, const std::string& initialPrompt) {
+  if (!std::filesystem::exists(filename)) {
+    spdlog::error("Weights file '{}' not found. Cannot run inference. Exiting.", filename);
     return 1;
   }
   std::shared_ptr<Transformer> model; 
   try {
-    spdlog::info("Attempting to load weights from {}...", cf.weightsFilename);
-    model = Transformer::loadFromFile(cf.weightsFilename);
+    spdlog::info("Attempting to load weights from {}...", filename);
+    model = Transformer::loadFromFile(filename);
   } catch (const std::exception &e) {
     spdlog::error("Failed to load weights: {}", e.what());
     model = nullptr;
@@ -125,12 +125,13 @@ int inferenceMode(const TransformerConfig& cf) {
   }
 
   spdlog::info("Weights loaded successfully.\n--- Running Inference ---");
-  spdlog::info("Initial prompt: \"{}\"", cf.initialPrompt);
+  spdlog::info("Initial prompt: \"{}\"", initialPrompt);
 
+  const TransformerConfig &cf = model->config();
   int current_seq_len = cf.inputSeqLength;
 
   // Tokenize the initial prompt
-  Tensor::Ptr current_input_ids = string_to_tensor(cf.initialPrompt, model->tokenizer(), current_seq_len);
+  Tensor::Ptr current_input_ids = string_to_tensor(initialPrompt, model->tokenizer(), current_seq_len);
   Vec generated_ids = current_input_ids->data();
 
   // Remove padding from initial prompt display if any was added by
@@ -232,7 +233,7 @@ int mainExcept() {
   TransformerConfig::instance() = cf;
 
   if (cf.inferenceMode)
-    return inferenceMode(cf);
+    return inferenceMode(cf.weightsFilename, cf.initialPrompt);
 
   trainModel(cf);
   return 0;
