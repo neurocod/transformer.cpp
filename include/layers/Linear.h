@@ -15,4 +15,6 @@ private:
 
   int _inputDim;
   int _outputDim;
+
+  using Vec = Tensor::Vec;
 };

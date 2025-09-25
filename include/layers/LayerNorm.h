@@ -5,6 +5,7 @@ class LayerNorm {
 public:
   LayerNorm(const std::string& name, int normalized_shape, float epsilon = 1e-5f);
   ~LayerNorm() = default;
+  using Vec = Tensor::Vec;
 
   // Forward pass
   Tensor::Ptr forward(const Tensor::Ptr &input);

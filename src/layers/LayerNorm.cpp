@@ -7,12 +7,12 @@ LayerNorm::LayerNorm(const std::string& name, int normalized_shape, float epsilo
   beta_ = Tensor::create(std::vector<int>{normalized_shape_}, name + ".LayerNorm::b");
 
   // Initialize gamma to ones and beta to zeros
-  std::shared_ptr<std::vector<float>> gamma_data =
-      std::make_shared<std::vector<float>>(normalized_shape_, 1.0f);
+  std::shared_ptr<Vec> gamma_data =
+      std::make_shared<Vec>(normalized_shape_, 1.0f);
   gamma_->set_data(gamma_data);
 
-  std::shared_ptr<std::vector<float>> beta_data =
-      std::make_shared<std::vector<float>>(normalized_shape_, 0.0f);
+  std::shared_ptr<Vec> beta_data =
+      std::make_shared<Vec>(normalized_shape_, 0.0f);
   beta_->set_data(beta_data);
 }
 
@@ -31,15 +31,15 @@ Tensor::Ptr LayerNorm::forward(const Tensor::Ptr &input) {
   // Store intermediate values for backward pass
   mean_ = Tensor::create(
       std::vector<int>(input_shape.begin(), input_shape.end() - 1));
-  std::shared_ptr<std::vector<float>> mean_data =
-      std::make_shared<std::vector<float>>(outer_dims_elements);
+  std::shared_ptr<Vec> mean_data =
+      std::make_shared<Vec>(outer_dims_elements);
 
   Tensor::Ptr variance = Tensor::create(
       std::vector<int>(input_shape.begin(), input_shape.end() - 1));
-  std::shared_ptr<std::vector<float>> variance_data =
-      std::make_shared<std::vector<float>>(outer_dims_elements);
+  std::shared_ptr<Vec> variance_data =
+      std::make_shared<Vec>(outer_dims_elements);
 
-  const std::vector<float> &input_data = input->data();
+  const Vec &input_data = input->data();
 
   for (size_t i = 0; i < outer_dims_elements; ++i) {
     size_t start_idx = i * last_dim_size;
@@ -63,9 +63,9 @@ Tensor::Ptr LayerNorm::forward(const Tensor::Ptr &input) {
   // Calculate inverse standard deviation
   inv_stddev_ = Tensor::create(
       std::vector<int>(input_shape.begin(), input_shape.end() - 1));
-  std::shared_ptr<std::vector<float>> inv_stddev_data =
-      std::make_shared<std::vector<float>>(outer_dims_elements);
-  const std::vector<float> &variance_data_const = variance->data();
+  std::shared_ptr<Vec> inv_stddev_data =
+      std::make_shared<Vec>(outer_dims_elements);
+  const Vec &variance_data_const = variance->data();
 
   for (size_t i = 0; i < outer_dims_elements; ++i) {
     (*inv_stddev_data)[i] =
@@ -75,14 +75,14 @@ Tensor::Ptr LayerNorm::forward(const Tensor::Ptr &input) {
 
   // Normalize, scale, and shift
   Tensor::Ptr output = Tensor::create(input_shape);
-  std::vector<float> &output_data = output->dataRef();
+  Vec &output_data = output->dataRef();
 
   // Store centered input for backward pass
   centered_input_ = Tensor::create(input_shape);
-  std::vector<float> &centered_input_data = centered_input_->dataRef();
+  Vec &centered_input_data = centered_input_->dataRef();
 
-  const std::vector<float> &gamma_data = gamma_->data();
-  const std::vector<float> &beta_data = beta_->data();
+  const Vec &gamma_data = gamma_->data();
+  const Vec &beta_data = beta_->data();
 
   for (size_t i = 0; i < outer_dims_elements; ++i) {
     size_t start_idx = i * last_dim_size;

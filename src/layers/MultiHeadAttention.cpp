@@ -41,7 +41,7 @@ Tensor::Ptr MultiHeadAttention::scaled_dot_product_attention(
   // Scale the scores by the square root of the head dimension
   float scale = 1.0f / std::sqrt(static_cast<float>(head_dim_));
   Tensor::Ptr scale_tensor = Tensor::create(
-      {1}, std::make_shared<std::vector<float>>(std::vector<float>{scale}));
+      {1}, std::make_shared<Vec>(Vec{scale}));
   Tensor::Ptr scaled_scores = *scores * scale_tensor;
 
   if (mask != nullptr) {

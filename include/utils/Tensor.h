@@ -27,10 +27,11 @@ enum class OperationType {
 class Tensor : public std::enable_shared_from_this<Tensor> {
 public:
   using Ptr = std::shared_ptr<Tensor>;
+  using Vec = std::vector<float>;
   Tensor();
   // if name is provided, it means _isOptimizable == true
   Tensor(const std::vector<int>& shape, const std::string& name = {});
-  Tensor(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data, const std::string& name = {});
+  Tensor(const std::vector<int> &shape, const std::shared_ptr<Vec> &data, const std::string& name = {});
   ~Tensor() {}
   void write(BinaryWriter& writer) const;
   bool read(BinaryReader& reader);
@@ -55,12 +56,12 @@ public:
 
   // Getters for shape, data, and gradient
   const std::vector<int> &shape() const { return _shape; };
-  const std::vector<float> &data() const { return *_data; };
-  const std::vector<float> &grad() const { return *_grad; };
-  std::vector<float> &dataRef() { return *_data; }
-  std::vector<float> &gradRef() { return *_grad; }
+  const Vec &data() const { return *_data; };
+  const Vec &grad() const { return *_grad; };
+  Vec &dataRef() { return *_data; }
+  Vec &gradRef() { return *_grad; }
 
-  void set_data(const std::shared_ptr<std::vector<float>> &data);
+  void set_data(const std::shared_ptr<Vec> &data);
   void set_parents(const std::vector<Tensor::Ptr> &parents) {
     parents_ = parents;
   }
@@ -102,15 +103,15 @@ public:
 
   static Tensor::Ptr create();
   static Tensor::Ptr create(const std::vector<int>& shape, const std::string& name = {});
-  static Tensor::Ptr create(const std::vector<int> &shape, const std::shared_ptr<std::vector<float>> &data,
+  static Tensor::Ptr create(const std::vector<int> &shape, const std::shared_ptr<Vec> &data,
          const std::string& name = {});
 
 private:
   static std::vector<Tensor::Ptr> optimizable_tensors_;
 
   std::vector<int> _shape;
-  std::shared_ptr<std::vector<float>> _data;
-  std::shared_ptr<std::vector<float>> _grad;
+  std::shared_ptr<Vec> _data;
+  std::shared_ptr<Vec> _grad;
   // allows to track the computation graph, enabling correct gradient calculation and backpropagation
   std::vector<Tensor::Ptr> parents_;
   const std::string _name;

@@ -15,4 +15,5 @@ private:
   // Random number generator and distribution for creating the mask
   std::mt19937 generator_;
   std::uniform_real_distribution<float> distribution_;
+  using Vec = Tensor::Vec;
 };

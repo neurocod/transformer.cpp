@@ -28,4 +28,5 @@ private:
   Tensor::Ptr scaled_dot_product_attention(
       Tensor::Ptr &q, Tensor::Ptr &k,
       Tensor::Ptr &v, Tensor::Ptr mask = nullptr);
+  using Vec = Tensor::Vec;
 };

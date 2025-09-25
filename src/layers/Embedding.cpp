@@ -9,8 +9,8 @@ Embedding::Embedding(int vocabSize, int embedDim)
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dist(-0.01f, 0.01f);
 
-  std::shared_ptr<std::vector<float>> weights_data =
-      std::make_shared<std::vector<float>>(_vocabSize * _embedDim);
+  std::shared_ptr<Vec> weights_data =
+      std::make_shared<Vec>(_vocabSize * _embedDim);
   for (size_t i = 0; i < weights_data->size(); ++i) {
     (*weights_data)[i] = dist(gen);
   }
@@ -31,10 +31,10 @@ Tensor::Ptr Embedding::forward(const Tensor::Ptr &input_ids) {
   size_t sequence_length = input_shape[1];
 
   Tensor::Ptr output = Tensor::create({(int)batchSize, (int)sequence_length, _embedDim});
-  std::vector<float> &output_data = output->dataRef();
+  Vec &output_data = output->dataRef();
 
-  const std::vector<float> &input_ids_data = input_ids->data();
-  const std::vector<float> &weights_data = _weights->data();
+  const Vec &input_ids_data = input_ids->data();
+  const Vec &weights_data = _weights->data();
 
   for (size_t i = 0; i < batchSize * sequence_length; ++i) {
     float token_id_float = input_ids_data[i];

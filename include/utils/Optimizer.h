@@ -6,6 +6,7 @@ class Optimizer {
 public:
   Optimizer() {}
   virtual ~Optimizer() = default;
+  using Vec = Tensor::Vec;
 
   // Derived classes must implement this to update parameters based on gradients
   virtual void step() = 0;

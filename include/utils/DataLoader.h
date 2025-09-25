@@ -21,6 +21,7 @@ private:
   const int _sequenceLength;
   const int _batchSize;
   CharToIdGenerator _textGenerator;
+  using Vec = Tensor::Vec;
 
   std::vector<char> _chars;
   std::unordered_map<char, int> _charToId;

@@ -11,6 +11,7 @@ public:
 
 private:
   Tensor::Ptr positional_encodings_; // Pre-calculated
+  using Vec = Tensor::Vec;
 
   int _maxSequenceLength;
   int _embedDim;

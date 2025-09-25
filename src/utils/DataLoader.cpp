@@ -105,8 +105,8 @@ std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
   const size_t batchIndex = randBatch(g_randBatch);
   const size_t startIndex = batchIndex * _batchSize * _sequenceLength;
 
-  std::vector<float> inputBatchVec(_batchSize * _sequenceLength);
-  std::vector<float> targetBatchVec(_batchSize * _sequenceLength);
+  Vec inputBatchVec(_batchSize * _sequenceLength);
+  Vec targetBatchVec(_batchSize * _sequenceLength);
 
   // Extract data for the batch
   for (int j = 0; j < _batchSize; ++j) {
@@ -127,9 +127,9 @@ std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
   }
 
   Tensor::Ptr input_tensor = Tensor::create({_batchSize, _sequenceLength},
-                     std::make_shared<std::vector<float>>(inputBatchVec));
+                     std::make_shared<Vec>(inputBatchVec));
   Tensor::Ptr target_tensor = Tensor::create({_batchSize * _sequenceLength},
-                     std::make_shared<std::vector<float>>(targetBatchVec));
+                     std::make_shared<Vec>(targetBatchVec));
 
   return {input_tensor, target_tensor};
 }

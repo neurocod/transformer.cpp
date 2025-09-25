@@ -7,6 +7,7 @@ public:
   virtual ~Activation() = default;
 
   virtual Tensor::Ptr forward(const Tensor::Ptr &input) = 0;
+  using Vec = Tensor::Vec;
 };
 
 // ReLU Activation

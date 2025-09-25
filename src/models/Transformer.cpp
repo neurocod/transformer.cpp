@@ -44,10 +44,10 @@ Tensor::Ptr Transformer::createDecoderSelfAttentionMask(const Tensor::Ptr &decod
   std::vector<int> combined_mask_shape = {batchSize, 1, sequence_length,
                                           sequence_length};
   Tensor::Ptr combined_mask = Tensor::create(combined_mask_shape);
-  std::vector<float> &combined_mask_data = combined_mask->dataRef();
+  Vec &combined_mask_data = combined_mask->dataRef();
 
-  const std::vector<float> &look_ahead_data = look_ahead_mask->data();
-  const std::vector<float> &padding_data = padding_mask->data();
+  const Vec &look_ahead_data = look_ahead_mask->data();
+  const Vec &padding_data = padding_mask->data();
 
   for (int b = 0; b < batchSize; ++b) {
     for (int tq = 0; tq < sequence_length; ++tq) {

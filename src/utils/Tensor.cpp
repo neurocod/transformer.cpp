@@ -7,8 +7,8 @@
 std::vector<Tensor::Ptr> Tensor::optimizable_tensors_;
 
 Tensor::Tensor():
-  _data(std::make_shared<std::vector<float>>()),
-  _grad(std::make_shared<std::vector<float>>())
+  _data(std::make_shared<Vec>()),
+  _grad(std::make_shared<Vec>())
 {
 }
 
@@ -18,12 +18,12 @@ Tensor::Tensor(const std::vector<int> &shape, const std::string& name):
   _isOptimizable{!name.empty()}
 {
   size_t total_elements = num_elements();
-  _data = std::make_shared<std::vector<float>>(total_elements, 0.0f);
-  _grad = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+  _data = std::make_shared<Vec>(total_elements, 0.0f);
+  _grad = std::make_shared<Vec>(total_elements, 0.0f);
 }
 
 Tensor::Tensor(const std::vector<int> &shape,
-               const std::shared_ptr<std::vector<float>> &data, const std::string& name):
+               const std::shared_ptr<Vec> &data, const std::string& name):
   _shape{shape}, _name(name),
   _isOptimizable{ !name.empty() }
 {
@@ -33,7 +33,7 @@ Tensor::Tensor(const std::vector<int> &shape,
         "Data size does not match the specified shape in constructor.");
   }
   _data = data;
-  _grad = std::make_shared<std::vector<float>>(total_elements, 0.0f);
+  _grad = std::make_shared<Vec>(total_elements, 0.0f);
 }
 
 Tensor::Ptr Tensor::create() { return std::make_shared<Tensor>(); }
@@ -46,7 +46,7 @@ Tensor::Ptr Tensor::create(const std::vector<int> &shape, const std::string& nam
 }
 
 Tensor::Ptr Tensor::create(const std::vector<int> &shape,
-               const std::shared_ptr<std::vector<float>> &data, const std::string& name) {
+               const std::shared_ptr<Vec> &data, const std::string& name) {
   Tensor::Ptr tensor = std::make_shared<Tensor>(shape, data, name);
   if (tensor->_isOptimizable)
     optimizable_tensors_.push_back(tensor);
@@ -134,7 +134,7 @@ bool Tensor::read(BinaryReader& reader) {
 
   // Read data
   if (!_data) {
-    _data = std::make_shared<std::vector<float>>();
+    _data = std::make_shared<Vec>();
   }
 
   reader.readVector(*_data, num_elements);
@@ -147,13 +147,13 @@ bool Tensor::read(BinaryReader& reader) {
   if (_grad) {
     _grad->assign(num_elements, 0.0f);
   } else {
-    _grad = std::make_shared<std::vector<float>>(num_elements, 0.0f);
+    _grad = std::make_shared<Vec>(num_elements, 0.0f);
   }
   return true;
 }
 
 // Setter for data
-void Tensor::set_data(const std::shared_ptr<std::vector<float>> &data) {
+void Tensor::set_data(const std::shared_ptr<Vec> &data) {
   size_t total_elements = num_elements();
   if (data->size() != total_elements) {
     throw std::runtime_error("Data size mismatch in set_data.");
@@ -534,7 +534,7 @@ Tensor::Ptr Tensor::reshape(const std::vector<int> &new_shape) const
     // For reshape, share the underlying _data with the original tensor
     Tensor::Ptr result = Tensor::create(actual_new_shape);
     result->_data = shared_from_this()->_data;
-    result->_grad = std::make_shared<std::vector<float>>(new_num_elements, 0.0f);
+    result->_grad = std::make_shared<Vec>(new_num_elements, 0.0f);
 
     result->creator_op_ = OperationType::Reshape;
     result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
@@ -557,7 +557,7 @@ Tensor::Ptr Tensor::dot(const Tensor::Ptr &other) const
             throw std::runtime_error("Vector dot product requires vectors of the same size.");
         }
         // Result is a scalar (1D tensor with size 1)
-        Tensor::Ptr result = Tensor::create(std::vector<int>{1}, std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
+        Tensor::Ptr result = Tensor::create(std::vector<int>{1}, std::make_shared<Vec>(Vec{0.0f}));
         result->creator_op_ = OperationType::Dot;
         result->parents_.push_back(std::const_pointer_cast<Tensor>(shared_from_this()));
         result->parents_.push_back(other);
@@ -737,8 +737,8 @@ Tensor::Ptr Tensor::softmax(int dim) const
     }
 
     Tensor::Ptr output = Tensor::create(_shape);
-    const std::vector<float> &input_data = *_data;
-    std::vector<float> &output_data = output->dataRef();
+    const Vec &input_data = *_data;
+    Vec &output_data = output->dataRef();
 
     size_t num_elements = shared_from_this()->num_elements();
     if (num_elements == 0)
@@ -1035,8 +1035,8 @@ void Tensor::backward_sub(const Tensor::Ptr &grad_output)
         Tensor::Ptr neg_grad_output = Tensor::create(grad_output->shape());
         if (neg_grad_output->_data && grad_output->_data)
         {
-            std::shared_ptr<std::vector<float>> neg_data = std::make_shared<std::vector<float>>(grad_output->num_elements());
-            const std::vector<float> &grad_output_data = grad_output->data();
+            std::shared_ptr<Vec> neg_data = std::make_shared<Vec>(grad_output->num_elements());
+            const Vec &grad_output_data = grad_output->data();
             for (size_t i = 0; i < neg_data->size(); ++i)
             {
                 (*neg_data)[i] = -grad_output_data[i];
@@ -1210,7 +1210,7 @@ void Tensor::backward_transpose(const Tensor::Ptr &grad_output)
         // Transpose the incoming gradient using the inverse permutation.
         Tensor::Ptr grad_input = grad_output->transpose(inverse_permutation);
 
-        Tensor::Ptr grad_input_tensor = Tensor::create(parent->shape(), std::make_shared<std::vector<float>>(grad_input->data()));
+        Tensor::Ptr grad_input_tensor = Tensor::create(parent->shape(), std::make_shared<Vec>(grad_input->data()));
         parent->backward(grad_input_tensor);
     }
     else
@@ -1240,7 +1240,7 @@ void Tensor::backward_reshape(const Tensor::Ptr &grad_output)
             throw std::runtime_error("Gradient element count mismatch during reshape backward pass.");
         }
 
-        Tensor::Ptr grad_input_reshaped_tensor = Tensor::create(original_shape_before_reshape_, std::make_shared<std::vector<float>>(grad_output->data()));
+        Tensor::Ptr grad_input_reshaped_tensor = Tensor::create(original_shape_before_reshape_, std::make_shared<Vec>(grad_output->data()));
 
         parent->backward(grad_input_reshaped_tensor);
     }
@@ -1341,9 +1341,9 @@ void Tensor::backward_relu(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input = Tensor::create(parent->shape());
-        const std::vector<float> &parent_data = parent->data();
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_data = grad_input->dataRef();
+        const Vec &parent_data = parent->data();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_data = grad_input->dataRef();
 
         for (size_t i = 0; i < parent_data.size(); ++i)
         {
@@ -1370,9 +1370,9 @@ void Tensor::backward_gelu(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input = Tensor::create(parent->shape());
-        const std::vector<float> &parent_data = parent->data();
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_data = grad_input->dataRef();
+        const Vec &parent_data = parent->data();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_data = grad_input->dataRef();
 
         // Gradient of GELU approximation:
         // 0.5 * (1 + tanh(sqrt(2/PI) * (x + 0.044715 * x^3))) + 0.5 * x * sech^2(sqrt(2/PI) * (x + 0.044715 * x^3)) * sqrt(2/PI) * (1 + 3 * 0.044715 * x^2)
@@ -1403,9 +1403,9 @@ void Tensor::backward_sigmoid(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input = Tensor::create(parent->shape());
-        const std::vector<float> &parent_data = parent->data();
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_data = grad_input->dataRef();
+        const Vec &parent_data = parent->data();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_data = grad_input->dataRef();
 
         // Gradient of sigmoid: sigmoid(x) * (1 - sigmoid(x))
         for (size_t i = 0; i < parent_data.size(); ++i)
@@ -1427,9 +1427,9 @@ void Tensor::backward_tanh(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input = Tensor::create(parent->shape());
-        const std::vector<float> &parent_data = parent->data();
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_data = grad_input->dataRef();
+        const Vec &parent_data = parent->data();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_data = grad_input->dataRef();
 
         // Gradient of tanh: 1 - tanh^2(x)
         for (size_t i = 0; i < parent_data.size(); ++i)
@@ -1451,9 +1451,9 @@ void Tensor::backward_logsoftmax(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input_intermediate = Tensor::create(shared_from_this()->shape());
-        const std::vector<float> &output_data = shared_from_this()->data();
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->dataRef();
+        const Vec &output_data = shared_from_this()->data();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_intermediate_data = grad_input_intermediate->dataRef();
 
         const std::vector<int> &shape = shared_from_this()->shape();
         size_t last_dim_size = shape.empty() ? 0 : shape.back();
@@ -1504,9 +1504,9 @@ void Tensor::backward_nllloss(const Tensor::Ptr &grad_output)
         Tensor::Ptr targets = parents_[1];   // Targets (used for indexing in forward, not for gradient)
 
         Tensor::Ptr grad_input_intermediate = Tensor::create(log_probs->shape());
-        const std::vector<float> &target_data = parents_[1]->data();
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->dataRef();
+        const Vec &target_data = parents_[1]->data();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_intermediate_data = grad_input_intermediate->dataRef();
 
         if (grad_output->num_elements() != 1)
         {
@@ -1575,7 +1575,7 @@ void Tensor::backward_layernorm(const Tensor::Ptr &grad_output)
     if (parents_.size() == 1)
     {
         Tensor::Ptr input_parent = parents_[0];
-        const std::vector<float> &grad_output_data = grad_output->data();
+        const Vec &grad_output_data = grad_output->data();
 
         Tensor::Ptr gamma = layernorm_gamma_;
         Tensor::Ptr beta = layernorm_beta_;
@@ -1584,9 +1584,9 @@ void Tensor::backward_layernorm(const Tensor::Ptr &grad_output)
         Tensor::Ptr centered_input = layernorm_centered_input_;
         float epsilon = layernorm_epsilon_;
 
-        const std::vector<float> &gamma_data = gamma->data();
-        const std::vector<float> &inv_stddev_data = inv_stddev->data();
-        const std::vector<float> &centered_input_data = centered_input->data();
+        const Vec &gamma_data = gamma->data();
+        const Vec &inv_stddev_data = inv_stddev->data();
+        const Vec &centered_input_data = centered_input->data();
 
         const std::vector<int> &input_shape = input_parent->shape();
         size_t last_dim_size = input_shape.empty() ? 0 : input_shape.back();
@@ -1603,8 +1603,8 @@ void Tensor::backward_layernorm(const Tensor::Ptr &grad_output)
         // Calculate gradients for gamma and beta
         if (gamma->_grad && beta->_grad)
         {
-            std::vector<float> &gamma_grad_data = gamma->gradRef();
-            std::vector<float> &beta_grad_data = beta->gradRef();
+            Vec &gamma_grad_data = gamma->gradRef();
+            Vec &beta_grad_data = beta->gradRef();
 
             if (gamma_grad_data.size() != last_dim_size || beta_grad_data.size() != last_dim_size)
             {
@@ -1628,10 +1628,10 @@ void Tensor::backward_layernorm(const Tensor::Ptr &grad_output)
 
         // Calculate gradient for the input tensor
         Tensor::Ptr grad_input_intermediate = Tensor::create(input_shape);
-        std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->dataRef();
+        Vec &grad_input_intermediate_data = grad_input_intermediate->dataRef();
 
-        const std::vector<float> &mean_data = mean->data();
-        const std::vector<float> &variance_data = mean->data(); // Re-using mean data for shape, will use inv_stddev for calculation
+        const Vec &mean_data = mean->data();
+        const Vec &variance_data = mean->data(); // Re-using mean data for shape, will use inv_stddev for calculation
 
         for (size_t i = 0; i < outer_dims_elements; ++i)
         {
@@ -1684,9 +1684,9 @@ void Tensor::backward_softmax(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input_intermediate = Tensor::create(this->shape());
-        const std::vector<float> &output_data = this->data(); // Output of softmax
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->dataRef();
+        const Vec &output_data = this->data(); // Output of softmax
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_intermediate_data = grad_input_intermediate->dataRef();
 
         const std::vector<int> &shape = this->shape();
         int dim = -1; // Need to figure out the dimension softmax was applied on. Assuming last dimension for now.
@@ -1754,8 +1754,8 @@ void Tensor::backward_dropout(const Tensor::Ptr &grad_output)
     {
         Tensor::Ptr parent = parents_[0];
         Tensor::Ptr grad_input_intermediate = Tensor::create(this->shape());
-        const std::vector<float> &grad_output_data = grad_output->data();
-        std::vector<float> &grad_input_intermediate_data = grad_input_intermediate->dataRef();
+        const Vec &grad_output_data = grad_output->data();
+        Vec &grad_input_intermediate_data = grad_input_intermediate->dataRef();
 
         // Retrieve the mask and scale factor stored during the forward pass
         Tensor::Ptr mask = this->dropout_mask_;
@@ -1766,7 +1766,7 @@ void Tensor::backward_dropout(const Tensor::Ptr &grad_output)
             throw std::runtime_error("Dropout mask is missing or shape mismatch in backward.");
         }
 
-        const std::vector<float> &mask_data = mask->data();
+        const Vec &mask_data = mask->data();
 
         // The gradient is passed through only for the elements that were kept in the forward pass.
         for (size_t i = 0; i < grad_output_data.size(); ++i)
@@ -1790,7 +1790,7 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
     if (parents_.size() == 1)
     {
         Tensor::Ptr weights_parent = parents_[0];
-        const std::vector<float> &grad_output_data = grad_output->data();
+        const Vec &grad_output_data = grad_output->data();
 
         Tensor::Ptr input_ids = this->embedding_indices_;
 
@@ -1799,7 +1799,7 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
             throw std::runtime_error("Embedding indices tensor is missing or has incorrect shape in backward.");
         }
 
-        const std::vector<float> &input_ids_data = input_ids->data();
+        const Vec &input_ids_data = input_ids->data();
         const std::vector<int> &input_ids_shape = input_ids->shape();
 
         size_t batch_size = input_ids_shape[0];
@@ -1814,7 +1814,7 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
         // The gradient for a specific embedding vector is the sum of the gradients from all times that token appeared in the batch and sequence.
         if (weights_parent->_grad)
         {
-            std::vector<float> &weights_grad_data = weights_parent->gradRef();
+            Vec &weights_grad_data = weights_parent->gradRef();
             size_t vocab_size = weights_parent->shape()[0];
 
             for (size_t i = 0; i < batch_size * sequence_length; ++i)

@@ -16,15 +16,15 @@ Linear::Linear(int inputDim, int outputDim, const std::string& name)
   std::normal_distribution<float> d(0, std_dev);
 
   // Initialize weights data
-  std::shared_ptr<std::vector<float>> weights_data =
-      std::make_shared<std::vector<float>>(_inputDim * _outputDim);
+  std::shared_ptr<Vec> weights_data =
+      std::make_shared<Vec>(_inputDim * _outputDim);
   for (size_t i = 0; i < weights_data->size(); ++i) {
     (*weights_data)[i] = d(gen);
   }
   _weights->set_data(weights_data);
 
-  std::shared_ptr<std::vector<float>> biases_data =
-      std::make_shared<std::vector<float>>(_outputDim);
+  std::shared_ptr<Vec> biases_data =
+      std::make_shared<Vec>(_outputDim);
   std::fill(biases_data->begin(), biases_data->end(), 0.0f);
   _biases->set_data(biases_data);
 }

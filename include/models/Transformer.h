@@ -34,4 +34,6 @@ protected:
   Tensor::Ptr createEncoderPaddingMask(const Tensor::Ptr &encoderInputIds);
   Tensor::Ptr createDecoderSelfAttentionMask(const Tensor::Ptr &decoderInputIds);
   Tensor::Ptr create_decoder_cross_attention_mask(const Tensor::Ptr &encoderInputIds);
+
+  using Vec = Tensor::Vec;
 };

@@ -12,6 +12,7 @@ public:
   Tensor::Ptr weights();
 private:
   Tensor::Ptr _weights;
+  using Vec = Tensor::Vec;
 
   int _vocabSize;
   int _embedDim;

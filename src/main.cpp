@@ -6,12 +6,13 @@
 #include "utils/Optimizer.h"
 #include "utils/Tensor.h"
 
+using Vec = Tensor::Vec;
 // Function to convert string to tensor of IDs
 Tensor::Ptr string_to_tensor(const std::string &text,
                                          const DataLoader &loader,
                                          int seq_len) {
   const auto &char_to_id = loader.get_char_to_id_map();
-  std::vector<float> ids;
+  Vec ids;
   ids.reserve(seq_len);
   for (char c : text) {
     auto it = char_to_id.find(c);
@@ -31,7 +32,7 @@ Tensor::Ptr string_to_tensor(const std::string &text,
 
   // Create tensor with shape (1, seq_len) for batch size 1
   return Tensor::create({1, seq_len},
-                        std::make_shared<std::vector<float>>(ids));
+                        std::make_shared<Vec>(ids));
 }
 
 void trainModel(const TransformerConfig& cf, DataLoader& dataLoader) {
@@ -127,7 +128,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
 
   // Tokenize the initial prompt
   Tensor::Ptr current_input_ids = string_to_tensor(cf.initialPrompt, dataLoader, current_seq_len);
-  std::vector<float> generated_ids = current_input_ids->data();
+  Vec generated_ids = current_input_ids->data();
 
   // Remove padding from initial prompt display if any was added by
   // string_to_tensor
@@ -143,7 +144,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
   }
 
   for (int i = 0; i < cf.maxGenerateLength; ++i) {
-    std::vector<float> step_input_vec;
+    Vec step_input_vec;
     int start_idx = std::max(0, current_total_len - current_seq_len);
     for (int k = start_idx; k < current_total_len; ++k) {
       step_input_vec.push_back(generated_ids[k]);
@@ -155,7 +156,7 @@ int inferenceMode(const TransformerConfig& cf, DataLoader& dataLoader) {
 
     // Create tensor for this step (batch size 1)
     Tensor::Ptr step_input_tensor = Tensor::create({ 1, current_seq_len },
-        std::make_shared<std::vector<float>>(step_input_vec));
+        std::make_shared<Vec>(step_input_vec));
 
     // Encoder input and Decoder input are the same for autoregressive
     // generation

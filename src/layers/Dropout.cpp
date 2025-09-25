@@ -11,16 +11,15 @@ Dropout::Dropout(float rate) : rate_(rate),
 
 Tensor::Ptr Dropout::forward(const Tensor::Ptr &input,
                                          bool isTraining) {
-  if (!isTraining) {
+  if (!isTraining)
     return input;
-  }
 
   Tensor::Ptr output = Tensor::create(input->shape());
   Tensor::Ptr mask = Tensor::create(input->shape());
 
-  const std::vector<float> &input_data = input->data();
-  std::vector<float> &output_data = output->dataRef();
-  std::vector<float> &mask_data = mask->dataRef();
+  const Vec &input_data = input->data();
+  Vec &output_data = output->dataRef();
+  Vec &mask_data = mask->dataRef();
 
   float scale = 1.0f / (1.0f - rate_);
 

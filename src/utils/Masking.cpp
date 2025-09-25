@@ -2,9 +2,10 @@
 #include <algorithm>
 #include <iostream>
 
+using Vec = Tensor::Vec;
 Tensor::Ptr create_look_ahead_mask(int sequence_length) {
   Tensor::Ptr mask = Tensor::create({sequence_length, sequence_length});
-  std::vector<float> &mask_data = mask->dataRef();
+  Vec &mask_data = mask->dataRef();
 
   // Create a lower triangular mask with -inf in the upper triangle
   float negative_infinity = -std::numeric_limits<float>::infinity();
@@ -36,8 +37,8 @@ Tensor::Ptr create_padding_mask(const Tensor::Ptr &input_ids,
   size_t sequence_length = input_shape[1];
 
   Tensor::Ptr mask = Tensor::create({(int)batchSize, (int)sequence_length});
-  std::vector<float> &mask_data = mask->dataRef();
-  const std::vector<float> &input_ids_data = input_ids->data();
+  Vec &mask_data = mask->dataRef();
+  const Vec &input_ids_data = input_ids->data();
 
   for (size_t i = 0; i < batchSize * sequence_length; ++i) {
     if (input_ids_data[i] == padTokenId) {

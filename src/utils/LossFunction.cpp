@@ -1,5 +1,6 @@
 #include <utils/LossFunction.h>
 
+using Vec = Tensor::Vec;
 void LossFunction::backward(Tensor::Ptr &loss) {
   // The gradient of the loss with respect to itself is 1.0.
   if (loss->shape().size() != 1 || loss->shape()[0] != 1) {
@@ -7,7 +8,7 @@ void LossFunction::backward(Tensor::Ptr &loss) {
         "Backward pass for loss must start from a scalar loss tensor.");
   }
   Tensor::Ptr initial_grad_for_loss = Tensor::create(
-      {1}, std::make_shared<std::vector<float>>(std::vector<float>{{1.0f}}));
+      {1}, std::make_shared<Vec>(Vec{{1.0f}}));
   loss->backward(initial_grad_for_loss);
 }
 
@@ -26,12 +27,12 @@ Tensor::Ptr MeanSquaredErrorLoss::computeLoss(Tensor::Ptr &predictions,
   if (num_elements == 0) {
     return Tensor::create(
         std::vector<int>{1},
-        std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
+        std::make_shared<Vec>(Vec{0.0f}));
   }
 
   Tensor::Ptr num_elements_tensor = Tensor::create(
-      {1}, std::make_shared<std::vector<float>>(
-               std::vector<float>{{static_cast<float>(num_elements)}}));
+      {1}, std::make_shared<Vec>(
+               Vec{{static_cast<float>(num_elements)}}));
   Tensor::Ptr mean_loss = (*sum_squared_diff) / num_elements_tensor;
 
   return mean_loss;
@@ -40,8 +41,8 @@ Tensor::Ptr MeanSquaredErrorLoss::computeLoss(Tensor::Ptr &predictions,
 // Helper function for LogSoftmax
 Tensor::Ptr log_softmax(const Tensor::Ptr &input) {
   Tensor::Ptr output = Tensor::create(input->shape());
-  const std::vector<float> &input_data = input->data();
-  std::vector<float> &output_data = output->dataRef();
+  const Vec &input_data = input->data();
+  Vec &output_data = output->dataRef();
   const std::vector<int> &shape = input->shape();
   size_t last_dim_size = shape.empty() ? 0 : shape.back();
   size_t num_elements = input->num_elements();
@@ -85,9 +86,9 @@ Tensor::Ptr log_softmax(const Tensor::Ptr &input) {
 Tensor::Ptr nll_loss(const Tensor::Ptr &log_probabilities,
          const Tensor::Ptr &targets) {
   Tensor::Ptr loss = Tensor::create(std::vector<int>{1},
-      std::make_shared<std::vector<float>>(std::vector<float>{0.0f}));
-  const std::vector<float> &log_prob_data = log_probabilities->data();
-  const std::vector<float> &target_data = targets->data();
+      std::make_shared<Vec>(Vec{0.0f}));
+  const Vec &log_prob_data = log_probabilities->data();
+  const Vec &target_data = targets->data();
   float total_loss = 0.0f;
 
   const std::vector<int> &log_prob_shape = log_probabilities->shape();

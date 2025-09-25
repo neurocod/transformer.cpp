@@ -2,8 +2,8 @@
 
 Tensor::Ptr ReLU::forward(const Tensor::Ptr &input) {
   Tensor::Ptr output = Tensor::create(input->shape());
-  const std::vector<float> &input_data = input->data();
-  std::vector<float> &output_data = output->dataRef();
+  const Vec &input_data = input->data();
+  Vec &output_data = output->dataRef();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
     output_data[i] = std::max(0.0f, input_data[i]);
@@ -17,8 +17,8 @@ Tensor::Ptr ReLU::forward(const Tensor::Ptr &input) {
 
 Tensor::Ptr GELU::forward(const Tensor::Ptr &input) {
   Tensor::Ptr output = Tensor::create(input->shape());
-  const std::vector<float> &input_data = input->data();
-  std::vector<float> &output_data = output->dataRef();
+  const Vec &input_data = input->data();
+  Vec &output_data = output->dataRef();
 
   // GELU approximation: 0.5 * x * (1 + tanh(sqrt(2 / PI) * (x + 0.044715 *
   // x^3)))
@@ -39,8 +39,8 @@ Tensor::Ptr GELU::forward(const Tensor::Ptr &input) {
 
 Tensor::Ptr Sigmoid::forward(const Tensor::Ptr &input) {
   Tensor::Ptr output = Tensor::create(input->shape());
-  const std::vector<float> &input_data = input->data();
-  std::vector<float> &output_data = output->dataRef();
+  const Vec &input_data = input->data();
+  Vec &output_data = output->dataRef();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
     output_data[i] = 1.0f / (1.0f + std::exp(-input_data[i]));
@@ -54,8 +54,8 @@ Tensor::Ptr Sigmoid::forward(const Tensor::Ptr &input) {
 
 Tensor::Ptr Tanh::forward(const Tensor::Ptr &input) {
   Tensor::Ptr output = Tensor::create(input->shape());
-  const std::vector<float> &input_data = input->data();
-  std::vector<float> &output_data = output->dataRef();
+  const Vec &input_data = input->data();
+  Vec &output_data = output->dataRef();
 
   for (size_t i = 0; i < input_data.size(); ++i) {
     output_data[i] = std::tanh(input_data[i]);

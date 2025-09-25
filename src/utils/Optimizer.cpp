@@ -10,8 +10,8 @@ void SGD::step() {
     if (param) {
       // Could make a copy of the param_data and then set it again, but this
       // qould be inefficient because you have an extra copy
-      std::vector<float> &param_data = param->dataRef();
-      const std::vector<float> &param_grad = param->grad();
+      Vec &param_data = param->dataRef();
+      const Vec &param_grad = param->grad();
 
       if (param_data.size() != param_grad.size()) {
         throw std::runtime_error(
@@ -49,7 +49,7 @@ void Adam::step() {
     if (!param || param->grad().empty())
       continue;
 
-    const std::vector<float> &param_grad = param->grad();
+    const Vec &param_grad = param->grad();
     for (float grad_val : param_grad) {
       total_norm_sq += grad_val * grad_val;
     }
@@ -65,7 +65,7 @@ void Adam::step() {
       if (!param || param->grad().empty())
         continue;
 
-      std::vector<float> &param_grad_mutable = param->gradRef();
+      Vec &param_grad_mutable = param->gradRef();
       for (float &grad_val : param_grad_mutable) {
         grad_val *= clip_coef;
       }
@@ -77,11 +77,11 @@ void Adam::step() {
     if (!param || param->data().empty() || param->grad().empty())
       continue;
 
-    std::vector<float> &param_data = param->dataRef();
-    const std::vector<float> &param_grad = param->grad();
+    Vec &param_data = param->dataRef();
+    const Vec &param_grad = param->grad();
 
-    std::vector<float> &m_data = m_[i]->dataRef();
-    std::vector<float> &v_data = v_[i]->dataRef();
+    Vec &m_data = m_[i]->dataRef();
+    Vec &v_data = v_[i]->dataRef();
 
     if (param_data.size() != param_grad.size() ||
         param_data.size() != m_data.size() ||

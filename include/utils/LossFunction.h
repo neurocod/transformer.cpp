@@ -5,13 +5,12 @@ class LossFunction {
 public:
   virtual ~LossFunction() = default;
 
-  virtual Tensor::Ptr
-  computeLoss(Tensor::Ptr &predictions,
-               Tensor::Ptr &targets) = 0;
+  virtual Tensor::Ptr computeLoss(Tensor::Ptr &predictions, Tensor::Ptr &targets) = 0;
 
   // This assumes computeLoss returns a shared_ptr to a Tensor that has its
   // computation graph set up.
   void backward(Tensor::Ptr &loss);
+  using Vec = Tensor::Vec;
 };
 
 class MeanSquaredErrorLoss : public LossFunction {
