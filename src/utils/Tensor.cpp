@@ -60,7 +60,7 @@ void Tensor::write(BinaryWriter& writer)const {
       shape += " * ";
     shape += std::to_string(dim);
   }
-  spdlog::info("writing tensor {}, {}\n", _name, shape);
+  spdlog::info("writing tensor {}, {}", _name, shape);
 
   writer.write(_name);
 
@@ -1853,7 +1853,7 @@ std::string Tensor::debugString() const {
     return oss.str();
   }
   const auto &data = *_data;
-
+  
   oss << "[";
   for (size_t i = 0; i < _shape.size(); ++i) {
     if (i > 0)
@@ -1867,19 +1867,30 @@ std::string Tensor::debugString() const {
     return oss.str();
   }
 
+  std::vector<int> shape; // [1,2,10] -> [2,10]
+  for (int s : _shape)
+    if (s != 1)
+      shape.push_back(s);
+  for (int s : _shape) {
+    if (shape.empty()) {
+      shape.push_back(s);
+      break;
+    }
+  }
+
   // Handle different dimensionalities
-  if (_shape.size() == 1) {
+  if (shape.size() == 1) {
     // 1D: Simple row of numbers
-    for (int i = 0; i < _shape[0]; ++i) {
+    for (int i = 0; i < shape[0]; ++i) {
       if (i > 0)
         oss << " ";
       oss << std::fixed << std::setprecision(3) << data[i];
     }
     oss << "\n";
-  } else if (_shape.size() == 2) {
+  } else if (shape.size() == 2) {
     // 2D: Table format
-    int rows = _shape[0];
-    int cols = _shape[1];
+    int rows = shape[0];
+    int cols = shape[1];
 
     for (int i = 0; i < rows; ++i) {
       for (int j = 0; j < cols; ++j) {
@@ -1913,3 +1924,8 @@ const char *Tensor::dbg() const {
     ret.pop_back();
   return ret.c_str();
 }
+#ifdef _DEBUG
+const char *dbg(const Tensor &t) { return t.dbg(); }
+const char *dbg(const Tensor *t) { return t->dbg(); }
+const char *dbg(const Tensor::Ptr &t) { return t->dbg(); }
+#endif // _DEBUG

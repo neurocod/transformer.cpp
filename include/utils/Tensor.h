@@ -160,3 +160,9 @@ private:
   void backward_dropout(const Tensor::Ptr &gradOutput);
   void backward_embedding_lookup(const Tensor::Ptr &gradOutput);
 };
+#ifdef _DEBUG
+// in Visual Studio Immediate Window, write: dbg(anyTensorVariable), sb
+const char *dbg(const Tensor &t);
+const char *dbg(const Tensor *t);
+const char *dbg(const Tensor::Ptr &t);
+#endif // _DEBUG
