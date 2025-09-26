@@ -125,10 +125,10 @@ std::pair<Tensor::Ptr, Tensor::Ptr> DataLoader::randBatch() {
     }
   }
 
-  Tensor::Ptr input_tensor = Tensor::create({_batchSize, _sequenceLength},
+  Tensor::Ptr inputTensor = Tensor::create({_batchSize, _sequenceLength},
                      std::make_shared<Vec>(inputBatchVec));
-  Tensor::Ptr target_tensor = Tensor::create({_batchSize * _sequenceLength},
+  Tensor::Ptr targetTensor = Tensor::create({_batchSize * _sequenceLength},
                      std::make_shared<Vec>(targetBatchVec));
 
-  return {input_tensor, target_tensor};
+  return {inputTensor, targetTensor};
 }

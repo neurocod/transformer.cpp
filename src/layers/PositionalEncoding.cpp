@@ -38,8 +38,7 @@ Tensor::Ptr PositionalEncoding::forward(const Tensor::Ptr &input) {
   }
 
   if (sequence_length > _maxSequenceLength) {
-    throw std::runtime_error("Input sequence length exceeds "
-                             "maxSequenceLength in Positional Encoding.");
+    throw std::runtime_error("Input sequence length exceeds maxSequenceLength in Positional Encoding");
   }
 
   // Add the pre-calculated positional encodings to the input tensor.

@@ -132,6 +132,8 @@ bool Tensor::read(BinaryReader& reader) {
     return false;
   }
 
+  spdlog::debug("Loading tensor {} {}={}", _name, shapeString(_shape), num_elements);
+
   // Read data
   if (!_data) {
     _data = std::make_shared<Vec>();
@@ -501,34 +503,24 @@ Tensor::Ptr Tensor::reshape(const std::vector<int> &new_shape) const
     if (has_neg_one)
     {
         if (current_elements == 0 && new_num_elements > 0)
-        {
             throw std::runtime_error("Cannot infer dimension for -1 when reshaping an empty tensor to a non-empty one.");
-        }
         if (new_num_elements == 0)
-        {
             throw std::runtime_error("Internal error: product of positive dimensions is zero in reshape.");
-        }
         if (current_elements % new_num_elements != 0)
-        {
             throw std::runtime_error("Cannot infer dimension for -1: total elements not divisible by product of other dimensions.");
-        }
         actual_new_shape[neg_one_idx] = current_elements / new_num_elements;
         new_num_elements = current_elements;
     }
 
     if (current_elements != new_num_elements)
     {
-        std::string old_shape_str = "[";
-        for (size_t k = 0; k < _shape.size(); ++k)
-            old_shape_str += std::to_string(_shape[k]) + (k == _shape.size() - 1 ? "" : ", ");
-        old_shape_str += "]";
-        std::string new_shape_str = "[";
-        for (size_t k = 0; k < new_shape.size(); ++k)
-            new_shape_str += std::to_string(new_shape[k]) + (k == new_shape.size() - 1 ? "" : ", ");
-        new_shape_str += "]";
-        throw std::runtime_error("Total number of elements must remain the same during reshape. Cannot reshape " +
-                                 old_shape_str + " (" + std::to_string(current_elements) + " elements) to " +
-                                 new_shape_str + " (" + std::to_string(new_num_elements) + " elements).");
+        std::string old_shape_str = shapeString(_shape);
+        std::string new_shape_str = shapeString(new_shape);
+        std::string err = std::format("Total number of elements must remain the same during reshape. Cannot reshape "
+                                       "{} ({} elements) to "
+                                       "{} ({} elements).",
+                                      old_shape_str, current_elements, new_shape_str, new_num_elements);
+        throw std::runtime_error(err);
     }
 
     // For reshape, share the underlying _data with the original tensor
@@ -1210,8 +1202,8 @@ void Tensor::backward_transpose(const Tensor::Ptr &grad_output)
         // Transpose the incoming gradient using the inverse permutation.
         Tensor::Ptr grad_input = grad_output->transpose(inverse_permutation);
 
-        Tensor::Ptr grad_input_tensor = Tensor::create(parent->shape(), std::make_shared<Vec>(grad_input->data()));
-        parent->backward(grad_input_tensor);
+        Tensor::Ptr grad_inputTensor = Tensor::create(parent->shape(), std::make_shared<Vec>(grad_input->data()));
+        parent->backward(grad_inputTensor);
     }
     else
     {
@@ -1324,10 +1316,10 @@ void Tensor::backward_sum(const Tensor::Ptr &grad_output)
         }
         float grad_value = grad_output->data()[0];
 
-        Tensor::Ptr grad_input_tensor = Tensor::create(parent->shape());
-        std::fill(grad_input_tensor->_data->begin(), grad_input_tensor->_data->end(), grad_value);
+        Tensor::Ptr grad_inputTensor = Tensor::create(parent->shape());
+        std::fill(grad_inputTensor->_data->begin(), grad_inputTensor->_data->end(), grad_value);
 
-        parent->backward(grad_input_tensor);
+        parent->backward(grad_inputTensor);
     }
     else
     {
@@ -1842,6 +1834,17 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
     }
 }
 
+std::string Tensor::shapeString(const std::vector<int> &shape) {
+  std::ostringstream oss;
+  oss << "[";
+  for (size_t i = 0; i < shape.size(); ++i) {
+    if (i > 0)
+      oss << "x";
+    oss << shape[i];
+  }
+  oss << "]";
+  return oss.str();
+}
 
 std::string Tensor::debugString() const {
   std::ostringstream oss;
@@ -1853,14 +1856,7 @@ std::string Tensor::debugString() const {
     return oss.str();
   }
   const auto &data = *_data;
-  
-  oss << "[";
-  for (size_t i = 0; i < _shape.size(); ++i) {
-    if (i > 0)
-      oss << "x";
-    oss << _shape[i];
-  }
-  oss << "] (" << data.size() << " elements)\n";
+  oss << shapeString(_shape) << std::format(" ({} elements)\n", data.size());
 
   if (data.empty()) {
     oss << "No data\n";

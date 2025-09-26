@@ -159,13 +159,13 @@ int inferenceMode(const std::string& filename, const std::string& initialPrompt)
     }
 
     // Create tensor for this step (batch size 1)
-    Tensor::Ptr step_input_tensor = Tensor::create({ 1, current_seq_len },
+    Tensor::Ptr stepInputTensor = Tensor::create({ 1, current_seq_len },
         std::make_shared<Vec>(step_input_vec));
 
     // Encoder input and Decoder input are the same for autoregressive
     // generation
-    Tensor::Ptr encoder_input = step_input_tensor;
-    Tensor::Ptr decoder_input = step_input_tensor;
+    Tensor::Ptr encoder_input = stepInputTensor;
+    Tensor::Ptr decoder_input = stepInputTensor;
 
     // Forward pass (isTraining = false)
     Tensor::Ptr logits = model->forward(encoder_input, decoder_input, false);

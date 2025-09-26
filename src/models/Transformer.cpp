@@ -192,13 +192,13 @@ std::shared_ptr<Transformer> Transformer::loadFromFile(const std::string &filena
   spdlog::info("Loading {} optimizable tensors from {}...", num_tensors_in_file, filename);
 
   for (size_t i = 0; i < num_tensors_in_file; ++i) {
-    Tensor::Ptr& tensor_ptr = optimizable_tensors[i];
+    Tensor::Ptr& tensor = optimizable_tensors[i];
 
-    if (!tensor_ptr) {
+    if (!tensor) {
       spdlog::error("Warning: Encountered null tensor pointer in model while loading weights for index {}", i);
       return 0;
     }
-    if (!tensor_ptr->read(reader))
+    if (!tensor->read(reader))
       return 0;
   }
   return ret;
