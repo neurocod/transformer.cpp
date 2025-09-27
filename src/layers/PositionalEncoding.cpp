@@ -25,11 +25,11 @@ Tensor::Ptr PositionalEncoding::forward(const Tensor::Ptr &input) {
   const std::vector<int> &input_shape = input->shape();
   if (input_shape.size() != 3) {
     throw std::runtime_error("Positional Encoding input must be a 3D tensor "
-                             "(batchSize, sequence_length, embedDim).");
+                             "(batchSize, sequenceLength, embedDim).");
   }
 
   size_t batchSize = input_shape[0];
-  size_t sequence_length = input_shape[1];
+  size_t sequenceLength = input_shape[1];
   size_t embedDim = input_shape[2];
 
   if (embedDim != _embedDim) {
@@ -37,7 +37,7 @@ Tensor::Ptr PositionalEncoding::forward(const Tensor::Ptr &input) {
         "Input embedding dimension mismatch in Positional Encoding.");
   }
 
-  if (sequence_length > _maxSequenceLength) {
+  if (sequenceLength > _maxSequenceLength) {
     throw std::runtime_error("Input sequence length exceeds maxSequenceLength in Positional Encoding");
   }
 
@@ -48,8 +48,8 @@ Tensor::Ptr PositionalEncoding::forward(const Tensor::Ptr &input) {
   const Vec &encoding_data = positional_encodings_->data();
 
   for (size_t b = 0; b < batchSize; ++b) {
-    for (size_t s = 0; s < sequence_length; ++s) {
-      size_t input_start_idx = (b * sequence_length + s) * embedDim;
+    for (size_t s = 0; s < sequenceLength; ++s) {
+      size_t input_start_idx = (b * sequenceLength + s) * embedDim;
       size_t encoding_start_idx = s * embedDim;
 
       for (size_t d = 0; d < embedDim; ++d) {

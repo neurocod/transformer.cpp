@@ -6,8 +6,8 @@ public:
   Embedding(int vocabSize, int embedDim);
   ~Embedding() {}
 
-  // Input shape: (batchSize, sequence_length)
-  // Output shape: (batchSize, sequence_length, embedDim)
+  // Input shape: (batchSize, sequenceLength)
+  // Output shape: (batchSize, sequenceLength, embedDim)
   Tensor::Ptr forward(const Tensor::Ptr &input_ids);
   Tensor::Ptr weights();
 private:

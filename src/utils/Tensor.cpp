@@ -1795,10 +1795,10 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
         const std::vector<int> &input_ids_shape = input_ids->shape();
 
         size_t batch_size = input_ids_shape[0];
-        size_t sequence_length = input_ids_shape[1];
+        size_t sequenceLength = input_ids_shape[1];
         size_t embed_dim = grad_output->shape().back();
 
-        if (grad_output->shape() != std::vector<int>{(int)batch_size, (int)sequence_length, (int)embed_dim})
+        if (grad_output->shape() != std::vector<int>{(int)batch_size, (int)sequenceLength, (int)embed_dim})
         {
             throw std::runtime_error("Gradient output shape mismatch in EmbeddingLookup backward.");
         }
@@ -1809,7 +1809,7 @@ void Tensor::backward_embedding_lookup(const Tensor::Ptr &grad_output)
             Vec &weights_grad_data = weights_parent->gradRef();
             size_t vocab_size = weights_parent->shape()[0];
 
-            for (size_t i = 0; i < batch_size * sequence_length; ++i)
+            for (size_t i = 0; i < batch_size * sequenceLength; ++i)
             {
                 float token_id_float = input_ids_data[i];
                 if (token_id_float < 0 || token_id_float >= vocab_size || std::fmod(token_id_float, 1.0f) != 0.0f)

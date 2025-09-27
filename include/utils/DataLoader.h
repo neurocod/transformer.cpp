@@ -6,7 +6,7 @@
 class DataLoader: public Tokenizer {
 public:
   using Ptr = std::shared_ptr<DataLoader>;
-  DataLoader(int sequence_length, int batchSize);
+  DataLoader(int sequenceLength, int batchSize);
 
   void readFile(const std::string& filename);
   std::pair<Tensor::Ptr, Tensor::Ptr> randBatch();

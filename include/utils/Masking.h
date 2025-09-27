@@ -3,7 +3,7 @@
 
 // Generates a look-ahead mask to prevent attention to future tokens in the
 // decoder.
-Tensor::Ptr create_look_ahead_mask(int sequence_length);
+Tensor::Ptr create_look_ahead_mask(int sequenceLength);
 
 // Generates a padding mask to ignore padded elements in sequences.
 Tensor::Ptr create_padding_mask(const Tensor::Ptr &input_ids,

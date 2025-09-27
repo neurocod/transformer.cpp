@@ -26,23 +26,23 @@ Tensor::Ptr Transformer::createDecoderSelfAttentionMask(const Tensor::Ptr &decod
     throw std::runtime_error("Decoder input for self-attention mask must be 2D (batch, seq_len).");
   }
   int batchSize = decoder_shape[0];
-  int sequence_length = decoder_shape[1];
+  int sequenceLength = decoder_shape[1];
 
-  Tensor::Ptr look_ahead_mask = create_look_ahead_mask(sequence_length);
+  Tensor::Ptr look_ahead_mask = create_look_ahead_mask(sequenceLength);
   Tensor::Ptr padding_mask = create_padding_mask(decoderInputIds, _cfg.padTokenId);
 
   const auto &look_ahead_shape = look_ahead_mask->shape();
   const auto &padding_shape = padding_mask->shape();
 
   if (look_ahead_shape !=
-          std::vector<int>{1, 1, sequence_length, sequence_length} ||
-      padding_shape != std::vector<int>{batchSize, 1, 1, sequence_length}) {
+          std::vector<int>{1, 1, sequenceLength, sequenceLength} ||
+      padding_shape != std::vector<int>{batchSize, 1, 1, sequenceLength}) {
     throw std::runtime_error("Unexpected shapes for look-ahead or padding "
                              "masks during combination.");
   }
 
-  std::vector<int> combined_mask_shape = {batchSize, 1, sequence_length,
-                                          sequence_length};
+  std::vector<int> combined_mask_shape = {batchSize, 1, sequenceLength,
+                                          sequenceLength};
   Tensor::Ptr combined_mask = Tensor::create(combined_mask_shape);
   Vec &combined_mask_data = combined_mask->dataRef();
 
@@ -50,12 +50,12 @@ Tensor::Ptr Transformer::createDecoderSelfAttentionMask(const Tensor::Ptr &decod
   const Vec &padding_data = padding_mask->data();
 
   for (int b = 0; b < batchSize; ++b) {
-    for (int tq = 0; tq < sequence_length; ++tq) {
-      for (int tk = 0; tk < sequence_length; ++tk) {
-        size_t look_ahead_idx = tq * sequence_length + tk;
-        size_t padding_idx = b * sequence_length + tk;
+    for (int tq = 0; tq < sequenceLength; ++tq) {
+      for (int tk = 0; tk < sequenceLength; ++tk) {
+        size_t look_ahead_idx = tq * sequenceLength + tk;
+        size_t padding_idx = b * sequenceLength + tk;
         size_t combined_idx =
-            b * sequence_length * sequence_length + tq * sequence_length + tk;
+            b * sequenceLength * sequenceLength + tq * sequenceLength + tk;
         combined_mask_data[combined_idx] = std::max(
             look_ahead_data[look_ahead_idx], padding_data[padding_idx]);
       }
@@ -77,7 +77,7 @@ Tensor::Ptr Transformer::forward(const Tensor::Ptr &encoderInputIds,
 
   if (enc_input_shape.size() != 2 || dec_input_shape.size() != 2) {
     throw std::runtime_error("Encoder and decoder input IDs must be 2D tensors "
-                             "(batchSize, sequence_length).");
+                             "(batchSize, sequenceLength).");
   }
 
   Tensor::Ptr encoderPaddingMask = createEncoderPaddingMask(encoderInputIds);

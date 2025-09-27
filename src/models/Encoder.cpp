@@ -12,7 +12,7 @@ Encoder::Encoder(int numLayers, int embedDim, int numHeads,
 Tensor::Ptr Encoder::forward(Tensor::Ptr &input,
                                          Tensor::Ptr &padding_mask,
                                          bool isTraining) {
-  // Input shape: (batchSize, sequence_length, embedDim)
+  // Input shape: (batchSize, sequenceLength, embedDim)
 
   Tensor::Ptr output = input;
 

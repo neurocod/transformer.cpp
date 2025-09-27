@@ -18,25 +18,25 @@ Embedding::Embedding(int vocabSize, int embedDim)
 }
 
 Tensor::Ptr Embedding::forward(const Tensor::Ptr &input_ids) {
-  // input_ids shape: (batchSize, sequence_length)
-  // Output shape: (batchSize, sequence_length, embedDim)
+  // input_ids shape: (batchSize, sequenceLength)
+  // Output shape: (batchSize, sequenceLength, embedDim)
 
   const std::vector<int> &input_shape = input_ids->shape();
   if (input_shape.size() != 2) {
     throw std::runtime_error("Embedding layer input must be a 2D tensor "
-                             "(batchSize, sequence_length).");
+                             "(batchSize, sequenceLength).");
   }
 
   size_t batchSize = input_shape[0];
-  size_t sequence_length = input_shape[1];
+  size_t sequenceLength = input_shape[1];
 
-  Tensor::Ptr output = Tensor::create({(int)batchSize, (int)sequence_length, _embedDim});
+  Tensor::Ptr output = Tensor::create({(int)batchSize, (int)sequenceLength, _embedDim});
   Vec &output_data = output->dataRef();
 
   const Vec &input_ids_data = input_ids->data();
   const Vec &weights_data = _weights->data();
 
-  for (size_t i = 0; i < batchSize * sequence_length; ++i) {
+  for (size_t i = 0; i < batchSize * sequenceLength; ++i) {
     float token_id_float = input_ids_data[i];
     if (token_id_float < 0 || token_id_float >= _vocabSize ||
         std::fmod(token_id_float, 1.0f) != 0.0f) {
