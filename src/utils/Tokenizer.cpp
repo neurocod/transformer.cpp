@@ -11,6 +11,21 @@ void Tokenizer::write(BinaryWriter &writer) const {
     }
 }
 
+void Tokenizer::reset(const std::unordered_set<char> &uniqueChars) {
+  _chars.clear();
+  _charToId.clear();
+  _idToChar.clear();
+
+  _chars.assign(uniqueChars.begin(), uniqueChars.end());
+  if (!uniqueChars.contains(_padTokenId))
+    _chars.push_back(_padTokenId);
+  std::sort(_chars.begin(), _chars.end());
+
+  for (size_t i = 0; i < _chars.size(); ++i) {
+    _charToId[_chars[i]] = i;
+    _idToChar[i] = _chars[i];
+  }
+}
 bool Tokenizer::read(BinaryReader &reader) {
     const uint32_t vocabSize = reader.read<uint32_t>();
     if (!reader.ok())

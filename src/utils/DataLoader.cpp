@@ -3,8 +3,8 @@
 static std::mt19937 g_randBatch(
   std::chrono::high_resolution_clock::now().time_since_epoch().count());
 
-DataLoader::DataLoader(int sequence_length, int batchSize):
-  _sequenceLength(sequence_length),
+DataLoader::DataLoader(int sequenceLength, int batchSize):
+  _sequenceLength(sequenceLength),
   _batchSize(batchSize)
 {
 }
@@ -65,14 +65,8 @@ void DataLoader::readFile(const std::string& filename) {
   }
 
   // Build Vocabulary
-  std::unordered_set<char> unique_chars(text.begin(), text.end());
-  _chars.assign(unique_chars.begin(), unique_chars.end());
-  std::sort(_chars.begin(), _chars.end());
-
-  for (size_t i = 0; i < _chars.size(); ++i) {
-    _charToId[_chars[i]] = i;
-    _idToChar[i] = _chars[i];
-  }
+  std::unordered_set<char> uniqueChars(text.begin(), text.end());
+  reset(uniqueChars);
   printStatistics();
 
   // Numericalize the data

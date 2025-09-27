@@ -11,6 +11,8 @@ public:
   using Ptr = std::shared_ptr<Tokenizer>;
   virtual ~Tokenizer() {}
 
+  int _padTokenId = 0;
+  void reset(const std::unordered_set<char>& uniqueChars);
   void write(BinaryWriter &writer) const;
   bool read(BinaryReader &reader);
 
